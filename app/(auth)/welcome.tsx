@@ -47,12 +47,12 @@ const Onboarding = () => {
               className="w-full h-[300px]"
               resizeMode="contain"
             />
-            <View className="flex flex-row items-center justify-center w-full mt-10">
-            <Text className={`text-black text-3xl font-bold mx-10 text-center ${language === 'ar' ? 'font-bold' : 'font-JakartaBold'}`}>
+            <View className="flex flex-row items-center justify-center w-full mt-20">
+            <Text className={`text-black pt-3 text-3xl font-bold mx-10 text-center ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
                 {t.onboarding[index].title}
               </Text>
             </View>
-            <Text className={`text-md text-center text-[#858585] mx-10 mt-3 ${language === 'ar' ? 'font-semibold' : 'font-JakartaMedium'}`}>
+            <Text className={`text-md text-center text-[#858585] mx-10 mt-3 ${language === 'ar' ? 'font-CairoSemiBold' : 'font-JakartaMedium'}`}>
               {t.onboarding[index].description}
             </Text>
           </View>

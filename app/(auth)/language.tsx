@@ -35,7 +35,7 @@ export default function LanguageScreen() {
     <SafeAreaView className="flex-1 bg-gray-100 ">
       <View className="flex-1 px-5 py-10 items-center ">
         {/* Dynamic title based on selection */}
-        <Text className={`text-3xl text-gray-800 text-center mb-8 ${selectedLanguage === 'ar' ? 'font-bold' : 'font-JakartaBold'}`}>
+        <Text className={`text-3xl text-gray-800 text-center mb-8 ${selectedLanguage === 'ar' ? 'font-CairoBold pt-2' : 'font-JakartaBold pt-2'}`}>
           {t.chooseLanguage}
         </Text>
 
