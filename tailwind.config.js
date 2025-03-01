@@ -11,6 +11,16 @@ module.exports = {
         JakartaLight: ["Jakarta-Light", "sans-serif"],
         JakartaMedium: ["Jakarta-Medium", "sans-serif"],
         JakartaSemiBold: ["Jakarta-SemiBold", "sans-serif"],
+        CairoBlack: ["Cairo-Black", "sans-serif"],
+        CairoBold: ["Cairo-Bold", "sans-serif"],
+        CairoExtraBold: ["Cairo-ExtraBold", "sans-serif"],
+        CairoExtraLight: ["Cairo-ExtraLight", "sans-serif"],
+        CairoLight: ["Cairo-Light", "sans-serif"],
+        CairoMedium: ["Cairo-Medium", "sans-serif"],
+        CairoRegular: ["Cairo-Regular", "sans-serif"],
+        CairoSemiBold: ["Cairo-SemiBold", "sans-serif"],
+        
+
       },
       colors: {
         primary: {

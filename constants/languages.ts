@@ -34,6 +34,13 @@ export const translations = {
     selectIndustry: "اختر مجال العمل",
     agreeToTerms: "أوافق على الشروط والأحكام",
     cancel: "إلغاء",
+    genders: ['ذكر', 'أنثى'], // قيم الجنس بالعربية
+    industries: ['طالب', 'موظف', 'أعمال حرة', 'أخرى'],
+    other: "اخرى",
+    login: "تسجيل الدخول",
+    forgotPassword: "نسيت كلمة السر؟",
+    noAccount: "لا يوجد حساب؟",
+    agreeToTermsAlert: "يرجى الموافقة على الشروط والأحكام",
 
       },
     
@@ -70,5 +77,12 @@ export const translations = {
     selectIndustry: "Select Industry",
     agreeToTerms: "I agree to the terms and conditions",
     cancel: "Cancel",
+    genders: ['Male', 'Female'], // قيم الجنس بالإنجليزية
+    industries: ['Student', 'Employee', 'Freelancer', 'Other'], 
+    other: "Other",
+    login: "Login",
+    forgotPassword: "Forgot Password?",
+    noAccount: "Don't have an account?",
+    agreeToTermsAlert: "Please agree to the terms and conditions",
           },
   };

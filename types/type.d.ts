@@ -137,3 +137,15 @@ declare interface DriverCardProps {
     selected: number;
     setSelected: () => void;
 }
+
+declare interface InputFieldProps extends TextInputProps {
+    label: string;
+    icon?: any; // Replace 'any' with the correct type for your icon
+    secureTextEntry?: boolean;
+    labelStyle?: string;
+    containerStyle?: string;
+    inputStyle?: string;
+    iconStyle?: string;
+    className?: string;
+    isPhoneNumber?: boolean; // Add this line
+}
