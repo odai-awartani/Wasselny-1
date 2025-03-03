@@ -390,7 +390,7 @@ const SignUp = () => {
         title="Browse Home"
         onPress={() => {
           setShowSuccessModal(false);
-          router.push("/home");
+          router.replace("/home");
         }}
         className="mt-5"
         accessibilityLabel="Navigate to Home"
