@@ -76,34 +76,28 @@ const SignUp = () => {
     if (!isLoaded) return;
   
     try {
-      // التحقق من البريد الإلكتروني باستخدام الكود
       const completeSignUp = await signUp.attemptEmailAddressVerification({
         code: verification.code,
       });
   
       if (completeSignUp.status === 'complete') {
-
-        // تسجيل الدخول وإنشاء جلسة
         await setActive({ session: completeSignUp.createdSessionId });
   
-        // تحديث حالة التحقق إلى "success"
         setVerification({
           ...verification,
           state: "success",
         });
   
-        // عرض نافذة النجاح
-        setShowSuccessModal(true); // تحديث showSuccessModal هنا
+        setShowSuccessModal(true); // تأكد من أن هذه السطر يتم تنفيذه
       } else {
-        // إذا فشل التحقق
         setVerification({
           ...verification,
           error: t.verificationFailed,
           state: "failed",
         });
+        
       }
     } catch (err: any) {
-      // في حالة حدوث خطأ
       setVerification({
         ...verification,
         error: err.errors[0].longMessage,
@@ -212,74 +206,7 @@ const SignUp = () => {
               className="mt-6"
             />
        
-        {/* نافذة التحقق */}
-{/* نافذة التحقق */}
-<ReactNativeModal
-  isVisible={verification.state === "pending"}
-  onModalHide={() => {
-    if (verification.state === "success") {
-      setShowSuccessModal(true);
-    }
-  }}
->
-  <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
-    <Text className="font-JakartaExtraBold text-2xl mb-2">
-      Verification
-    </Text>
-    <Text className="font-Jakarta mb-5">
-      We've sent a verification code to {form.email}.
-    </Text>
-    <InputField
-      label={"Code"}
-      icon={icons.lock}
-      placeholder={"12345"}
-      value={verification.code}
-      keyboardType="numeric"
-      onChangeText={(code) => setVerification({ ...verification, code })}
-      iconStyle="mt-3 mr-3"
-      maxLength={6}
-      accessibilityLabel="Enter verification code"
-    />
-    {verification.error && (
-      <Text className="text-red-500 text-sm mt-1">
-        {verification.error}
-      </Text>
-    )}
-    <CustomButton
-      title="Verify Email"
-      onPress={onVerifyPress}
-      className="mt-5 bg-success-500"
-      accessibilityLabel="Verify Email Button"
-      disabled={verification.code.length < 6} // Disable until 6 digits are entered
-    />
-  </View>
-</ReactNativeModal>
 
-{/* نافذة النجاح */}
-<ReactNativeModal isVisible={showSuccessModal}>
-  <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
-    <Image
-      source={images.check}
-      className="w-[110px] h-[110px] mx-auto my-5"
-      accessibilityLabel="Success check icon"
-    />
-    <Text className="text-3xl font-JakartaBold text-center">
-      Verified
-    </Text>
-    <Text className="text-base text-gray-400 font-Jakarta text-center mt-2">
-      You have successfully verified your account.
-    </Text>
-    <CustomButton
-      title="Browse Home"
-      onPress={() => {
-        setShowSuccessModal(false);
-        router.push("/home");
-      }}
-      className="mt-5"
-      accessibilityLabel="Navigate to Home"
-    />
-  </View>
-</ReactNativeModal>
 
             {/* رابط الانتقال إلى تسجيل الدخول */}
             <Link href="/(auth)/sign-in" className="text-lg text-center text-general-200 mt-10">
@@ -340,6 +267,139 @@ const SignUp = () => {
             </View>
           </View>
         </Modal>
+{/* نافذة التحقق */}
+<Modal
+  key="verification-modal"
+  visible={verification.state === "pending"}
+  transparent={true} // لجعل الخلفية شفافة
+  animationType="slide" // لإضافة رسوم متحركة
+  onRequestClose={() => {
+    if (verification.state === "success") {
+      console.log("Verification successful, showing success modal"); // Debugging
+      setShowSuccessModal(true);
+    }
+  }}
+>
+  <View className="flex-1 justify-center items-center bg-black/50">
+    <View className="bg-white p-7 rounded-2xl min-h-[300px] w-11/12">
+      <Text className="font-JakartaExtraBold text-2xl mb-2">
+        Verification
+      </Text>
+      <Text className="font-Jakarta text-lg mb-5">
+        We've sent a verification code to {form.email}.
+      </Text>
+      <InputField
+        label={"Code"}
+        icon={icons.lock}
+        placeholder={"12345"}
+        value={verification.code}
+        keyboardType="numeric"
+        onChangeText={(code) => setVerification({ ...verification, code })}
+        iconStyle="mt-3 mr-3"
+        maxLength={6}
+        accessibilityLabel="Enter verification code"
+      />
+      {verification.error && (
+        <Text className="text-red-500 text-sm mt-1">
+          {verification.error}
+        </Text>
+      )}
+      <CustomButton
+        title="Verify Email"
+        onPress={onVerifyPress}
+        className="mt-5 bg-success-500"
+        accessibilityLabel="Verify Email Button"
+        disabled={verification.code.length < 6} // Disable until 6 digits are entered
+      />
+    </View>
+  </View>
+</Modal>
+
+{/* نافذة التحقق */}
+<Modal
+  key="verification-modal"
+  visible={verification.state === "pending"}
+  transparent={true} // لجعل الخلفية شفافة
+  animationType="slide" // لإضافة رسوم متحركة
+  onRequestClose={() => {
+    if (verification.state === "success") {
+      console.log("Verification successful, showing success modal"); // Debugging
+      setShowSuccessModal(true);
+    }
+  }}
+>
+  <View className="flex-1 justify-center items-center bg-black/50">
+    <View className="bg-white p-7 rounded-2xl min-h-[300px] w-11/12">
+      <Text className="font-JakartaExtraBold text-2xl mb-2">
+        Verification
+      </Text>
+      <Text className="font-Jakarta text-lg mb-5">
+        We've sent a verification code to {form.email}.
+      </Text>
+      <InputField
+        label={"Code"}
+        icon={icons.lock}
+        placeholder={"12345"}
+        value={verification.code}
+        keyboardType="numeric"
+        onChangeText={(code) => setVerification({ ...verification, code })}
+        iconStyle="mt-3 mr-3"
+        maxLength={6}
+        accessibilityLabel="Enter verification code"
+      />
+      {verification.error && (
+        <Text className="text-red-500 text-sm mt-1">
+          {verification.error}
+        </Text>
+      )}
+      <CustomButton
+        title="Verify Email"
+        onPress={onVerifyPress}
+        className="mt-5 bg-success-500"
+        accessibilityLabel="Verify Email Button"
+        disabled={verification.code.length < 6} // Disable until 6 digits are entered
+      />
+    </View>
+  </View>
+</Modal>
+
+{/* نافذة النجاح */}
+<Modal
+  key="success-modal"
+  visible={showSuccessModal}
+  transparent={true} // لجعل الخلفية شفافة
+  animationType="slide" // لإضافة رسوم متحركة
+  onRequestClose={() => {
+    console.log("Success modal hidden"); // Debugging
+  }}
+>
+  <View className="flex-1 justify-center items-center bg-black/50">
+    <View className="bg-white p-7 rounded-2xl min-h-[300px] w-11/12">
+      <Image
+        source={images.check}
+        className="w-[110px] h-[110px] mx-auto my-5"
+        accessibilityLabel="Success check icon"
+      />
+      <Text className="text-3xl font-JakartaBold text-center">
+        Verified
+      </Text>
+      <Text className="text-base text-gray-400 font-Jakarta text-center mt-2">
+        You have successfully verified your account.
+      </Text>
+      <CustomButton
+        title="Browse Home"
+        onPress={() => {
+          setShowSuccessModal(false);
+          router.push("/home");
+        }}
+        className="mt-5"
+        accessibilityLabel="Navigate to Home"
+      />
+    </View>
+  </View>
+</Modal>
+
+
       </View>
     </ScrollView>
   );
