@@ -269,7 +269,7 @@ const SignUp = () => {
         </Modal>
 {/* نافذة التحقق */}
 <Modal
-  key="verification-modal"
+ key="verification-modal"
   visible={verification.state === "pending"}
   transparent={true} // لجعل الخلفية شفافة
   animationType="slide" // لإضافة رسوم متحركة
@@ -317,7 +317,7 @@ const SignUp = () => {
 
 {/* نافذة التحقق */}
 <Modal
-  key="verification-modal"
+  key="verification-modal-success"
   visible={verification.state === "pending"}
   transparent={true} // لجعل الخلفية شفافة
   animationType="slide" // لإضافة رسوم متحركة
