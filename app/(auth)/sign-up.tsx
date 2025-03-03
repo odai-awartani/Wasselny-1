@@ -1,231 +1,347 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import InputField from '@/components/InputField'; // استيراد InputField المعدل
 import { useLanguage } from '@/context/LanguageContext';
 import CustomButton from '@/components/CustomButton';
+import { icons, images } from '@/constants';
+import { Link, router } from 'expo-router';
+import { useSignUp } from '@clerk/clerk-expo'; // استيراد useSignUp من Clerk
+import ReactNativeModal from 'react-native-modal'
+
 
 const SignUp = () => {
   const { t, language } = useLanguage();
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { isLoaded, signUp, setActive } = useSignUp(); // استخدام useSignUp من Clerk
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // حالة لعرض نافذة النجاح
   const [isAgreed, setIsAgreed] = useState(false);
-  const [gender, setGender] = useState('');
-  const [workIndustry, setWorkIndustry] = useState('');
+  const [form, setForm] = useState({
+    phoneNumber: '',
+    fullName: '',
+    email: '',
+    password: '',
+    gender: '',
+    workIndustry: '',
+  });
+  const [verification, setVerification] = useState({
+    state: 'default', // حالة التحقق: default, pending, success, error
+    error: '', // رسالة الخطأ
+    code: '', // كود التحقق
+  });
+
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showIndustryModal, setShowIndustryModal] = useState(false);
 
-  // حالة لتتبع الحقول الفارغة
-  const [errors, setErrors] = useState({
-    phoneNumber: false,
-    fullName: false,
-    email: false,
-    password: false,
-    gender: false,
-    workIndustry: false,
-  });
-
   const genders = t.genders; // الجنس بالعربية
   const industries = t.industries; // المجالات بالعربية
-
-  const handleSignUp = () => {
-    // التحقق من الحقول الفارغة
-    const newErrors = {
-      phoneNumber: !phoneNumber,
-      fullName: !fullName,
-      email: !email,
-      password: !password,
-      gender: !gender,
-      workIndustry: !workIndustry,
-    };
-
-    setErrors(newErrors);
-
-    // التحقق من الموافقة على الشروط
+// done
+  const onSignUpPress = async () => {
+    if (!isLoaded) return;
     if (!isAgreed) {
-      alert(t.agreeToTermsAlert); // رسالة تنبيه إذا لم يتم الموافقة على الشروط
+      Alert.alert(t.error, t.agreeToTermsAlert);
+      return;
+    }
+    
+    
+    if (!form.email || !form.password || !form.fullName || !form.phoneNumber || !form.gender || !form.workIndustry) {
+      Alert.alert(t.error, t.fillAllFields);
       return;
     }
 
-    // إذا كان هناك أي حقل فارغ، نوقف التسجيل
-    if (Object.values(newErrors).some((error) => error)) {
-      return;
-    }
+    try {
+      // Create a new user with Clerk
+      await signUp.create({
+        emailAddress: form.email,
+        password: form.password,
+        firstName: form.fullName.split(' ')[0],
+        lastName: form.fullName.split(' ')[1] || '',
+      });
 
-    // إذا كانت جميع الحقول ممتلئة، ننفذ عملية التسجيل
-    console.log('Signing up...');
-    console.log({
-      phoneNumber: `+972${phoneNumber}`, // دمج الكود الدولي مع رقم الهاتف
-      fullName,
-      email,
-      password,
-      gender,
-      workIndustry,
-    });
+      // إرسال كود التحقق
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
+      // تغيير حالة التحقق إلى "pending"
+      setVerification({
+        ...verification,
+        state: 'pending',
+      });
+    } catch (err: any) {
+      console.log(JSON.stringify(err, null, 2));
+      console.error('Error during sign up:', err);
+      Alert.alert(t.error, err.errors[0].longMessage);
+    }
+  };
+
+  const onVerifyPress = async () => {
+    if (!isLoaded) return;
+  
+    try {
+      // التحقق من البريد الإلكتروني باستخدام الكود
+      const completeSignUp = await signUp.attemptEmailAddressVerification({
+        code: verification.code,
+      });
+  
+      if (completeSignUp.status === 'complete') {
+
+        // تسجيل الدخول وإنشاء جلسة
+        await setActive({ session: completeSignUp.createdSessionId });
+  
+        // تحديث حالة التحقق إلى "success"
+        setVerification({
+          ...verification,
+          state: "success",
+        });
+  
+        // عرض نافذة النجاح
+        setShowSuccessModal(true); // تحديث showSuccessModal هنا
+      } else {
+        // إذا فشل التحقق
+        setVerification({
+          ...verification,
+          error: t.verificationFailed,
+          state: "failed",
+        });
+      }
+    } catch (err: any) {
+      // في حالة حدوث خطأ
+      setVerification({
+        ...verification,
+        error: err.errors[0].longMessage,
+        state: "failed",
+      });
+    }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white p-5">
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* العنوان */}
-        <Text className={`text-2xl ${language === 'ar' ? 'font-CairoExtraBold' : 'font-JakartaBold'} text-center mb-7 text-orange-500 `}>{t.signUp}</Text>
-
-        {/* حقل رقم الهاتف */}
-        <InputField
-          label={t.phoneNumber}
-          placeholder="599510287" // النص التوضيحي لرقم الهاتف
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          isPhoneNumber // تفعيل خاصية رقم الهاتف
-          labelStyle={language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}
-          className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
-          containerStyle={errors.phoneNumber ? 'border-red-500' : 'border-neutral-100'} // تغيير لون الحدود إذا كان الحقل فارغًا
-        />
-  
-        {/* حقل الاسم الكامل */}
-        <InputField
-          label={t.fullName}
-          placeholder={t.enterYourName}
-          value={fullName}
-          onChangeText={setFullName}
-          labelStyle={language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}
-          className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
-          containerStyle={errors.fullName ? 'border-red-500' : 'border-neutral-100'} // تغيير لون الحدود إذا كان الحقل فارغًا
-        />
-
-        {/* حقل البريد الإلكتروني */}
-        <InputField
-          label={t.email}
-          placeholder="user@example.com"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          labelStyle={language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}
-          className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
-          containerStyle={errors.email ? 'border-red-500' : 'border-neutral-100'} // تغيير لون الحدود إذا كان الحقل فارغًا
-        />
-
-        {/* حقل كلمة السر */}
-        <InputField
-          label={t.password}
-          placeholder="**********"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry // تفعيل إظهار/إخفاء كلمة السر
-          labelStyle={language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}
-          className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
-          containerStyle={errors.password ? 'border-red-500' : 'border-neutral-100'} // تغيير لون الحدود إذا كان الحقل فارغًا
-        />
-
-        {/* اختيار الجنس */}
-        <TouchableOpacity
-          onPress={() => setShowGenderModal(true)}
-          className="my-2"
-        >
-          <Text className={`text-lg font-JakartaSemiBold mb-3 text-orange-500 ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}`}>
-            {t.gender}
+    <ScrollView className="flex-1 bg-white" showsHorizontalScrollIndicator={false}>
+      <View className="flex-1 bg-white">
+        <View className="relative w-full h-[250px]">
+          <Image source={images.signUpCar} className="z-0 w-full h-[250px]" />
+          <Text className={`text-[25px] text-black ${language === 'ar' ? 'font-CairoExtraBold right-5' : 'font-JakartaSemiBold left-5'} absolute bottom-5`}>
+            {t.signUp}
           </Text>
-          <View className={`flex flex-row justify-start items-center bg-neutral-100 rounded-full p-4 border ${
-            errors.gender ? 'border-red-500' : 'border-orange-200' // تغيير لون الحدود إذا كان الحقل فارغًا
-          }`}>
-            <Text className={`text-gray-500 ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}`}>
-              {gender || t.selectGender}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* اختيار مجال العمل */}
-        <TouchableOpacity
-          onPress={() => setShowIndustryModal(true)}
-          className="my-2"
-        >
-          <Text className={`text-lg font-JakartaSemiBold mb-3 text-orange-500 ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}`}>
-            {t.workIndustry}
-          </Text>
-          <View className={`flex flex-row justify-start items-center bg-neutral-100 rounded-full p-4 border ${
-            errors.workIndustry ? 'border-red-500' : 'border-orange-200' // تغيير لون الحدود إذا كان الحقل فارغًا
-          }`}>
-            <Text className={`text-gray-500 ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}`}>
-              {workIndustry || t.selectIndustry}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* الموافقة على الشروط */}
-        <View className={`flex-row items-center my-4 ${language === 'ar' ? 'flex-row-reverse font-CairoBold' : 'flex-row font-JakartaBold'}`}>
-          <TouchableOpacity
-            onPress={() => setIsAgreed(!isAgreed)}
-            className={`w-5 h-5 border rounded-md mr-2 ${isAgreed ? 'bg-orange-500 border-orange-500' : 'bg-white border-gray-300'}`}
-          >
-            {isAgreed && <Text className="text-white text-center">✓</Text>}
-          </TouchableOpacity>
-          <Text className="text-sm text-gray-600">{t.agreeToTerms}</Text>
         </View>
-
-        {/* زر التسجيل */}
-        <View className="items-center">
-          <CustomButton 
-            title={t.signUp}
-            onPress={handleSignUp} 
-            className="mt-4 bg-orange-500 shadow-none"
+        <View className="-pt-1 px-5 pb-10">
+          {/* حقل رقم الهاتف */}
+          <InputField
+            label={t.phoneNumber}
+            placeholder="599510287"
+            value={form.phoneNumber}
+            onChangeText={(text) => setForm({ ...form, phoneNumber: text })}
+            isPhoneNumber
+            labelStyle={language === 'ar' ? 'text-right font-CairoBold text-orange-500' : 'text-left font-JakartaBold text-orange-500'}
+            className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
           />
-        </View>
-      </ScrollView>
 
-      {/* نافذة اختيار الجنس */}
-      <Modal visible={showGenderModal} transparent animationType="slide">
-        <View className="flex-1 justify-center items-center bg-black/50">
-          <View className="w-11/12 bg-orange-50 rounded-lg p-5 border border-orange-200">
-            <Text className={`text-xl font-bold mb-4 text-orange-500 text-center`}>{t.selectGender}</Text>
-            {genders.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => {
-                  setGender(item);
-                  setShowGenderModal(false);
-                }}
-                className="py-3 border-b border-orange-100"
-              >
-                <Text className={`text-lg text-orange-500 ${language === 'ar' ? 'text-right' : 'text-left'}`} >{item}</Text>
-              </TouchableOpacity>
-            ))}
-            <CustomButton 
-              title={t.cancel}
-              onPress={() => setShowGenderModal(false)}
-              className="mt-4 bg-orange-500"
+          {/* حقل الاسم الكامل */}
+          <InputField
+            label={t.fullName}
+            placeholder={t.enterYourName}
+            value={form.fullName}
+            onChangeText={(text) => setForm({ ...form, fullName: text })}
+            labelStyle={language === 'ar' ? 'text-right font-CairoBold text-orange-500' : 'text-left font-JakartaBold text-orange-500'}
+            className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
+          />
+
+          {/* حقل البريد الإلكتروني */}
+          <InputField
+            label={t.email}
+            placeholder="user@example.com"
+            value={form.email}
+            onChangeText={(text) => setForm({ ...form, email: text })}
+            keyboardType="email-address"
+            labelStyle={language === 'ar' ? 'text-right font-CairoBold text-orange-500' : 'text-left font-JakartaBold text-orange-500'}
+            className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
+          />
+
+          {/* حقل كلمة السر */}
+          <InputField
+            label={t.password}
+            placeholder="**********"
+            value={form.password}
+            onChangeText={(text) => setForm({ ...form, password: text })}
+            secureTextEntry
+            labelStyle={language === 'ar' ? 'text-right font-CairoBold text-orange-500' : 'text-left font-JakartaBold text-orange-500'}
+            className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
+          />
+
+          {/* اختيار الجنس */}
+          <TouchableOpacity
+            onPress={() => setShowGenderModal(true)}
+            className="my-2"
+          >
+            <Text className={`text-lg font-JakartaSemiBold mb-3 text-orange-500 ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}`}>
+              {t.gender}
+            </Text>
+            <View className={`flex flex-row ${language === 'ar' ? 'flex-row-reverse' : ''} items-center bg-neutral-100 rounded-full p-4 border border-secondary-500`}>
+              <Text className={`text-gray-500 ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}`}>
+                {form.gender || t.selectGender}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* اختيار مجال العمل */}
+          <TouchableOpacity
+            onPress={() => setShowIndustryModal(true)}
+            className="my-2"
+          >
+            <Text className={`text-lg font-JakartaSemiBold mb-3 text-orange-500 ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}`}>
+              {t.workIndustry}
+            </Text>
+            <View className={`flex flex-row ${language === 'ar' ? 'flex-row-reverse' : ''} items-center bg-neutral-100 rounded-full p-4 border border-secondary-500`}>
+              <Text className={`text-gray-500 ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'}`}>
+                {form.workIndustry || t.selectIndustry}
+              </Text>
+            </View>
+          </TouchableOpacity>
+                    {/* Terms and Conditions Checkbox */}
+      <View className={`flex-row items-center my-4 ${language === 'ar' ? 'flex-row-reverse font-CairoBold' : 'flex-row font-JakartaBold'}`}>
+        <TouchableOpacity
+          onPress={() => setIsAgreed(!isAgreed)}
+          className={`w-5 h-5 border rounded-md mr-2 ${isAgreed ? 'bg-orange-500 border-orange-500' : 'bg-white border-gray-300'}`}
+        >
+          {isAgreed && <Text className="text-white text-center">✓</Text>}
+        </TouchableOpacity>
+        <Text className="text-sm text-gray-600">{t.agreeToTerms}</Text>
+      </View>
+          {/* زر التسجيل */}
+          <View className="items-center">
+            <CustomButton
+              title={t.signUpButton}
+              onPress={onSignUpPress}
+              className="mt-6"
             />
+       
+        {/* نافذة التحقق */}
+{/* نافذة التحقق */}
+<ReactNativeModal
+  isVisible={verification.state === "pending"}
+  onModalHide={() => {
+    if (verification.state === "success") {
+      setShowSuccessModal(true);
+    }
+  }}
+>
+  <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
+    <Text className="font-JakartaExtraBold text-2xl mb-2">
+      Verification
+    </Text>
+    <Text className="font-Jakarta mb-5">
+      We've sent a verification code to {form.email}.
+    </Text>
+    <InputField
+      label={"Code"}
+      icon={icons.lock}
+      placeholder={"12345"}
+      value={verification.code}
+      keyboardType="numeric"
+      onChangeText={(code) => setVerification({ ...verification, code })}
+      iconStyle="mt-3 mr-3"
+      maxLength={6}
+      accessibilityLabel="Enter verification code"
+    />
+    {verification.error && (
+      <Text className="text-red-500 text-sm mt-1">
+        {verification.error}
+      </Text>
+    )}
+    <CustomButton
+      title="Verify Email"
+      onPress={onVerifyPress}
+      className="mt-5 bg-success-500"
+      accessibilityLabel="Verify Email Button"
+      disabled={verification.code.length < 6} // Disable until 6 digits are entered
+    />
+  </View>
+</ReactNativeModal>
+
+{/* نافذة النجاح */}
+<ReactNativeModal isVisible={showSuccessModal}>
+  <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
+    <Image
+      source={images.check}
+      className="w-[110px] h-[110px] mx-auto my-5"
+      accessibilityLabel="Success check icon"
+    />
+    <Text className="text-3xl font-JakartaBold text-center">
+      Verified
+    </Text>
+    <Text className="text-base text-gray-400 font-Jakarta text-center mt-2">
+      You have successfully verified your account.
+    </Text>
+    <CustomButton
+      title="Browse Home"
+      onPress={() => {
+        setShowSuccessModal(false);
+        router.push("/home");
+      }}
+      className="mt-5"
+      accessibilityLabel="Navigate to Home"
+    />
+  </View>
+</ReactNativeModal>
+
+            {/* رابط الانتقال إلى تسجيل الدخول */}
+            <Link href="/(auth)/sign-in" className="text-lg text-center text-general-200 mt-10">
+              <Text>{t.alreadyHaveAccount}</Text>
+              <Text className="text-primary-500"> {t.logIn}</Text>
+            </Link>
           </View>
         </View>
-      </Modal>
 
-      {/* نافذة اختيار مجال العمل */}
-      <Modal visible={showIndustryModal} transparent animationType="slide">
-        <View className="flex-1 justify-center items-center bg-black/50">
-          <View className="w-11/12 bg-orange-50 rounded-lg p-5 border border-orange-200">
-          <Text className={`text-xl font-bold mb-4 text-orange-500 text-center`}>{t.selectIndustry}</Text>
-            {industries.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => {
-                  setWorkIndustry(item);
-                  setShowIndustryModal(false);
-                }}
-                className="py-3 border-b border-orange-100"
-              >
-                  <Text className={`text-lg text-orange-500 text-center ${language === 'ar' ? 'text-right' : 'text-left'}`} >{item}</Text>
-              </TouchableOpacity>
-            ))}
-            <CustomButton 
-              title={t.cancel}
-              onPress={() => setShowIndustryModal(false)}
-              className="mt-4 bg-orange-500"
-            />
+        {/* نافذة اختيار الجنس */}
+        <Modal visible={showGenderModal} transparent animationType="slide">
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <View className="w-11/12 bg-orange-50 rounded-lg p-5 border border-orange-500">
+              <Text className={`text-xl font-bold mb-4 text-orange-500 text-center`}>{t.selectGender}</Text>
+              {genders.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => {
+                    setForm({ ...form, gender: item });
+                    setShowGenderModal(false);
+                  }}
+                  className="py-3 border-b border-orange-100"
+                >
+                  <Text className={`text-lg text-orange-500 ${language === 'ar' ? 'text-right' : 'text-left'}`}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+              <CustomButton
+                title={t.cancel}
+                onPress={() => setShowGenderModal(false)}
+                className="mt-4 bg-orange-500"
+              />
+            </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+
+        {/* نافذة اختيار مجال العمل */}
+        <Modal visible={showIndustryModal} transparent animationType="slide">
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <View className="w-11/12 bg-orange-50 rounded-lg p-5 border border-orange-200">
+              <Text className={`text-xl font-bold mb-4 text-orange-500 text-center`}>{t.selectIndustry}</Text>
+              {industries.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => {
+                    setForm({ ...form, workIndustry: item });
+                    setShowIndustryModal(false);
+                  }}
+                  className="py-3 border-b border-orange-100"
+                >
+                  <Text className={`text-lg text-orange-500 text-center ${language === 'ar' ? 'text-right' : 'text-left'}`}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+              <CustomButton
+                title={t.cancel}
+                onPress={() => setShowIndustryModal(false)}
+                className="mt-4 bg-orange-500"
+              />
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </ScrollView>
   );
 };
 

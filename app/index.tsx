@@ -1,13 +1,18 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { useAuth } from "@clerk/clerk-expo";
+import { Link, Redirect } from "expo-router";
+import {Text, View} from "react-native";
+import {SafeAreaView} from "react-native-safe-area-context";
 
-import React from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Redirect } from 'expo-router'
 
 const Home = () => {
-  return <Redirect href="/(auth)/language" />
-  
+    const { isSignedIn } = useAuth()
+
+    if (isSignedIn) {
+      return <Redirect href={'/home'} />
+    }
+    return (
+        <Redirect href="/(auth)/language" />
+    )
 }
 
-export default Home
-
+export default Home;

@@ -22,7 +22,10 @@ export const translations = {
           
           // Add other Arabic translations...
         ],
-        signUp: "تسجيل حساب",
+        signUp: "انشاء حساب جديد ",
+        signIn: "تسجيل الدخول",
+        signUpButton:"تسجيل",
+
     phoneNumber: "رقم الهاتف",
     fullName: "الاسم الرباعي",
     enterYourName: "اكتب اسمك",
@@ -41,6 +44,17 @@ export const translations = {
     forgotPassword: "نسيت كلمة السر؟",
     noAccount: "لا يوجد حساب؟",
     agreeToTermsAlert: "يرجى الموافقة على الشروط والأحكام",
+  "alreadyHaveAccount": "هل لديك حساب بالفعل؟",
+  "logIn": "تسجيل الدخول",
+  "verificationSent": "تم إرسال رمز التحقق إلى",
+  "code": "رمز التحقق",
+  "verifyEmail": "تحقق من البريد الإلكتروني",
+  "verified": "تم التحقق",
+  "verificationSuccess": "لقد تم التحقق من حسابك بنجاح.",
+  "browseHome": "تصفح الصفحة الرئيسية",
+  "error": "خطأ",
+  "fillAllFields": "يرجى ملء جميع الحقول.",
+  "verificationFailed": "فشل التحقق. يرجى المحاولة مرة أخرى."
 
       },
     
@@ -65,7 +79,7 @@ export const translations = {
   
           // Add other English translations...
         ],
-        signUp: "Sign Up",
+        signUp: "Create Your Account",
     phoneNumber: "Phone Number",
     fullName: "Full Name",
     enterYourName: "Enter your name",
@@ -84,5 +98,18 @@ export const translations = {
     forgotPassword: "Forgot Password?",
     noAccount: "Don't have an account?",
     agreeToTermsAlert: "Please agree to the terms and conditions",
+      signUpButton:"Sign Up",
+
+      "alreadyHaveAccount": "Already have an account?",
+      "logIn": "Log In",
+      "verificationSent": "We've sent a verification code to",
+      "code": "Code",
+      "verifyEmail": "Verify Email",
+      "verified": "Verified",
+      "verificationSuccess": "You have successfully verified your account.",
+      "browseHome": "Browse Home",
+      "error": "Error",
+      "fillAllFields": "Please fill all fields.",
+      "verificationFailed": "Verification failed. Please try again.",
           },
   };

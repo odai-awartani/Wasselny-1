@@ -57,7 +57,7 @@ const InputField = ({
               className="flex-1"
             >
               {/* Left Icon (إذا تم توفيره) */}
-              {icon && <Image source={icon} className={`w-6 h-6 ml-4 ${iconStyle}`} />}
+              {icon && <Image source={icon} className={`w-6 h-6 ml-4  ${iconStyle}`} />}
 
               {/* Text Input */}
               <TextInput
@@ -76,7 +76,7 @@ const InputField = ({
               {secureTextEntry && (
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
-                  className={language === 'ar' ? 'ml-4 mt-5' : 'mr-4 mt-5'} // تغيير الهامش بناءً على اللغة
+                  className={language === 'ar' ? 'ml-4 mt-5' : 'mr-4 mt-3.5'} // تغيير الهامش بناءً على اللغة
                 >
                   <Image
                     source={showPassword ? icons.eyecross : icons.eye} // استخدام أيقونات العين
