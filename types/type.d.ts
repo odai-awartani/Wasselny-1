@@ -8,6 +8,11 @@ declare interface Driver {
     car_image_url: string;
     car_seats: number;
     rating: number;
+    gender: string;
+    email: string;
+    phone_number: number;
+    address: string;
+
 }
 
 declare interface MarkerData {
@@ -60,6 +65,9 @@ declare interface ButtonProps extends TouchableOpacityProps {
     IconLeft?: React.ComponentType<any>;
     IconRight?: React.ComponentType<any>;
     className?: string;
+    
+    
+   
 }
 
 declare interface GoogleInputProps {
@@ -87,6 +95,10 @@ declare interface InputFieldProps extends TextInputProps {
     inputStyle?: string;
     iconStyle?: string;
     className?: string;
+    isPhoneNumber?: boolean; // Indicates if the input is for a phone number
+
+    
+    
 }
 
 declare interface PaymentProps {

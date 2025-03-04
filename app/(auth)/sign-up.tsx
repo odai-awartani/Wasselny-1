@@ -35,6 +35,17 @@ const SignUp = () => {
   const genders = t.genders; // الجنس بالعربية
   const industries = t.industries; // المجالات بالعربية
 // done
+const genderMap = new Map([
+  ['ذكر', 'Male'],
+  ['أنثى', 'Female'],
+]);
+
+const industryMap = new Map([
+  ['طالب', 'Student'],
+  ['موظف', 'Employee'],
+  ['أعمال حرة', 'Freelancer'],
+  ['أخرى', 'Other'],
+]);
   const onSignUpPress = async () => {
     if (!isLoaded) return;
     if (!isAgreed) {
@@ -49,13 +60,23 @@ const SignUp = () => {
     }
 
     try {
+
+        // تحويل الجنس والمجال إلى الإنجليزية
+    const englishGender = genderMap.get(form.gender) || form.gender;
+    const englishIndustry = industryMap.get(form.workIndustry) || form.workIndustry;
+  
       // Create a new user with Clerk
       await signUp.create({
-        emailAddress: form.email,
-        password: form.password,
-        firstName: form.fullName.split(' ')[0],
-        lastName: form.fullName.split(' ')[1] || '',
-      });
+      emailAddress: form.email,
+      password: form.password,
+      firstName: form.fullName.split(' ')[0],
+      lastName: form.fullName.split(' ')[1] || '',
+      // إضافة الجنس والمجال إلى البيانات الإضافية (إذا كان مدعومًا)
+      unsafeMetadata: {
+        gender: englishGender,
+        workIndustry: englishIndustry,
+      },
+    });
 
       // إرسال كود التحقق
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
@@ -196,22 +217,23 @@ const SignUp = () => {
         >
           {isAgreed && <Text className="text-white text-center">✓</Text>}
         </TouchableOpacity>
-        <Text className="text-sm text-gray-600">{t.agreeToTerms}</Text>
+        <Text className={`text-sm text-gray-600 ${language === 'ar' ? 'text-right pr-1 font-CairoBold' : 'text-left pr-1 font-JakartaBold'} `}>{t.agreeToTerms}</Text>
       </View>
           {/* زر التسجيل */}
           <View className="items-center">
             <CustomButton
               title={t.signUpButton}
               onPress={onSignUpPress}
-              className="mt-6"
+              
+              
             />
        
 
 
             {/* رابط الانتقال إلى تسجيل الدخول */}
-            <Link href="/(auth)/sign-in" className="text-lg text-center text-general-200 mt-10">
-              <Text>{t.alreadyHaveAccount}</Text>
-              <Text className="text-primary-500"> {t.logIn}</Text>
+ <Link href="/(auth)/sign-in" className={`text-lg text-center text-general-200 mt-4 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
+               <Text>{t.alreadyHaveAccount}</Text>
+              <Text className="text-orange-500"> {t.logIn}</Text>
             </Link>
           </View>
         </View>
@@ -282,14 +304,14 @@ const SignUp = () => {
 >
   <View className="flex-1 justify-center items-center bg-black/50">
     <View className="bg-white p-7 rounded-2xl min-h-[300px] w-11/12">
-      <Text className="font-JakartaExtraBold text-2xl mb-2">
-        Verification
+      <Text className={`${language === 'ar' ? 'text-right font-CairoExtraBold' : 'text-left font-JakartaExtraBold'} text-2xl mb-2`}>
+        {t.Verification}
       </Text>
-      <Text className="font-Jakarta text-lg mb-5">
-        We've sent a verification code to {form.email}.
+  <Text className={`${language === 'ar' ? 'text-right font-CairoMedium' : 'text-left font-Jakarta '} text-lg mb-5`}>
+        {t.SendVCode}{form.email}.
       </Text>
       <InputField
-        label={"Code"}
+        label={t.Code}
         icon={icons.lock}
         placeholder={"12345"}
         value={verification.code}
@@ -298,54 +320,8 @@ const SignUp = () => {
         iconStyle="mt-3 mr-3"
         maxLength={6}
         accessibilityLabel="Enter verification code"
-      />
-      {verification.error && (
-        <Text className="text-red-500 text-sm mt-1">
-          {verification.error}
-        </Text>
-      )}
-      <CustomButton
-        title="Verify Email"
-        onPress={onVerifyPress}
-        className="mt-5 bg-success-500"
-        accessibilityLabel="Verify Email Button"
-        disabled={verification.code.length < 6} // Disable until 6 digits are entered
-      />
-    </View>
-  </View>
-</Modal>
+        labelStyle={language === 'ar' ? 'text-right font-CairoBold ' : 'text-left font-JakartaBold '}
 
-{/* نافذة التحقق */}
-<Modal
-  key="verification-modal-success"
-  visible={verification.state === "pending"}
-  transparent={true} // لجعل الخلفية شفافة
-  animationType="slide" // لإضافة رسوم متحركة
-  onRequestClose={() => {
-    if (verification.state === "success") {
-      console.log("Verification successful, showing success modal"); // Debugging
-      setShowSuccessModal(true);
-    }
-  }}
->
-  <View className="flex-1 justify-center items-center bg-black/50">
-    <View className="bg-white p-7 rounded-2xl min-h-[300px] w-11/12">
-      <Text className="font-JakartaExtraBold text-2xl mb-2">
-        Verification
-      </Text>
-      <Text className="font-Jakarta text-lg mb-5">
-        We've sent a verification code to {form.email}.
-      </Text>
-      <InputField
-        label={"Code"}
-        icon={icons.lock}
-        placeholder={"12345"}
-        value={verification.code}
-        keyboardType="numeric"
-        onChangeText={(code) => setVerification({ ...verification, code })}
-        iconStyle="mt-3 mr-3"
-        maxLength={6}
-        accessibilityLabel="Enter verification code"
       />
       {verification.error && (
         <Text className="text-red-500 text-sm mt-1">
@@ -353,7 +329,7 @@ const SignUp = () => {
         </Text>
       )}
       <CustomButton
-        title="Verify Email"
+        title={t.VerifyEmail}
         onPress={onVerifyPress}
         className="mt-5 bg-success-500"
         accessibilityLabel="Verify Email Button"
@@ -380,20 +356,23 @@ const SignUp = () => {
         className="w-[110px] h-[110px] mx-auto my-5"
         accessibilityLabel="Success check icon"
       />
-      <Text className="text-3xl font-JakartaBold text-center">
-        Verified
+      <Text className={`text-3xl ${language === 'ar' ? 'font-CairoBold pt-3' : 'font-JakartaBold'} text-center`}>
+        {t.verified}
       </Text>
-      <Text className="text-base text-gray-400 font-Jakarta text-center mt-2">
-        You have successfully verified your account.
+      <Text className={`text-base text-gray-400 ${language === 'ar' ? 'font-Cairo' : 'font-Jakarta'} text-center mt-2`}>
+        {t.verificationSuccess}
       </Text>
       <CustomButton
-        title="Browse Home"
+        title={t.browseHome}
         onPress={() => {
           setShowSuccessModal(false);
           router.replace("/home");
         }}
         className="mt-5"
+     
+
         accessibilityLabel="Navigate to Home"
+        
       />
     </View>
   </View>

@@ -1,6 +1,6 @@
+import { useLanguage } from "@/context/LanguageContext";
 import { ButtonProps } from "@/types/type"
 import { Text, TouchableOpacity } from "react-native"
-
 const getBgVariantStyle = (variant: ButtonProps["bgVariant"]) => {
     switch (variant) {
         case "secondary":
@@ -38,6 +38,7 @@ const CustomButton = ({onPress,
     className, 
     ...props
                     }: ButtonProps) => {
+                         const { t, language } = useLanguage();
   return (
    <TouchableOpacity
    onPress={onPress}
@@ -45,7 +46,7 @@ const CustomButton = ({onPress,
    {...props}
    >
     {IconLeft && <IconLeft />}
-    <Text className={`text-lg font-bold ${getTextVariantStyle(textVariant)}`}
+    <Text className={`text-lg font-bold ${getTextVariantStyle(textVariant)} ${language === 'ar' ? 'font-CairoExtraBold' : 'font-JakartaBold'}`}
     >
         {title}
     </Text>
