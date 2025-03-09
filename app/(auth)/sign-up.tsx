@@ -8,6 +8,7 @@ import { icons, images } from '@/constants';
 import { Link, router } from 'expo-router';
 import { useSignUp } from '@clerk/clerk-expo'; // استيراد useSignUp من Clerk
 import ReactNativeModal from 'react-native-modal'
+import { fetchAPI } from '@/lib/fetch';
 
 
 const SignUp = () => {
@@ -17,7 +18,7 @@ const SignUp = () => {
   const [isAgreed, setIsAgreed] = useState(false);
   const [form, setForm] = useState({
     phoneNumber: '',
-    fullName: '',
+    name: '',
     email: '',
     password: '',
     gender: '',
@@ -28,7 +29,18 @@ const SignUp = () => {
     error: '', // رسالة الخطأ
     code: '', // كود التحقق
   });
-
+  const formatPhoneNumber = (phoneNumber: string) => {
+    // إذا كان رقم الجوال يبدأ بـ +972، اتركه كما هو
+    if (phoneNumber.startsWith('+972')) {
+      return phoneNumber;
+    }
+    // إذا كان رقم الجوال يبدأ بـ 0، استبدل الصفر بـ +972
+    if (phoneNumber.startsWith('0')) {
+      return `+972${phoneNumber.slice(1)}`;
+    }
+    // إذا كان رقم الجوال لا يحتوي على مفتاح الدولة، أضف +972
+    return `+972${phoneNumber}`;
+  };
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showIndustryModal, setShowIndustryModal] = useState(false);
 
@@ -44,7 +56,13 @@ const industryMap = new Map([
   ['طالب', 'Student'],
   ['موظف', 'Employee'],
   ['أعمال حرة', 'Freelancer'],
-  ['أخرى', 'Other'],
+  ['مهندس', 'Engineer'],
+  ['طبيب', 'Doctor'],
+  ['معلم', 'Teacher'],
+  ['محاسب', 'Accountant'],
+  ['مطور برمجيات', 'Software Developer'],
+  ['تاجر', 'Merchant'],
+  ['عامل في الصحة', 'Healthcare Worker'],
 ]);
   const onSignUpPress = async () => {
     if (!isLoaded) return;
@@ -54,27 +72,33 @@ const industryMap = new Map([
     }
     
     
-    if (!form.email || !form.password || !form.fullName || !form.phoneNumber || !form.gender || !form.workIndustry) {
+    if (!form.email || !form.password || !form.name || !form.phoneNumber || !form.gender || !form.workIndustry) {
       Alert.alert(t.error, t.fillAllFields);
       return;
     }
 
+    
     try {
 
+      
+      const formattedPhoneNumber = formatPhoneNumber(form.phoneNumber);
         // تحويل الجنس والمجال إلى الإنجليزية
     const englishGender = genderMap.get(form.gender) || form.gender;
     const englishIndustry = industryMap.get(form.workIndustry) || form.workIndustry;
   
+
       // Create a new user with Clerk
       await signUp.create({
       emailAddress: form.email,
       password: form.password,
-      firstName: form.fullName.split(' ')[0],
-      lastName: form.fullName.split(' ')[1] || '',
+      firstName: form.name.split(' ')[0],
+      lastName: form.name.split(' ')[1] || '',
       // إضافة الجنس والمجال إلى البيانات الإضافية (إذا كان مدعومًا)
       unsafeMetadata: {
         gender: englishGender,
         workIndustry: englishIndustry,
+        phoneNumber: formattedPhoneNumber, // تخزين رقم الجوال المنسق
+
       },
     });
 
@@ -102,23 +126,47 @@ const industryMap = new Map([
       });
   
       if (completeSignUp.status === 'complete') {
-        await setActive({ session: completeSignUp.createdSessionId });
+        const formattedPhoneNumber = formatPhoneNumber(form.phoneNumber);
+        const englishGender = genderMap.get(form.gender) || form.gender;
+        const englishIndustry = industryMap.get(form.workIndustry) || form.workIndustry;
   
-        setVerification({
-          ...verification,
-          state: "success",
+        console.log('Sending data to API:', {
+          name: form.name,
+          email: form.email,
+          phone: formattedPhoneNumber,
+          gender: englishGender,
+          industry: englishIndustry,
+          clerkId: completeSignUp.createdUserId,
         });
   
-        setShowSuccessModal(true); // تأكد من أن هذه السطر يتم تنفيذه
+        // استدعاء API مع استخدام URL صحيح  
+          await fetchAPI("/(api)/user", {
+            method: "POST",
+            body: JSON.stringify({
+              name: form.name,
+              email: form.email,
+              clerkId: completeSignUp.createdUserId,
+              phoneNumber: form.phoneNumber,
+              gender: englishGender,
+              workindustry: englishIndustry
+            }),
+          });
+  
+        console.log('User data successfully saved!');
+  
+        await setActive({ session: completeSignUp.createdSessionId });
+        setVerification((prev) => ({ ...prev, state: 'success' }));
+        setShowSuccessModal(true);
       } else {
         setVerification({
           ...verification,
-          error: t.verificationFailed,
+          error: "Verification failed. Please try again.",
           state: "failed",
         });
-        
       }
     } catch (err: any) {
+      // See https://clerk.com/docs/custom-flows/error-handling
+      // for more info on error handling
       setVerification({
         ...verification,
         error: err.errors[0].longMessage,
@@ -126,7 +174,7 @@ const industryMap = new Map([
       });
     }
   };
-
+  
   return (
     <ScrollView className="flex-1 bg-white" showsHorizontalScrollIndicator={false}>
       <View className="flex-1 bg-white">
@@ -152,8 +200,8 @@ const industryMap = new Map([
           <InputField
             label={t.fullName}
             placeholder={t.enterYourName}
-            value={form.fullName}
-            onChangeText={(text) => setForm({ ...form, fullName: text })}
+            value={form.name}
+            onChangeText={(text) => setForm({ ...form, name: text })}
             labelStyle={language === 'ar' ? 'text-right font-CairoBold text-orange-500' : 'text-left font-JakartaBold text-orange-500'}
             className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
           />
@@ -359,7 +407,7 @@ const industryMap = new Map([
       <Text className={`text-3xl ${language === 'ar' ? 'font-CairoBold pt-3' : 'font-JakartaBold'} text-center`}>
         {t.verified}
       </Text>
-      <Text className={`text-base text-gray-400 ${language === 'ar' ? 'font-Cairo' : 'font-Jakarta'} text-center mt-2`}>
+      <Text className={`text-base text-gray-400 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'} text-center mt-2`}>
         {t.verificationSuccess}
       </Text>
       <CustomButton

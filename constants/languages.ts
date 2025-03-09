@@ -5,6 +5,8 @@ export const translations = {
       next: "التالي",
       skip: "تخطي",
       getStarted: "انطلق",
+      CreateAcc: "انشاء حساب",
+
       onboarding: [
         {
           title: "سافر بذكاء، وفر وقتك مع وصلني!",
@@ -35,7 +37,18 @@ export const translations = {
       agreeToTerms: "أوافق على الشروط والأحكام",
       cancel: "إلغاء",
       genders: ['ذكر', 'أنثى'],
-      industries: ['طالب', 'موظف', 'أعمال حرة', 'أخرى'],
+      industries: [
+        'طالب',
+        'موظف',
+        'أعمال حرة',
+        'مهندس',
+        'طبيب',
+        'معلم',
+        'محاسب',
+        'مطور برمجيات',
+        'تاجر',
+        'عامل في الصحة',
+      ],
       other: "اخرى",
       login: "تسجيل الدخول",
       forgotPassword: "نسيت كلمة السر؟",
@@ -92,6 +105,7 @@ export const translations = {
         next: "Next",
         skip: "Skip",
         getStarted: "Get Started",
+        CreateAcc: "Create Account",
         onboarding: [
           {
             title: "Travel smart, save time with Waslny!",
@@ -121,7 +135,18 @@ export const translations = {
     agreeToTerms: "I agree to the terms and conditions",
     cancel: "Cancel",
     genders: ['Male', 'Female'], // قيم الجنس بالإنجليزية
-    industries: ['Student', 'Employee', 'Freelancer', 'Other'], 
+    industries: [
+      'Student',
+      'Employee',
+      'Freelancer',
+      'Engineer',
+      'Doctor',
+      'Teacher',
+      'Accountant',
+      'Software Developer',
+      'Merchant',
+      'Healthcare Worker',
+    ],
     other: "Other",
     login: "Login",
     forgotPassword: "Forgot Password?",

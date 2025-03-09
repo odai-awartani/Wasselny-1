@@ -102,7 +102,7 @@ declare interface InputFieldProps extends TextInputProps {
 }
 
 declare interface PaymentProps {
-    fullName: string;
+    name: string;
     email: string;
     amount: string;
     driverId: number;
