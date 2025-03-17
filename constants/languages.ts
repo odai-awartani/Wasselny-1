@@ -108,7 +108,7 @@ export const translations = {
         CreateAcc: "Create Account",
         onboarding: [
           {
-            title: "Travel smart, save time with Waslny!",
+            title: "Travel smart, save time with Wasselny!",
             description: "Find people sharing your destination and enjoy comfortable trips at lower costs."
           },
           {
