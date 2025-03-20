@@ -123,9 +123,17 @@ export default function Home() {
             signOut();
             router.replace("/(auth)/sign-in");
           };
-  const handleDestinationPress = () => {
+          const handleDestinationPress = (location: {
+            latitude: number;
+            longitude: number;
+            address: string;
+          }) => {
+            setDestinationLocation(location);
+        
+            router.push("/(root)/find-ride");
+          };
     
-  }
+  
   useEffect(() => {
     const requestLocation= async() => {
       let {status} = await Location.requestForegroundPermissionsAsync();
@@ -139,10 +147,10 @@ export default function Home() {
         longitude: location.coords?.longitude!,
       });
       setUserLocation({
-        // latitude: location.coords?.latitude,
-        // longitude: location.coords?.longitude,
-        latitude: 37.78825,
-        longitude: -122.4324,
+         latitude: location.coords?.latitude,
+         longitude: location.coords?.longitude,
+        // latitude: 37.78825,
+        // longitude: -122.4324,
         address: `${address[0].name}, ${address[0].region}`,
       });
         

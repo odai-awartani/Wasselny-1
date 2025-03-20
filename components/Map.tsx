@@ -7,7 +7,7 @@ import { icons } from "@/constants";
 import { useDriverStore, useLocationStore } from "@/store";
 import { calculateRegion, generateMarkersFromData } from "@/lib/map";
 import { MarkerData } from "@/types/type";
-
+import * as Location from "expo-location";
 
 const directionsAPI = process.env.EXPO_PUBLIC_DIRECTIONS_API_KEY;
 
@@ -49,6 +49,7 @@ const drivers = [
     "rating": "4.90"
   }
 ];
+
 const Map = () => {
   const {
     userLongitude,
@@ -57,7 +58,8 @@ const Map = () => {
     destinationLongitude,
   } = useLocationStore();
   const { selectedDriver, setDrivers } = useDriverStore();
-
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<any>(null);
 //   const { data: drivers, loading, error } = useFetch<Driver[]>("/(api)/driver");
 const [markers, setMarkers] = useState<MarkerData[]>([]);
 
@@ -94,6 +96,41 @@ useEffect(() => {
 //     }
 //   }, [markers, destinationLatitude, destinationLongitude]);
 
+useEffect(() => {
+  const getLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+
+        // تحديد المنطقة الأولية بناءً على الموقع
+        setCurrentLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        });
+      }
+    } catch (error) {
+      console.error("Error getting location: ", error);
+    }
+  };
+
+  getLocation();
+}, []);
+
+if (!userLocation || !currentLocation) {
+  return (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <ActivityIndicator size="large" color="#0000ff" />
+    </View>
+  );
+}
+
 const region = calculateRegion({
   userLatitude,
   userLongitude,
@@ -123,8 +160,8 @@ return (
     className="w-full h-full rounded-2xl"
     tintColor="black"
     mapType="mutedStandard"
-    showsPointsOfInterest={false}
-    initialRegion={region}
+    showsPointsOfInterest={true}
+    initialRegion={currentLocation}
     showsUserLocation={true}
     userInterfaceStyle="light"
   >
