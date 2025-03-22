@@ -7,6 +7,7 @@ import CustomButton from '@/components/CustomButton';
 import { icons, images } from '@/constants';
 import { Link, router } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo'; // استيراد useSignIn من Clerk
+import { StatusBar } from 'expo-status-bar';
 
 const SignIn = () => {
   const { t, language } = useLanguage();
@@ -105,6 +106,8 @@ const SignIn = () => {
           </View>
         </View>
       </View>
+      <StatusBar backgroundColor="#fff" style="dark" />
+
     </ScrollView>
   );
 };

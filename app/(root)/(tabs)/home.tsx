@@ -11,6 +11,7 @@ import { Text, View } from "react-native";
 import { FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
+import { StatusBar } from "expo-status-bar";
   
 
 const recentRides= [
@@ -119,6 +120,7 @@ export default function Home() {
 
   const [hasPermission, setHasPermission] = useState<boolean>(false);
   const { signOut } = useAuth();
+
           const handleSignOut = () => {
             signOut();
             router.replace("/(auth)/sign-in");
@@ -228,6 +230,8 @@ export default function Home() {
           </>
         }
       />
+      <StatusBar backgroundColor="#fff" style="dark" />
+      
     </SafeAreaView>
   );
 };

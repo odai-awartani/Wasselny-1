@@ -6,6 +6,7 @@ import Swiper from 'react-native-swiper'
 import { onboarding } from '@/constants'
 import CustomButton from '@/components/CustomButton'
 import { useLanguage } from '@/context/LanguageContext';
+import { StatusBar } from 'expo-status-bar'
 
 
 const Onboarding = () => {
@@ -63,6 +64,7 @@ const Onboarding = () => {
           onPress={() => isLastSlide ? router.replace('/(auth)/sign-up') : swiperRef.current?.scrollBy(1)}
           className='w-11/12 mt-10 mb-10'
         />
+        <StatusBar backgroundColor="#fff" style="dark" />
     </SafeAreaView>
   )
 }

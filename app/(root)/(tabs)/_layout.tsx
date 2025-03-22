@@ -1,6 +1,7 @@
 import { icons } from "@/constants";
 import { Tabs } from "expo-router";
 import { View, Image, ImageSourcePropType } from "react-native";
+import { StatusBar } from "expo-status-bar";
 
 const TabIcon = ({ focused, source }: { focused: boolean; source: ImageSourcePropType }) => (
     
@@ -59,6 +60,7 @@ const Layout = () => (
       tabBarIcon: ({ focused }) => <TabIcon focused={focused} source={icons.profile} />
     }} />
   </Tabs>
+  
 );
-
+<StatusBar backgroundColor="#161622" style="dark" />
 export default Layout;

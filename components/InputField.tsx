@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
+  
 } from "react-native";
 import { InputFieldProps } from "@/types/type";
 import { icons } from "@/constants"; // استيراد الأيقونات
@@ -23,7 +24,6 @@ const InputField = ({
   containerStyle,
   inputStyle,
   iconStyle,
-  
   className,
   isPhoneNumber = false, // تفعيل خاصية رقم الهاتف
   ...props

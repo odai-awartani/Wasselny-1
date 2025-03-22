@@ -7,6 +7,7 @@ import CustomButton from '@/components/CustomButton';
 import { icons, images } from '@/constants';
 import { Link, router } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo'; // استيراد useSignIn من Clerk
+import { StatusBar } from 'expo-status-bar';
 
 const ForgotPassword = () => {
   const { t, language } = useLanguage();
@@ -80,6 +81,8 @@ const ForgotPassword = () => {
           </Text>
         </TouchableOpacity>
       </View>
+      <StatusBar backgroundColor="#fff" style="dark" />
+      
     </SafeAreaView>
   );
 };

@@ -9,6 +9,7 @@ import { Link, router } from 'expo-router';
 import { useSignUp } from '@clerk/clerk-expo'; // استيراد useSignUp من Clerk
 import ReactNativeModal from 'react-native-modal'
 import { fetchAPI } from '@/lib/fetch';
+import { StatusBar } from 'expo-status-bar';
 
 
 const SignUp = () => {
@@ -428,7 +429,10 @@ const industryMap = new Map([
 
 
       </View>
+    <StatusBar backgroundColor="#fff" style="dark" />
+      
     </ScrollView>
+
   );
 };
 

@@ -7,6 +7,7 @@ import CustomButton from '@/components/CustomButton';
 import { icons, images } from '@/constants';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useSignIn, useAuth } from '@clerk/clerk-expo'; // استيراد useAuth
+import { StatusBar } from 'expo-status-bar';
 
 const ResetPassword = () => {
   const { t, language } = useLanguage();
@@ -100,6 +101,8 @@ const ResetPassword = () => {
           </Text>
         </TouchableOpacity>
       </View>
+    <StatusBar backgroundColor="#fff" style="dark" />
+      
     </SafeAreaView>
   );
 };

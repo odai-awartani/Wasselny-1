@@ -7,6 +7,7 @@ import { icons, images } from '@/constants';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/languages';
 import CustomButton from '@/components/CustomButton';
+import { StatusBar } from 'expo-status-bar';
 
 export default function LanguageScreen() {
   const { language: currentLanguage, setLanguage } = useLanguage();
@@ -89,6 +90,8 @@ export default function LanguageScreen() {
           onPress={handleContinue}
         />
       </View>
+      <StatusBar backgroundColor="#fff" style="dark" />
+      
     </SafeAreaView>
   );
 }

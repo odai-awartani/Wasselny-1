@@ -8,6 +8,7 @@ import { useDriverStore, useLocationStore } from "@/store";
 import { calculateRegion, generateMarkersFromData } from "@/lib/map";
 import { MarkerData } from "@/types/type";
 import * as Location from "expo-location";
+import { Platform } from 'react-native';
 
 const directionsAPI = process.env.EXPO_PUBLIC_DIRECTIONS_API_KEY;
 
@@ -159,8 +160,7 @@ return (
     provider={PROVIDER_DEFAULT}
     className="w-full h-full rounded-2xl"
     tintColor="black"
-    mapType="mutedStandard"
-    showsPointsOfInterest={true}
+    mapType={Platform.OS === 'android' ? 'standard' : 'mutedStandard'}    showsPointsOfInterest={true}
     initialRegion={currentLocation}
     showsUserLocation={true}
     userInterfaceStyle="light"
