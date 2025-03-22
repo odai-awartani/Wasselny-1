@@ -30,7 +30,7 @@ const Onboarding = () => {
         ref={swiperRef}
         loop={false}
         dot={
-          <View className="w-[32px] h-[4px] mx-1 bg-[#E2E8F0] rounded-full" />
+          <View className="w-[15px] h-[4px] mx-1 bg-[#E2E8F0] rounded-full" />
         }
         activeDot={
           <View className="w-[32px] h-[4px] mx-1 bg-orange-100 rounded-full" />
@@ -61,7 +61,7 @@ const Onboarding = () => {
         <CustomButton 
            title={isLastSlide ? t.CreateAcc : t.next}
           onPress={() => isLastSlide ? router.replace('/(auth)/sign-up') : swiperRef.current?.scrollBy(1)}
-          className='w-11/12 mt-10 '
+          className='w-11/12 mt-10 mb-10'
         />
     </SafeAreaView>
   )
