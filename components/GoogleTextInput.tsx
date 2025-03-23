@@ -88,8 +88,7 @@ const GoogleTextInput = ({
           
           underlineColorAndroid: "transparent",
           returnKeyType: "search",
-          enablesReturnKeyAutomatically: true,
-       
+          
           
         }}
       /> 
