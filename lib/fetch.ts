@@ -38,3 +38,13 @@ export const useFetch = <T>(url: string, options?: RequestInit) => {
   
     return { data, loading, error, refetch: fetchData };
   };
+
+  export const fetchSuggestedRides = async (userId: string, location: { lat: number; lon: number }) => {
+    const res = await fetch(`/api/ride/suggested?user=${userId}&lat=${location.lat}&lon=${location.lon}`);
+    
+    if (!res.ok) {
+        throw new Error(`فشل جلب البيانات، الحالة: ${res.status}`);
+    }
+
+    return await res.json();
+};

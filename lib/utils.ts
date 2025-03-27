@@ -11,10 +11,15 @@ export const sortRides = (rides: Ride[]): Ride[] => {
 };
 
 export function formatTime(minutes: number): string {
-  const formattedMinutes = +minutes?.toFixed(0) || 0;
+  // تحقق من أن minutes هو عدد صحيح
+  if (typeof minutes !== "number" || isNaN(minutes)) {
+    return "Invalid time"; // أو أي نص يعبر عن خطأ في الوقت
+  }
+
+  const formattedMinutes = +minutes.toFixed(0) || 0;
 
   if (formattedMinutes < 60) {
-    return `${minutes} min`;
+    return `${formattedMinutes} min`;
   } else {
     const hours = Math.floor(formattedMinutes / 60);
     const remainingMinutes = formattedMinutes % 60;

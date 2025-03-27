@@ -88,6 +88,9 @@ declare interface InputFieldProps extends TextInputProps {
   iconStyle?: string;
   className?: string;
   isPhoneNumber?: boolean;
+  placeholder?: any; // ✅ اضف هذا السطر
+
+  
 }
 
 declare interface PaymentProps {
@@ -138,3 +141,23 @@ declare interface DriverCardProps {
   selected: number;
   setSelected: () => void;
 }
+declare interface UserUnsafeMetadata {
+  gender?: string;
+  phoneNumber?: string;
+  workIndustry?: string;
+}
+
+declare interface User {
+  id: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  emailAddresses: string[];
+  imageUrl: string;
+  unsafeMetadata: UserUnsafeMetadata;
+  // أي حقول إضافية من Clerk مثل:
+  createdAt: string;
+  updatedAt: string;
+}
+
+
