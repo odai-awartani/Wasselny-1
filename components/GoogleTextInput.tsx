@@ -9,10 +9,12 @@ console.log(googlePlacesApiKey);
 
 const GoogleTextInput = ({
   icon,
+  placeholder,
   initialLocation,
   containerStyle,
   textInputBackgroundColor,
   handlePress,
+  
 }: GoogleInputProps) => {
   return (
     <View
@@ -57,12 +59,15 @@ const GoogleTextInput = ({
           },
         }}
         onPress={(data, details = null) => {
-         
-          handlePress({
-            latitude: details?.geometry.location.lat!,
-            longitude: details?.geometry.location.lng!,
-            address: data.description,
-          });
+          if (details?.geometry?.location) {
+            handlePress({
+              latitude: details.geometry.location.lat,
+              longitude: details.geometry.location.lng,
+              address: data.description,
+            });
+          } else {
+            console.log("No location details available.");
+          }
         }}
         
 

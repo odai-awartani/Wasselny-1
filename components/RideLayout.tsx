@@ -41,7 +41,7 @@ import BottomSheet, {
             <BottomSheet
             keyboardBehavior='extend'
                 ref={bottomSheetRef}
-                snapPoints={snapPoints || ["45%", "85%",]}
+                snapPoints={snapPoints || ["45%", "85%", "100%"]}
                 index={1}
                 backgroundStyle={{
                     borderRadius: 24,

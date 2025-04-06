@@ -6,7 +6,7 @@ import MapViewDirections from "react-native-maps-directions";
 import { icons } from "@/constants";
 import { useDriverStore, useLocationStore } from "@/store";
 import { calculateDriverTimes, calculateRegion, generateMarkersFromData } from "@/lib/map";
-import {MarkerData } from "@/types/type";
+import {Driver, MarkerData } from "@/types/type";
 import * as Location from "expo-location";
 import { Platform } from 'react-native';
 import { useFetch } from "@/lib/fetch";

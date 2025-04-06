@@ -26,6 +26,7 @@ const FindRide = () => {
         <Text className='text-lg font-JakartaSemiBold mb-3'>
           To
         </Text>
+        
         <GoogleTextInput 
         icon={icons.map} 
         initialLocation={destinationAddress!} containerStyle='bg-neutral-100'

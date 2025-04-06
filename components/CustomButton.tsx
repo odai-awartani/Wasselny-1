@@ -36,8 +36,9 @@ const CustomButton = ({onPress,
     IconLeft, 
     IconRight, 
     className, 
+    
     ...props
-                    }: ButtonProps) => {
+     }: ButtonProps) => {
                          const { t, language } = useLanguage();
   return (
    <TouchableOpacity

@@ -66,6 +66,7 @@ declare interface GoogleInputProps {
   icon?: string;
   initialLocation?: string;
   containerStyle?: string;
+  placeholder?: string;
   textInputBackgroundColor?: string;
   handlePress: ({
     latitude,
@@ -160,4 +161,36 @@ declare interface User {
   updatedAt: string;
 }
 
+export interface SuggestedRide {
+  id: string;
+  origin_address: string;
+  destination_address: string;
+  origin_longitude: number;
+  origin_latitude: number;
+  destination_longitude: number;
+  destination_latitude: number;
+  ride_time: string; // أو يمكن استخدام نوع Date إذا كان الوقت هو تاريخ كامل
+  driver: Driver;
+  payment_status: 'paid' | 'unpaid'; // حالة الدفع
+  created_at: string; // تاريخ الإنشاء
+}
 
+declare interface  Ride  {
+    id: string;
+    origin_address: string;
+    destination_address: string;
+    created_at: string;
+    ride_time: string;
+    destination_longitude: number;
+    destination_latitude: number;
+    driver: {
+      first_name: string;
+      last_name: string;
+      profile_picture: string;
+      car_seats: number;
+    };
+    payment_status: string;
+    driver_rating: number;
+
+    
+  };

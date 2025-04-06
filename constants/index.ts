@@ -39,6 +39,10 @@ import onboarding2 from "@/assets/images/onboarding2.png";
 import onboarding3 from "@/assets/images/onboarding3.png";
 import signUpCar from "@/assets/images/signup-car.png";
 import emptystar from "@/assets/icons/emptystar.png";
+import clock from "@/assets/icons/clock.png";
+import calendar from "@/assets/icons/calendar.png";
+import upload from "@/assets/icons/upload.png";
+import street from "@/assets/icons/street.png";
 
 export const images = {
     onboarding1,
@@ -53,6 +57,10 @@ export const images = {
 };
 
 export const icons = {
+    street,
+    upload,
+    clock,
+    calendar,
     arrowDown,
     arrowUp,
     backArrow,
