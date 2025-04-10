@@ -30,6 +30,7 @@ interface RideRequestData {
   no_music: boolean;
   driver_id: any;
   user_id: string;
+  is_recurring: any;
 }
 
 
@@ -46,7 +47,6 @@ const CarInfoScreen = () => {
     destinationLongitude,
   } = useLocationStore();
   const params = useLocalSearchParams();
-
   const [success, setSuccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [carImage, setCarImage] = useState<string | null>(null);
@@ -93,7 +93,7 @@ const CarInfoScreen = () => {
       [rule]: !prev[rule],
     }));
   }, []);
-
+console.log(params.driver_id)
   const handleConfirmRide = useCallback(async () => {
     setIsLoading(true);
 
@@ -142,12 +142,15 @@ const CarInfoScreen = () => {
         no_music: rules.noMusic || false,
         driver_id: params.driver_id || 1,
         user_id: user?.id,
+        is_recurring:params.is_recurring || false,
+
       };
+      console.log("is_recurring", params.is_recurring);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch("/(api)/rides/create", {
+      const response = await fetch("/(api)/ride/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -265,7 +268,7 @@ const CarInfoScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              className={`flex-row justify-between items-center p-4 mb-6 rounded-lg ${
+              className={`flex-row justify-between items-center p-4 rounded-lg ${
                 rules.noMusic ? "bg-primary-100 border-orange-500" : "bg-gray-50"
               } border`}
               onPress={() => toggleRule("noMusic")}
@@ -287,7 +290,7 @@ const CarInfoScreen = () => {
 
           <CustomButton
             title={isLoading ? "Processing..." : "Confirm Ride"}
-            className="my-10"
+            
             onPress={handleConfirmRide}
             disabled={isLoading}
           />

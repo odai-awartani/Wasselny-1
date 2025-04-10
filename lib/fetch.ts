@@ -49,3 +49,36 @@ export const useFetch = <T>(url: string, options?: RequestInit) => {
 
     return await res.json();
 };
+
+// lib/api.ts
+
+export async function fetchDriverDataByUserId(userId: string) {
+  try {
+    const response = await fetch(`/api/driver+api/${userId}`);
+    if (response.ok) {
+      const data = await response.json();
+      return data; // سترجع البيانات الخاصة بالسائق إذا كانت موجودة
+    } else {
+      return null; // لا توجد بيانات سائق لهذا المستخدم
+    }
+  } catch (error) {
+    console.error('Error fetching driver data:', error);
+    return null; // إذا حدث خطأ في جلب البيانات
+  }
+}
+
+// lib/driver.ts
+export const fetchDriverStatus = async (userId: string) => {
+  const response = await fetch("/(api)/driver/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId }),
+  });
+
+  if (!response.ok) {
+    throw new Error("فشل في التحقق من حالة السائق");
+  }
+
+  return await response.json();
+};
+

@@ -141,6 +141,7 @@ declare interface DriverCardProps {
   item: MarkerData;
   selected: number;
   setSelected: () => void;
+  user: User;
 }
 declare interface UserUnsafeMetadata {
   gender?: string;

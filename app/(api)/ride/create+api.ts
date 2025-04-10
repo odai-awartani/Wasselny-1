@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       no_music = false,
       driver_id,
       user_id,
+      is_recurring,
       created_at = new Date().toISOString(),
     } = body;
 
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
         no_music,
         driver_id,
         user_id,
+        is_recurring,
         created_at
       ) VALUES (
         ${origin_address},
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
         ${no_music},
         ${driver_id},
         ${user_id},
+        ${is_recurring},
         ${created_at}
       )
       RETURNING *;

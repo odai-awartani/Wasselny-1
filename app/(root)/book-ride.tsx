@@ -41,7 +41,6 @@ const BookRide = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const driverDetails = drivers?.find(driver => +driver.id === selectedDriver);
-
   const handleConfirmRide = async () => {
     setIsLoading(true);
     
@@ -141,10 +140,11 @@ const BookRide = () => {
               source={{ uri: driverDetails?.profile_image_url }}
               className="w-28 h-28 rounded-full"
             />
-  <View className="flex flex-row items-center justify-center mt-5 space-x-2">
-              <Text className="text-lg font-JakartaSemiBold">
-                {driverDetails?.title}
-              </Text>
+ <View className="flex flex-row items-center justify-center mt-5 space-x-2">
+      
+       <Text className="text-lg font-JakartaSemiBold">
+           {user?.firstName} {user?.lastName}
+       </Text>
 
               <View className="flex flex-row items-center space-x-0.5">
                 <Image

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Image, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Image, Alert, Keyboard, TouchableWithoutFeedback } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { icons } from "@/constants";
 import CustomButton from "@/components/CustomButton";
@@ -15,6 +15,7 @@ const AddRideDetails = () => {
   const [tripTime, setTripTime] = useState<string>("");
   const [availableSeats, setAvailableSeats] = useState<string>("");
   const [selectedGender, setSelectedGender] = useState<string>("");
+  const [isRecurring, setIsRecurring] = useState<boolean>(false); // متغير جديد لتحديد إذا كانت الرحلة متكررة
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -36,8 +37,9 @@ const AddRideDetails = () => {
         ride_days: selectedDays.join(","),
         required_gender: selectedGender,
         available_seats: parseInt(availableSeats),
-        driver_id: "1",
+        driver_id: params.driver_id,
         user_id: userId,
+        is_recurring: isRecurring, // إضافة خاصية الرحلة المتكررة
       };
   
       router.push({
@@ -53,7 +55,7 @@ const AddRideDetails = () => {
     } finally {
       setIsLoading(false); // يتم تنفيذ هذا دائمًا بغض النظر عن النجاح أو الفشل
     }
-  }, [params, tripDate, tripTime, selectedDays, selectedGender, availableSeats, userId]);
+  }, [params, tripDate, tripTime, selectedDays, selectedGender, availableSeats, userId, isRecurring]); // إضافة isRecurring في الاعتماديات
   
   const toggleDaySelection = useCallback((day: string) => {
     setSelectedDays((prev) =>
@@ -114,93 +116,105 @@ const AddRideDetails = () => {
   }, [selectedDays, tripDate, tripTime, availableSeats, selectedGender]);
 
   return (
-    <RideLayout title="Ride Information" snapPoints={["40%", "70%", "88%"]}>
-      <ScrollView className="px-4">
-        <View className="mb-4">
-          <Text className="text-lg font-JakartaMedium text-right mb-2">تاريخ الرحلة</Text>
-          <TouchableOpacity onPress={() => setDatePickerVisible(true)}>
-            <View className="flex-row items-center border border-gray-300 rounded-lg p-3">
-              <Text className="flex-1 text-right">{tripDate || "اختر التاريخ"}</Text>
-              <Image source={icons.calendar} className="w-5 h-5" />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View className="mb-4">
-          <Text className="text-lg font-JakartaMedium text-right mb-2">وقت الرحلة</Text>
-          <TouchableOpacity onPress={() => setTimePickerVisible(true)}>
-            <View className="flex-row items-center border border-gray-300 rounded-lg p-3">
-              <Text className="flex-1 text-right">{tripTime || "اختر الوقت"}</Text>
-              <Image source={icons.clock} className="w-5 h-5" />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View className="mb-2">
-          <Text className="text-lg font-JakartaMedium text-right mb-2">حدد أيام الرحلة</Text>
-          <View className="flex-row flex-wrap justify-between">
-            {days.map((day) => (
-              <TouchableOpacity
-                key={day}
-                className={`p-3 mb-2 rounded-lg border ${
-                  selectedDays.includes(day) ? "bg-orange-500 border-orange-500" : "border-gray-300"
-                }`}
-                style={{ width: "30%" }}
-                onPress={() => toggleDaySelection(day)}
-              >
-                <Text
-                  className={`text-center ${
-                    selectedDays.includes(day) ? "text-white" : "text-gray-800"
-                  }`}
-                >
-                  {day}
-                </Text>
-              </TouchableOpacity>
-            ))}
+    <RideLayout title="Ride Information" snapPoints={["40%", "70%", "95%"]}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View className="px-4">
+          <View className="mb-4">
+            <Text className="text-lg font-JakartaMedium text-right mb-2">تاريخ الرحلة</Text>
+            <TouchableOpacity onPress={() => setDatePickerVisible(true)}>
+              <View className="flex-row items-center border border-gray-300 rounded-lg p-3">
+                <Text className="flex-1 text-right">{tripDate || "اختر التاريخ"}</Text>
+                <Image source={icons.calendar} className="w-5 h-5" />
+              </View>
+            </TouchableOpacity>
           </View>
-        </View>
 
-        <View className="mb-4">
-          <Text className="text-lg font-JakartaMedium text-right mb-2">عدد المقاعد المتاحة</Text>
-          <TextInput
-            className="border border-gray-300 rounded-lg p-3 text-right"
-            value={availableSeats}
-            onChangeText={handleSeatsChange}
-            placeholder="حدد عدد المقاعد"
-            keyboardType="numeric"
-          />
-        </View>
-
-        <View className="mb-6">
-          <Text className="text-lg font-JakartaMedium text-right mb-2">الجنس المطلوب</Text>
-          <View className="flex-row flex-wrap justify-between">
-            {genders.map((gender) => (
-              <TouchableOpacity
-                key={gender}
-                className={`p-3 mb-1 rounded-lg border ${
-                  selectedGender === gender ? "bg-orange-500 border-orange-500" : "border-gray-300"
-                }`}
-                style={{ width: "30%" }}
-                onPress={() => setSelectedGender(gender)}
-              >
-                <Text
-                  className={`text-center ${
-                    selectedGender === gender ? "text-white" : "text-gray-800"
-                  }`}
-                >
-                  {gender}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View className="mb-4">
+            <Text className="text-lg font-JakartaMedium text-right mb-2">وقت الرحلة</Text>
+            <TouchableOpacity onPress={() => setTimePickerVisible(true)}>
+              <View className="flex-row items-center border border-gray-300 rounded-lg p-3">
+                <Text className="flex-1 text-right">{tripTime || "اختر الوقت"}</Text>
+                <Image source={icons.clock} className="w-5 h-5" />
+              </View>
+            </TouchableOpacity>
           </View>
-        </View>
-        <CustomButton
+
+          <View className="mb-2">
+            <Text className="text-lg font-JakartaMedium text-right mb-2">حدد أيام الرحلة</Text>
+            <View className="flex-row flex-wrap justify-between">
+              {days.map((day) => (
+                <TouchableOpacity
+                  key={day}
+                  className={`p-3 mb-2 rounded-lg border ${selectedDays.includes(day) ? "bg-orange-500 border-orange-500" : "border-gray-300"}`}
+                  style={{ width: "30%" }}
+                  onPress={() => toggleDaySelection(day)}
+                >
+                  <Text className={`text-center ${selectedDays.includes(day) ? "text-white" : "text-gray-800"}`}>
+                    {day}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View className="mb-4">
+            <Text className="text-lg font-JakartaMedium text-right mb-2">عدد المقاعد المتاحة</Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg p-3 text-right"
+              value={availableSeats}
+              onChangeText={handleSeatsChange}
+              placeholder="حدد عدد المقاعد"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View>
+            <Text className="text-lg font-JakartaMedium text-right mb-2">الجنس المطلوب</Text>
+            <View className="flex-row flex-wrap justify-between">
+              {genders.map((gender) => (
+                <TouchableOpacity
+                  key={gender}
+                  className={`p-3 mb-5 rounded-lg border ${selectedGender === gender ? "bg-orange-500 border-orange-500" : "border-gray-300"}`}
+                  style={{ width: "30%" }}
+                  onPress={() => setSelectedGender(gender)}
+                >
+                  <Text className={`text-center ${selectedGender === gender ? "text-white" : "text-gray-800"}`}>
+                    {gender}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* خانة تحديد إذا كانت الرحلة متكررة */}
+          <View className="mb-1">
+            <Text className="text-lg font-JakartaMedium text-right mb-2">هل الرحلة متكررة؟</Text>
+            <View className="flex-row">
+              <TouchableOpacity
+                className={`p-3 mb-2 mr-2 rounded-lg border ${isRecurring ? "bg-orange-500 border-orange-500" : "border-gray-300"}`}
+                style={{ width: "45%" }}
+                onPress={() => setIsRecurring(true)}
+              >
+                <Text className={`text-center text-base ${isRecurring ? "text-white" : "text-gray-800"}`}>نعم</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className={`p-3 mb-2 ml-2 rounded-lg border ${!isRecurring ? "bg-orange-500 border-orange-500" : "border-gray-300"}`}
+                style={{ width: "45%" }}
+                onPress={() => setIsRecurring(false)}
+              >
+                <Text className={`text-center text-base ${!isRecurring ? "text-white" : "text-gray-800"}`}>لا</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <CustomButton
             title={isLoading ? "Processing..." : "Find Now"}
-            className="my-10"
+            className="mt-4"
             onPress={handleSubmit}
             disabled={isLoading}
           />
-      </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
 
       <DateTimePickerModal
         isVisible={isDatePickerVisible}

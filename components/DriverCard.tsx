@@ -5,7 +5,8 @@ import {icons} from "@/constants";
 import {formatTime} from "@/lib/utils";
 import {DriverCardProps} from "@/types/type";
 
-const DriverCard = ({item, selected, setSelected}: DriverCardProps) => {
+
+const DriverCard = ({item, selected, setSelected, user}: DriverCardProps) => {
     return (
         <TouchableOpacity
             onPress={setSelected}
@@ -20,7 +21,7 @@ const DriverCard = ({item, selected, setSelected}: DriverCardProps) => {
 
             <View className="flex-1 flex flex-col items-start justify-center mx-3">
                 <View className="flex flex-row items-center justify-start mb-1">
-                    <Text className="text-lg font-JakartaRegular">{item.title}</Text>
+                    <Text className="text-lg font-JakartaRegular">{user?.firstName}</Text>
 
                     <View className="flex flex-row items-center space-x-1 ml-2">
                         <Image source={icons.star} className="w-3.5 h-3.5"/>

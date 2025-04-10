@@ -81,6 +81,7 @@ export default function Home() {
       setRefreshing(false);
     }
   };
+  
 
   return (
     <SafeAreaView className="bg-general-500">
