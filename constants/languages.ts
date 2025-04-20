@@ -86,7 +86,7 @@ export const translations = {
  
     passwordResetSuccess: "تم إعادة تعيين كلمة المرور بنجاح.",
     passwordResetFailed: "فشل إعادة تعيين كلمة المرور. يرجى المحاولة مرة أخرى.",
-    
+    confirmPassward:"تاكيد كلمة المرور",
     resetPasswordButton: "إعادة تعيين كلمة المرور",
     
     
@@ -184,7 +184,7 @@ export const translations = {
       verificationCode: "Verification Code",
       newPassword: "New Password",
       resetPasswordButton: "Reset Password",
-     
+      confirmPassward:"confirm Passward",
       passwordResetSuccess: "Password reset successfully.",
       passwordResetFailed: "Failed to reset password. Please try again.",
       passwordResetLinkSent: "A password reset link has been sent to your email.",

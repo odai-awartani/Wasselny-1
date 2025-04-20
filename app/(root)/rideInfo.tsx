@@ -32,7 +32,8 @@ const AddRideDetails = () => {
       }
   
       const rideData = {
-        ...params,
+        deriverId: params.deriverId,
+        destination_street: params.destination_street,
         ride_datetime: `${tripDate} ${tripTime}`,
         ride_days: selectedDays.join(","),
         required_gender: selectedGender,

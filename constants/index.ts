@@ -43,6 +43,8 @@ import clock from "@/assets/icons/clock.png";
 import calendar from "@/assets/icons/calendar.png";
 import upload from "@/assets/icons/upload.png";
 import street from "@/assets/icons/street.png";
+import location from "@/assets/icons/location.png";
+import loadingCar from "../assets/images/loading-car.gif";
 
 export const images = {
     onboarding1,
@@ -53,7 +55,8 @@ export const images = {
     check,
     noResult,
     message,
-    lang
+    lang,
+    loadingCar
 };
 
 export const icons = {
@@ -92,7 +95,8 @@ export const icons = {
     ring,
     emptystar,
     ar,
-    en
+    en,
+    location
 };
 
 

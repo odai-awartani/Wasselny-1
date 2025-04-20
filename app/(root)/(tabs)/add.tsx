@@ -1,19 +1,37 @@
-import { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { View, Text, TouchableOpacity, Image, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { uploadImageToCloudinary } from "@/lib/upload";
 import { useRouter } from "expo-router";
 import CustomButton from "@/components/CustomButton";
-import { icons } from "@/constants";
+import { icons, images } from "@/constants";
 import { useUser } from "@clerk/clerk-expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import InputField from "@/components/InputField";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
+import { ActivityIndicator } from "react-native";
+interface DriverFormData {
+  carType: string;
+  carSeats: string;
+  carImage: string | null;
+  profileImage: string | null;
+}
+
+interface FirebaseDriverData {
+  car_type: string;
+  car_image_url: string;
+  profile_image_url: string;
+  car_seats: number;
+  created_at: string;
+  is_active: boolean;
+}
 
 const Add = () => {
   const { user } = useUser();
   const router = useRouter();
-  const [driverData, setDriverData] = useState({
+  const [driverFormData, setDriverFormData] = useState<DriverFormData>({
     carType: "",
     carSeats: "",
     carImage: null,
@@ -23,46 +41,42 @@ const Add = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDriverChecked, setIsDriverChecked] = useState(false);
 
-  // تحسين fetch مع إدارة أفضل للأخطاء
   const checkDriverStatus = useCallback(async () => {
     try {
-      if (!user?.id) return;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const response = await fetch("/(api)/driver/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.isDriver && data.driverId) {
-        await AsyncStorage.setItem('driverData', JSON.stringify(data));
-        router.replace({
-          pathname: "/(root)/locationInfo",
-          params: { driverId: data.driverId },
-        });
+      if (!user?.id) {
+        console.log("No user ID available");
         return;
       }
 
+      console.log("Checking driver status for user:", user.id);
+      
+      // Get user document from Firestore
+      const userDoc = await getDoc(doc(db, "users", user.id));
+      
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        // Check if user has driver data
+        if (userData.driver && userData.driver.is_active) {
+          console.log("User is a driver, redirecting to locationInfo");
+          await AsyncStorage.setItem('driverData', JSON.stringify(userData.driver));
+          router.replace({
+            pathname: "/(root)/locationInfo",
+            params: { driverId: user.id },
+            
+          });
+          return;
+        }
+      }
+      
+      console.log("User is not a driver, requesting media permissions");
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("تحذير", "يجب منح صلاحيات الوصول إلى المعرض");
       }
     } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        console.error("Error checking driver status:", error);
-      }
+      console.error("Error checking driver status:", error);
+      Alert.alert("خطأ", "حدث خطأ أثناء التحقق من حالة السائق");
     } finally {
       setIsDriverChecked(true);
     }
@@ -107,7 +121,7 @@ const Add = () => {
         return;
       }
 
-      setDriverData(prev => ({
+      setDriverFormData(prev => ({
         ...prev,
         [type === "car" ? "carImage" : "profileImage"]: asset.uri,
       }));
@@ -122,7 +136,7 @@ const Add = () => {
     setIsLoading(true);
 
     try {
-      const { carType, carSeats, carImage, profileImage } = driverData;
+      const { carType, carSeats, carImage, profileImage } = driverFormData;
       
       // تحقق شامل من البيانات
       if (!carType.trim() || !carSeats || !carImage || !profileImage) {
@@ -142,50 +156,31 @@ const Add = () => {
         throw new Error("فشل في تحميل الصور، يرجى المحاولة لاحقًا");
       }
 
-      const payload = {
-        user_id: user?.id,
+      // Create driver data object
+      const driverData = {
         car_type: carType.trim(),
         car_image_url: carImageUrl,
         profile_image_url: profileImageUrl,
         car_seats: Number(carSeats),
+        created_at: new Date().toISOString(),
+        is_active: true
       };
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-      const response = await fetch("/(api)/driver/create", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
+      // Get user reference using Clerk ID
+      const userRef = doc(db, "users", user?.id!);
+      
+      // Update the existing user document with driver data
+      await updateDoc(userRef, {
+        driver: driverData
       });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "فشل في إنشاء حساب السائق");
-      }
-
-      const responseData = await response.json();
-      const driverId = responseData.data?.id;
-
-      if (!driverId) {
-        throw new Error("استجابة غير صالحة من الخادم");
-      }
-
-      // حفظ البيانات محليًا
-      await AsyncStorage.setItem('driverData', JSON.stringify({
-        ...payload,
-        id: driverId,
-      }));
+      // Save to AsyncStorage for local access
+      await AsyncStorage.setItem('driverData', JSON.stringify(driverData));
 
       Alert.alert("نجاح", "تم تسجيلك كسائق بنجاح", [
         { text: "حسناً", onPress: () => router.push({
           pathname: "/(root)/locationInfo",
-          params: { driverId },
+          params: { driverId: user?.id }
         })}
       ]);
     } catch (error: any) {
@@ -194,13 +189,24 @@ const Add = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [driverData, user, router]);
+  }, [driverFormData, user, router]);
 
   if (!isDriverChecked) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-xl text-gray-600">جارٍ التحقق من البيانات...</Text>
-      </View>
+      <SafeAreaView className="flex-1 items-center justify-center bg-white px-4">
+        <Image
+          source={images.loadingcar} // تأكد إنك تضيف صورة gif مناسبة داخل مجلد الصور
+          className="w-40 h-40 mb-6"
+          resizeMode="contain"
+        />
+        <Text className="text-xl font-CairoBold text-orange-500 mb-2">
+          جاري التحقق من بياناتك...
+        </Text>
+        <Text className="text-base text-gray-500 text-center">
+          برجاء الانتظار قليلاً أثناء التحقق من حالة حسابك كسائق
+        </Text>
+        <ActivityIndicator size="large" color="#F97316" className="mt-6" />
+      </SafeAreaView>
     );
   }
 
@@ -211,8 +217,8 @@ const Add = () => {
       
         <InputField 
           label="نوع السيارة"
-          value={driverData.carType}
-          onChangeText={(text) => setDriverData(prev => ({ ...prev, carType: text }))}
+          value={driverFormData.carType}
+          onChangeText={(text) => setDriverFormData(prev => ({ ...prev, carType: text }))}
           placeholder="مثال: تويوتا كورولا"
           className="border border-orange-500  placeholder:font-CairoBold"
           labelStyle="text-lg text-right text-gray-700 mb-4 font-CairoBold"
@@ -221,8 +227,8 @@ const Add = () => {
         
         <InputField 
           label="عدد المقاعد"
-          value={driverData.carSeats}
-          onChangeText={(text) => setDriverData(prev => ({ ...prev, carSeats: text }))}
+          value={driverFormData.carSeats}
+          onChangeText={(text) => setDriverFormData(prev => ({ ...prev, carSeats: text }))}
           placeholder="مثال: 4"
           keyboardType="number-pad"
           className="border border-orange-500 placeholder:font-CairoBold"
@@ -236,12 +242,12 @@ const Add = () => {
             onPress={() => pickImage("car")}
             className="w-full h-48 bg-gray-100 rounded-lg border-dashed border-2 border-gray-300 justify-center items-center"
             >
-            {driverData.carImage ? (
+            {driverFormData.carImage ? (
               <Image 
-                source={{ uri: driverData.carImage }} 
+                source={{ uri: driverFormData.carImage }} 
                 className="w-full h-full rounded-lg" 
                 resizeMode="cover" 
-                onError={() => setDriverData(prev => ({ ...prev, carImage: null }))}
+                onError={() => setDriverFormData(prev => ({ ...prev, carImage: null }))}
               />
             ) : (
               <>
@@ -258,12 +264,12 @@ const Add = () => {
             onPress={() => pickImage("profile")}
             className="w-full h-48 bg-gray-100 rounded-lg border-dashed border-2 border-gray-300 justify-center items-center"
             >
-            {driverData.profileImage ? (
+            {driverFormData.profileImage ? (
               <Image 
-                source={{ uri: driverData.profileImage }} 
+                source={{ uri: driverFormData.profileImage }} 
                 className="w-full h-full rounded-lg" 
                 resizeMode="cover" 
-                onError={() => setDriverData(prev => ({ ...prev, profileImage: null }))}
+                onError={() => setDriverFormData(prev => ({ ...prev, profileImage: null }))}
               />
             ) : (
               <>

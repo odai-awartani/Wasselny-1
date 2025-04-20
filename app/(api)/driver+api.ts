@@ -30,13 +30,13 @@ export async function checkDriverStatus(userId: string) {
     throw new Error("Internal Server Error");
   }
 }
-
+//driver+api.ts
 // API endpoint لجلب جميع السائقين (مثال إضافي)
 export async function GET(request: Request) {
   try {
     const sql = neon(`${process.env.DATABASE_URL}`);
     const response = await sql`SELECT * FROM driver`;
-    console.log("Fetched driver data:", response);
+    console.log("Fetched driver data1:", response);
 
     return Response.json({ data: response });
   } catch (error) {
@@ -44,3 +44,4 @@ export async function GET(request: Request) {
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+

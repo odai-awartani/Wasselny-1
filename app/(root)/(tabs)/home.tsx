@@ -1,26 +1,24 @@
+import React, { useEffect, useState } from "react";
 import GoogleTextInput from "@/components/GoogleTextInput";
 import Map from "@/components/Map";
 import RideCard from "@/components/RideCard";
+import SuggestedRides from "@/components/SuggestedRides";
 import { icons, images } from "@/constants";
 import { useLocationStore } from "@/store";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, RefreshControl, TouchableOpacity } from "react-native";
 import { Text, View } from "react-native";
 import { FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
-import { useFetch } from "@/lib/fetch";
 import { useDriverStore } from '@/store';
 import { Ride } from "@/types/type";
-
 
 export default function Home() {
   const { setUserLocation, setDestinationLocation } = useLocationStore();
   const { user } = useUser();
-  const { data: ridesData, loading, error, refetch } = useFetch<Ride[]>(`/(api)/ride/${user?.id}`); // Added refetch here
   const [hasPermission, setHasPermission] = useState<boolean>(false);
   const { signOut } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
@@ -63,8 +61,7 @@ export default function Home() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await refetch(); // Now using the refetch from useFetch
-      // Also refresh location data
+      // Refresh location data
       const location = await Location.getCurrentPositionAsync({});
       const address = await Location.reverseGeocodeAsync({
         latitude: location.coords?.latitude!,
@@ -81,33 +78,15 @@ export default function Home() {
       setRefreshing(false);
     }
   };
-  
 
   return (
     <SafeAreaView className="bg-general-500">
       <FlatList 
-        data={ridesData?.slice(0, 5)}
-        renderItem={({ item }) => <RideCard ride={item} />}
+        data={[]}
+        renderItem={() => null}
         className="px-5"
         keyboardShouldPersistTaps="handled" 
         contentContainerStyle={{ paddingBottom: 100 }}  
-        ListEmptyComponent={() => (
-          <View className="flex flex-col items-center justify-center">
-            {!loading ? (
-              <>
-                <Image
-                  source={images.noResult}
-                  className="w-40 h-40"
-                  alt="No recent rides found"
-                  resizeMode="contain"
-                />
-                <Text className="text-sm">No recent rides found</Text>
-              </>
-            ) : (
-              <ActivityIndicator size="small" color="#000" />
-            )}
-          </View>
-        )}
         ListHeaderComponent={
           <>
             <View className="flex flex-row items-center justify-between my-5">
@@ -138,18 +117,17 @@ export default function Home() {
             </>
 
             <Text className="text-xl font-JakartaBold mt-5 mb-3">
-              Recent Rides
-            </Text> 
-            <View className="p-4">
-            </View>
+              Suggested Rides
+            </Text>
+            <SuggestedRides />
           </>
         }
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            colors={["#000"]} // Optional: customize refresh indicator
-            tintColor="#000" // Optional: customize refresh indicator
+            colors={["#000"]}
+            tintColor="#000"
           />
         }
       />

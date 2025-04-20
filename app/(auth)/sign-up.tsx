@@ -8,9 +8,9 @@ import { icons, images } from '@/constants';
 import { Link, router } from 'expo-router';
 import { useSignUp } from '@clerk/clerk-expo'; // استيراد useSignUp من Clerk
 import ReactNativeModal from 'react-native-modal'
-
+import { collection, addDoc, doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { StatusBar } from 'expo-status-bar';
-import { fetchAPI } from '@/lib/fetch';
 
 
 const SignUp = () => {
@@ -139,21 +139,18 @@ const industryMap = new Map([
           gender: englishGender,
           industry: englishIndustry,
           clerkId: completeSignUp.createdUserId,
-          
         });
   
-        // استدعاء API مع استخدام URL صحيح  
-          await fetchAPI("/(api)/user", {
-            method: "POST",
-            body: JSON.stringify({
-              name: form.name,
-              email: form.email,
-              clerkId: completeSignUp.createdUserId,
-              phoneNumber: form.phoneNumber,
-              gender: englishGender,
-              workindustry: englishIndustry
-            }),
-          });
+        // Use setDoc with Clerk ID as document ID
+        await setDoc(doc(db, "users", completeSignUp.createdUserId), {
+          name: form.name,
+          email: form.email,
+          phone: formattedPhoneNumber,
+          gender: englishGender,
+          industry: englishIndustry,
+          clerkId: completeSignUp.createdUserId,
+          createdAt: new Date().toISOString(),
+        });
   
         console.log('User data successfully saved!');
   

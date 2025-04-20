@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, Image, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { icons, images } from "@/constants";
@@ -11,6 +11,8 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import ReactNativeModal from "react-native-modal";
 import { useLocationStore } from "@/store";
+import { doc, setDoc, getDocs, collection, query, orderBy, limit, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface RideRequestData {
   origin_address: string;
@@ -19,20 +21,21 @@ interface RideRequestData {
   origin_longitude: number;
   destination_latitude: number;
   destination_longitude: number;
-  destination_street: any;
-  ride_datetime: any;
-  ride_days: any;
-  required_gender: any;
-  available_seats: any;
-  // car_image: string;
+  destination_street: string;
+  ride_datetime: string;
+  ride_days: string[];
+  required_gender: string;
+  available_seats: number;
   no_smoking: boolean;
   no_children: boolean;
   no_music: boolean;
-  driver_id: any;
+  driver_id: string;
   user_id: string;
-  is_recurring: any;
+  is_recurring: boolean;
+  status: string;
+  created_at: Date;
+  ride_number: number;
 }
-
 
 const CarInfoScreen = () => {
   const router = useRouter();
@@ -49,43 +52,11 @@ const CarInfoScreen = () => {
   const params = useLocalSearchParams();
   const [success, setSuccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [carImage, setCarImage] = useState<string | null>(null);
   const [rules, setRules] = useState({
     noSmoking: false,
     noChildren: false,
     noMusic: false,
   });
-
-  useEffect(() => {
-    const getPermission = async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("لا توجد صلاحيات للوصول إلى المعرض");
-      }
-    };
-    getPermission();
-  }, []);
-
-  const pickImage = useCallback(async () => {
-    try {
-      let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets?.[0]?.uri) {
-        console.log("تم اختيار الصورة بنجاح:", result.assets[0].uri);
-        setCarImage(result.assets[0].uri);
-      } else {
-        Alert.alert("لم يتم اختيار صورة.");
-      }
-    } catch (error) {
-      console.error("Error picking image:", error);
-      Alert.alert("خطأ", "حدث خطأ أثناء اختيار الصورة.");
-    }
-  }, []);
 
   const toggleRule = useCallback((rule: keyof typeof rules) => {
     setRules((prev) => ({
@@ -93,7 +64,7 @@ const CarInfoScreen = () => {
       [rule]: !prev[rule],
     }));
   }, []);
-console.log(params.driver_id)
+
   const handleConfirmRide = useCallback(async () => {
     setIsLoading(true);
 
@@ -106,22 +77,121 @@ console.log(params.driver_id)
         throw new Error("Invalid location coordinates");
       }
 
-      if (!carImage) {
-        Alert.alert("خطأ", "يجب اختيار صورة للسيارة.");
+      // Get and validate the ride datetime
+      let rideDateTimeStr = params.ride_datetime as string;
+      if (!rideDateTimeStr) {
+        throw new Error("Ride date and time are required");
+      }
+
+      // Check for time conflicts
+      const ridesRef = collection(db, "rides");
+      const conflictQuery = query(
+        ridesRef,
+        where("driver_id", "==", user.id),
+        where("status", "in", ["pending", "active"])
+      );
+      
+      const conflictSnapshot = await getDocs(conflictQuery);
+      let hasConflict = false;
+
+      try {
+        // Parse the date string correctly
+        let newRideDate: Date;
+        if (typeof rideDateTimeStr === 'string') {
+          // Handle DD/MM/YYYY HH:mm format
+          const [datePart, timePart] = rideDateTimeStr.split(' ');
+          const [day, month, year] = datePart.split('/');
+          const [hours, minutes] = timePart.split(':');
+          
+          newRideDate = new Date(
+            parseInt(year),
+            parseInt(month) - 1, // months are 0-based
+            parseInt(day),
+            parseInt(hours),
+            parseInt(minutes)
+          );
+        } else {
+          newRideDate = new Date(rideDateTimeStr);
+        }
+
+        if (isNaN(newRideDate.getTime())) {
+          console.error("Invalid date format:", rideDateTimeStr);
+          throw new Error("Invalid date format for new ride");
+        }
+
+        // Define the 15-minute window in milliseconds
+        const fifteenMinutes = 15 * 60 * 1000;
+
+        conflictSnapshot.forEach((doc) => {
+          const existingRide = doc.data();
+          const existingRideDateStr = existingRide.ride_datetime;
+          
+          if (!existingRideDateStr) return;
+
+          let existingRideDate: Date;
+          if (typeof existingRideDateStr === 'string') {
+            // Handle DD/MM/YYYY HH:mm format for existing rides
+            const [datePart, timePart] = existingRideDateStr.split(' ');
+            const [day, month, year] = datePart.split('/');
+            const [hours, minutes] = timePart.split(':');
+            
+            existingRideDate = new Date(
+              parseInt(year),
+              parseInt(month) - 1,
+              parseInt(day),
+              parseInt(hours),
+              parseInt(minutes)
+            );
+          } else {
+            existingRideDate = new Date(existingRideDateStr);
+          }
+
+          if (isNaN(existingRideDate.getTime())) {
+            console.error("Invalid date format for existing ride:", existingRideDateStr);
+            return;
+          }
+
+          // Calculate the time difference
+          const timeDiff = newRideDate.getTime() - existingRideDate.getTime();
+          
+          // Check if the new ride is within 15 minutes before or after the existing ride
+          if (Math.abs(timeDiff) < fifteenMinutes) {
+            console.log("Time conflict found:", {
+              newRideTime: newRideDate.toISOString(),
+              existingRideTime: existingRideDate.toISOString(),
+              timeDiffMinutes: Math.abs(timeDiff) / (60 * 1000)
+            });
+            hasConflict = true;
+            return;
+          }
+        });
+
+        if (hasConflict) {
+          Alert.alert(
+            "Schedule Conflict",
+            "You already have a ride scheduled around this time. For scheduling and safety reasons, you can't create another ride within 15 minutes before or after your current ride."
+          );
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error("Error in time conflict check:", error);
+        Alert.alert(
+          "Error",
+          "There was an error checking the ride schedule. Please try again."
+        );
+        setIsLoading(false);
         return;
       }
 
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Authentication failed");
-      }
-
-      const uploadedImageUrl = await uploadImageToCloudinary(carImage);
-      console.log("رابط الصورة بعد الرفع:", uploadedImageUrl);
-
-      if (!uploadedImageUrl) {
-        Alert.alert("خطأ", "فشل في رفع صورة السيارة.");
-        return;
+      // Get the latest ride number
+      const q = query(ridesRef, orderBy("ride_number", "desc"), limit(1));
+      const querySnapshot = await getDocs(q);
+      
+      let nextRideNumber = 1;
+      if (!querySnapshot.empty) {
+        const latestRide = querySnapshot.docs[0].data();
+        nextRideNumber = (latestRide.ride_number || 0) + 1;
       }
 
       const rideData: RideRequestData = {
@@ -131,43 +201,26 @@ console.log(params.driver_id)
         origin_longitude: userLongitude,
         destination_latitude: destinationLatitude,
         destination_longitude: destinationLongitude,
-        destination_street: params.destination_street,
-        ride_datetime: params.ride_datetime,
-        ride_days: params.ride_days,
-        required_gender: params.required_gender,
-        available_seats: params.available_seats,
-        // car_image: uploadedImageUrl,
-        no_smoking: rules.noSmoking || false,
-        no_children: rules.noChildren || false,
-        no_music: rules.noMusic || false,
-        driver_id: params.driver_id || 1,
-        user_id: user?.id,
-        is_recurring:params.is_recurring || false,
-
+        destination_street: params.destination_street as string || "",
+        ride_datetime: rideDateTimeStr,
+        ride_days: params.ride_days ? (Array.isArray(params.ride_days) ? params.ride_days : [params.ride_days]) : [],
+        required_gender: params.required_gender as string || "any",
+        available_seats: parseInt(params.available_seats as string) || 1,
+        no_smoking: rules.noSmoking,
+        no_children: rules.noChildren,
+        no_music: rules.noMusic,
+        driver_id: user.id,
+        user_id: user.id,
+        is_recurring: params.is_recurring === "true",
+        status: "pending",
+        created_at: new Date(),
+        ride_number: nextRideNumber
       };
-      console.log("is_recurring", params.is_recurring);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      // Create a new ride document with the serial number as ID
+      const rideRef = doc(db, "rides", nextRideNumber.toString());
+      await setDoc(rideRef, rideData);
 
-      const response = await fetch("/(api)/ride/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(rideData),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create ride");
-      }
-
-      const result = await response.json();
       setSuccess(true);
     } catch (error: any) {
       console.error("Booking error:", error);
@@ -185,146 +238,117 @@ console.log(params.driver_id)
     userLongitude,
     destinationLatitude,
     destinationLongitude,
-    carImage,
     params,
     rules,
     user,
-    getToken,
-    
   ]);
 
   return (
     <RideLayout title="معلومات السيارة" snapPoints={["65%", "85%", "100%"]}>
-      <>
-        <ScrollView className="px-4 py-6">
-          <Text className="text-2xl font-JakartaBold text-right mb-6">معلومات السيارة</Text>
+      <ScrollView className="px-4 py-6">
+        <Text className="text-2xl font-JakartaBold text-right mb-6">معلومات السيارة</Text>
 
-          <View className="mb-6 items-center">
-            <TouchableOpacity
-              onPress={pickImage}
-              className="w-full h-48 bg-gray-100 rounded-lg border-dashed border-2 border-gray-300 justify-center items-center"
+        <View className="border-b border-gray-200 my-4" />
+
+        <View className="mb-6">
+          <Text className="text-xl font-JakartaBold text-right mb-4">قوانين السيارة</Text>
+
+          <TouchableOpacity
+            className={`flex-row justify-between items-center p-4 mb-3 rounded-lg ${
+              rules.noSmoking ? "bg-primary-100 border-orange-500" : "bg-gray-50"
+            } border`}
+            onPress={() => toggleRule("noSmoking")}
+          >
+            <Text
+              className={`font-JakartaMedium ${rules.noSmoking ? "text-orange-500" : "text-gray-800"}`}
             >
-              {carImage ? (
-                <>
-                  <Image
-                    source={{ uri: carImage }}
-                    className="w-full h-full rounded-lg"
-                    resizeMode="cover"
-                  />
-                  <Text className="absolute text-gray-500">اضغط لتغيير الصورة</Text>
-                </>
-              ) : (
-                <>
-                  <Image source={icons.upload} className="w-12 h-12 mb-2" />
-                  <Text className="text-gray-500">اضغط لاختيار صورة للسيارة</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View className="border-b border-gray-200 my-4" />
-
-          <View className="mb-6">
-            <Text className="text-xl font-JakartaBold text-right mb-4">قوانين السيارة</Text>
-
-            <TouchableOpacity
-              className={`flex-row justify-between items-center p-4 mb-3 rounded-lg ${
-                rules.noSmoking ? "bg-primary-100 border-orange-500" : "bg-gray-50"
-              } border`}
-              onPress={() => toggleRule("noSmoking")}
+              بدون تدخين
+            </Text>
+            <View
+              className={`w-6 h-6 rounded-full border-2 ${
+                rules.noSmoking ? "bg-orange-500 border-orange-500" : "border-gray-400"
+              }`}
             >
-              <Text
-                className={`font-JakartaMedium ${rules.noSmoking ? "text-orange-500" : "text-gray-800"}`}
-              >
-                بدون تدخين
-              </Text>
-              <View
-                className={`w-6 h-6 rounded-full border-2 ${
-                  rules.noSmoking ? "bg-orange-500 border-orange-500" : "border-gray-400"
-                }`}
-              >
-                {rules.noSmoking && <Image source={icons.checkmark} className="w-5 h-5" />}
-              </View>
-            </TouchableOpacity>
+              {rules.noSmoking && <Image source={icons.checkmark} className="w-5 h-5" />}
+            </View>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              className={`flex-row justify-between items-center p-4 mb-3 rounded-lg ${
-                rules.noChildren ? "bg-primary-100 border-orange-500" : "bg-gray-50"
-              } border`}
-              onPress={() => toggleRule("noChildren")}
+          <TouchableOpacity
+            className={`flex-row justify-between items-center p-4 mb-3 rounded-lg ${
+              rules.noChildren ? "bg-primary-100 border-orange-500" : "bg-gray-50"
+            } border`}
+            onPress={() => toggleRule("noChildren")}
+          >
+            <Text
+              className={`font-JakartaMedium ${rules.noChildren ? "text-orange-500" : "text-gray-800"}`}
             >
-              <Text
-                className={`font-JakartaMedium ${rules.noChildren ? "text-orange-500" : "text-gray-800"}`}
-              >
-                بدون اطفال
-              </Text>
-              <View
-                className={`w-6 h-6 rounded-full border-2 ${
-                  rules.noChildren ? "bg-orange-500 border-orange-500" : "border-gray-400"
-                }`}
-              >
-                {rules.noChildren && <Image source={icons.checkmark} className="w-5 h-5" />}
-              </View>
-            </TouchableOpacity>
+              بدون اطفال
+            </Text>
+            <View
+              className={`w-6 h-6 rounded-full border-2 ${
+                rules.noChildren ? "bg-orange-500 border-orange-500" : "border-gray-400"
+              }`}
+            >
+              {rules.noChildren && <Image source={icons.checkmark} className="w-5 h-5" />}
+            </View>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              className={`flex-row justify-between items-center p-4 rounded-lg ${
-                rules.noMusic ? "bg-primary-100 border-orange-500" : "bg-gray-50"
-              } border`}
-              onPress={() => toggleRule("noMusic")}
+          <TouchableOpacity
+            className={`flex-row justify-between items-center p-4 rounded-lg ${
+              rules.noMusic ? "bg-primary-100 border-orange-500" : "bg-gray-50"
+            } border`}
+            onPress={() => toggleRule("noMusic")}
+          >
+            <Text
+              className={`font-JakartaMedium ${rules.noMusic ? "text-orange-500" : "text-gray-800"}`}
             >
-              <Text
-                className={`font-JakartaMedium ${rules.noMusic ? "text-orange-500" : "text-gray-800"}`}
-              >
-                بدون اغاني
-              </Text>
-              <View
-                className={`w-6 h-6 rounded-full border-2 ${
-                  rules.noMusic ? "bg-orange-500 border-orange-500" : "border-gray-400"
-                }`}
-              >
-                {rules.noMusic && <Image source={icons.checkmark} className="w-5 h-5" />}
-              </View>
-            </TouchableOpacity>
-          </View>
+              بدون اغاني
+            </Text>
+            <View
+              className={`w-6 h-6 rounded-full border-2 ${
+                rules.noMusic ? "bg-orange-500 border-orange-500" : "border-gray-400"
+              }`}
+            >
+              {rules.noMusic && <Image source={icons.checkmark} className="w-5 h-5" />}
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <CustomButton
+          title={isLoading ? "Processing..." : "Confirm Ride"}
+          onPress={handleConfirmRide}
+          disabled={isLoading}
+        />
+      </ScrollView>
+      <ReactNativeModal
+        isVisible={success}
+        onBackdropPress={() => setSuccess(false)}
+        backdropOpacity={0.7}
+        animationIn="fadeIn"
+        animationOut="fadeOut"
+      >
+        <View className="flex flex-col items-center justify-center bg-white p-7 rounded-2xl">
+          <Image source={images.check} className="w-28 h-28 mt-5" resizeMode="contain" />
+
+          <Text className="text-2xl text-center font-JakartaBold mt-5">
+            Booking placed successfully
+          </Text>
+
+          <Text className="text-md text-general-200 font-JakartaRegular text-center mt-3">
+            Thank you for your booking. Your reservation has been successfully placed. Please
+            proceed with your trip.
+          </Text>
 
           <CustomButton
-            title={isLoading ? "Processing..." : "Confirm Ride"}
-            
-            onPress={handleConfirmRide}
-            disabled={isLoading}
+            title="Back Home"
+            onPress={() => {
+              setSuccess(false);
+              router.push("/(root)/(tabs)/home");
+            }}
+            className="mt-5"
           />
-        </ScrollView>
-        <ReactNativeModal
-          isVisible={success}
-          onBackdropPress={() => setSuccess(false)}
-          backdropOpacity={0.7}
-          animationIn="fadeIn"
-          animationOut="fadeOut"
-        >
-          <View className="flex flex-col items-center justify-center bg-white p-7 rounded-2xl">
-            <Image source={images.check} className="w-28 h-28 mt-5" resizeMode="contain" />
-
-            <Text className="text-2xl text-center font-JakartaBold mt-5">
-              Booking placed successfully
-            </Text>
-
-            <Text className="text-md text-general-200 font-JakartaRegular text-center mt-3">
-              Thank you for your booking. Your reservation has been successfully placed. Please
-              proceed with your trip.
-            </Text>
-
-            <CustomButton
-              title="Back Home"
-              onPress={() => {
-                setSuccess(false);
-                router.push("/(root)/(tabs)/home");
-              }}
-              className="mt-5"
-            />
-          </View>
-        </ReactNativeModal>
-      </>
+        </View>
+      </ReactNativeModal>
     </RideLayout>
   );
 };

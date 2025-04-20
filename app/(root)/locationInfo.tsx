@@ -47,7 +47,7 @@ const Add = () => {
     });
   }, [setDestinationLocation]);
   return (
-    <RideLayout title="Location Information" snapPoints={["85%"]}>
+    <RideLayout title="Location Information" snapPoints={["40%","80% ","90%"]}>
       {/* From Location */}
       <View className="my-3">
         <Text className="text-lg font-JakartaSemiBold mb-3">From</Text>
