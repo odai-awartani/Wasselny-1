@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import InputField from "@/components/InputField";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { icons } from "@/constants";  // Import icons
-import { red } from "react-native-reanimated/lib/typescript/Colors";
+import { icons } from "@/constants";
+import { findOrCreateChat } from '@/lib/chat';
+import { useUser } from '@clerk/clerk-expo';
 
 const DriverProfile = () => {
   const { id } = useLocalSearchParams();
@@ -15,6 +16,8 @@ const DriverProfile = () => {
   const [loading, setLoading] = useState<boolean>(!!id);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [messageLoading, setMessageLoading] = useState(false);
+  const { user: currentUser } = useUser();
 
   const router = useRouter();
 
@@ -72,34 +75,102 @@ const DriverProfile = () => {
     setSelectedImage(null);
   };
 
-  const navigateToMessages = () => {
-    router.push(`/chat/${id}`);
+  const navigateToMessages = async () => {
+    if (!currentUser) {
+      console.error('Current user not logged in');
+      return;
+    }
+
+    if (!id || !user) {
+      console.error('Driver data not loaded yet');
+      return;
+    }
+
+    setMessageLoading(true);
+    try {
+      console.log('Creating chat with data:', {
+        currentUser: currentUser.id,
+        driverId: id,
+        driverName: user.name
+      });
+
+      const chatId = await findOrCreateChat(
+        {
+          id: currentUser.id,
+          fullName: currentUser.fullName || 'User',
+          firstName: currentUser.firstName || 'User',
+          lastName: currentUser.lastName || '',
+          emailAddresses: currentUser.emailAddresses || [],
+          imageUrl: currentUser.imageUrl || '',
+          unsafeMetadata: currentUser.unsafeMetadata || {},
+          createdAt: currentUser.createdAt?.toISOString() || new Date().toISOString(),
+          updatedAt: currentUser.updatedAt?.toISOString() || new Date().toISOString()
+        },
+        {
+          id: id as string,
+          fullName: user.name || '',
+          firstName: firstName || '',
+          lastName: lastName || '',
+          emailAddresses: [{ emailAddress: email || '' }],
+          imageUrl: profileImage || '',
+          unsafeMetadata: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      );
+
+      if (chatId) {
+        router.push({
+          pathname: "/(root)/chat/[id]",
+          params: { 
+            id: chatId,
+            name: user.name || 'Driver',
+            avatar: profileImage || '',
+          }
+        });
+      } else {
+        console.error('Failed to create chat - no chatId returned');
+      }
+    } catch (error) {
+      console.error('Error creating chat:', error);
+    } finally {
+      setMessageLoading(false);
+    }
   };
 
   return (
     <SafeAreaView className="flex-1 pb-[-15] mb-0 bg-gray-100">
       <ScrollView className="px-5" contentContainerStyle={{ paddingBottom: 100 }}>
-      <View className="flex-row justify-between items-center my-5">
-  <View className="flex-row items-center gap-4">
-  <TouchableOpacity onPress={() => router.back()}>
-                  <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
-                    <Image source={icons.backArrow} resizeMode="contain" className="w-6 h-6" />
-                  </View>
-                </TouchableOpacity>
+        <View className="flex-row justify-between items-center my-5">
+          <View className="flex-row items-center gap-4">
+            <TouchableOpacity onPress={() => router.back()}>
+              <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
+                <Image source={icons.backArrow} resizeMode="contain" className="w-6 h-6" />
+              </View>
+            </TouchableOpacity>
 
-    <TouchableOpacity onPress={navigateToMessages}>
-      <Image
-        source={icons.chat}
-        style={{ width: 45, height: 45 }}
-        className="rounded-full p-2 bg-orange-500"
-      />
-    </TouchableOpacity>
-  </View>
+            <TouchableOpacity 
+              onPress={navigateToMessages}
+              disabled={messageLoading || loading}
+            >
+              <View className={`rounded-full p-2 ${messageLoading ? 'bg-gray-400' : 'bg-orange-500'}`}>
+                {messageLoading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Image
+                    source={icons.chat}
+                    style={{ width: 25, height: 25 }}
+                    className="rounded-full  bg-orange-500"
+                        />
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
 
-  <Text className="text-2xl font-CairoBold text-right">
-    {id ? "الملف الشخصي للسائق" : "الملف الشخصي"}
-  </Text>
-</View>
+          <Text className="text-2xl font-CairoBold text-right">
+            {id ? "الملف الشخصي للسائق" : "الملف الشخصي"}
+          </Text>
+        </View>
 
         <View className="flex items-center justify-center my-5">
           {loading ? (
