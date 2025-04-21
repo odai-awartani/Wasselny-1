@@ -195,3 +195,34 @@ declare interface  Ride  {
 
     
   };
+  export interface Message {
+    id: string;
+    text: string;
+    senderId: string;
+    senderName: string;
+    timestamp: {
+      toDate: () => Date;
+    };
+    sent?: boolean;
+  }
+  
+  export interface LastMessage {
+    text: string;
+    senderId: string;
+    senderName: string;
+  }
+  
+  export interface Chat {
+    id: string;
+    participants: string[];
+    lastMessage: LastMessage | null;
+    lastMessageTime: {
+      toDate: () => Date;
+    };
+    unreadCount: {
+      [userId: string]: number;
+    };
+    // Optional fields for UI
+    name?: string;
+    avatar?: string;
+  }

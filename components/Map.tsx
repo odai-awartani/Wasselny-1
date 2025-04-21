@@ -190,7 +190,7 @@ const Map = () => {
                 longitudeDelta: 0.01,
               });
             }}
-            className="absolute right-3 bottom-3 -translate-y-1/2 bg-amber-300 p-3 rounded-full shadow-md z-10"
+            className="absolute right-3 bottom-2/3 -translate-y-1/2 bg-amber-300 p-3 rounded-full shadow-md z-10"
           >
             <Image
               source={icons.target} // أيقونة الموقع

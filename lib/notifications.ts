@@ -48,7 +48,54 @@ export const setupNotifications = async (userId: string | null) => {
     return false;
   }
 };
-
+// Send chat notification to a specific user
+// Send chat notification to a specific user
+export const sendChatNotification = async (
+    recipientId: string,
+    senderName: string,
+    message: string,
+    chatId: string
+  ) => {
+    try {
+      // Get recipient's push token from Firestore
+      const userDoc = await getDoc(doc(db, 'users', recipientId));
+      if (!userDoc.exists() || !userDoc.data().pushToken) {
+        console.warn(`No push token found for user: ${recipientId}`);
+        return;
+      }
+  
+      const pushToken = userDoc.data().pushToken;
+  
+      // Send notification via Expo server
+      const notificationMessage = {
+        to: pushToken,
+        sound: 'default',
+        title: `New message from ${senderName}`,
+        body: message,
+        data: { chatId, type: 'chat' },
+        priority: 'high',
+        channelId: 'chat-messages',
+      };
+  
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationMessage),
+      });
+  
+      if (!response.ok) {
+        console.warn('Failed to send chat notification:', await response.text());
+        return;
+      }
+  
+      console.log(`Chat notification sent to user: ${recipientId}`);
+    } catch (error) {
+      console.error('Error sending chat notification:', error);
+    }
+  };
 // جدولة إشعار محلي
 export const scheduleNotification = async (
   title: string,

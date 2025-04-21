@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Image, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
 import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { icons, images } from '@/constants';
-import { MapPin } from 'lucide-react-native';
 
 // Interfaces
 interface DriverData {
@@ -55,7 +54,7 @@ const SuggestedRides = () => {
 
       // Fetch pending rides
       const ridesRef = collection(db, 'rides');
-      const q = query(ridesRef, where('status', '==', 'pending'), limit(10));
+      const q = query(ridesRef,   where('status', 'in', ['pending','in-progress']), limit(10));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
@@ -134,61 +133,69 @@ const SuggestedRides = () => {
     fetchRides();
   }, [fetchRides]);
 
-  
   const renderRideCard = useCallback(
     ({ item }: { item: Ride }) => {
-      let rideDate;
-      try {
-        rideDate = item.created_at.toDate();
-      } catch (err) {
-        console.warn(`Invalid date for ride ${item.id}:`, item.created_at);
-        rideDate = new Date();
-      }
-
-      const driverName = item.driver?.name || DEFAULT_DRIVER_NAME;
-      const driverImage = item.driver?.profile_image_url || 'https://via.placeholder.com/150';
-      const rating = 4.3; // مؤقتًا
-      const dateTime = `${item.ride_datetime}`;
-      const from = item.origin_address;
-      const to = item.destination_address;
-
       return (
         <TouchableOpacity
           onPress={() => router.push(`/ride-details/${item.id}`)}
-          className="flex-row bg-slate-100 rounded-xl p-3 mb-3 items-start shadow-sm"
+          className="bg-white p-4 rounded-2xl mb-3 mx-2"
         >
-          <View className='flex flex-row justify-center items-start h-full w-15'>
-
-          <Image source={{ uri: driverImage }} className="w-12 h-12 rounded-full mr-3" />
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold">Ride #{item.id}</Text>
+            <View className="bg-green-50 px-3 py-1 rounded-full">
+              <Text className="text-green-700 text-sm">{item.status}</Text>
+            </View>
           </View>
-          <View className="flex-1">
-            {/* الاسم والتاريخ */}
-            <View className="flex-row justify-between mb-1">
-              <Text className="font-CairoBold text-base text-gray-900">{driverName}</Text>
-              <Text className="text-xs text-gray-500 pt-1.5">{dateTime}</Text>
-            </View>
 
-            {/* المواقع */}
-            <View className='flex-row justify-between'>
-            <View className="mt-1 w-50%">
-              <View className="flex-row items-center mb-1.5">
-                
-                <Image source={icons.point} className="w-5 h-5 ml-1.5" resizeMode='contain' />
-                <Text className='ml-1.5 text-sm text-gray-700 font-CairoRegular'>: من</Text>
-                <Text className="ml-1.5 text-sm text-gray-700 font-CairoRegular">{from}</Text>
-              </View>
-              <View className="flex-row items-center">
-              <Image source={icons.to} className="w-5 h-5 ml-1.5" resizeMode='contain' />
-              <Text className='ml-1.5 text-sm text-gray-700 font-CairoRegular'>: الى</Text>
-              <Text className="ml-1.5 text-sm text-gray-700 font-CairoRegular">{to}</Text>
+          <View className="mb-3">
+            <View className="flex-row items-center mb-2">
+              <Image source={icons.location} className="w-5 h-5 mr-2" />
+              <Text className="text-gray-500">From</Text>
+            </View>
+            <Text className="text-black text-base ml-7">{item.origin_address}</Text>
+          </View>
+
+          <View className="mb-4">
+            <View className="flex-row items-center mb-2">
+              <Image source={icons.point} className="w-5 h-5 mr-2" />
+              <Text className="text-gray-500">To</Text>
+            </View>
+            <Text className="text-black text-base ml-7">{item.destination_address}</Text>
+          </View>
+
+          <View className="flex-row justify-between mb-5">
+            <View>
+              <Text className="text-gray-500 text-sm mb-1">Price</Text>
+              <Text className="text-black font-bold">$18.75</Text>
+            </View>
+            <View>
+              <Text className="text-gray-500 text-sm mb-1">Distance</Text>
+              <Text className="text-black">3.8 km</Text>
+            </View>
+            <View>
+              <Text className="text-gray-500 text-sm mb-1">Duration</Text>
+              <Text className="text-black">12 min</Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <Image 
+                source={{ uri: item.driver?.profile_image_url }} 
+                className="w-12 h-12 rounded-full mr-3"
+              />
+              <View>
+                <Text className="text-black text-base font-semibold">
+                  {item.driver?.name}
+                </Text>
+                <View className="flex-row items-center">
+                  <Image source={icons.star} className="w-4 h-4 mr-1"/>
+                  <Text className="mr-2">4.6</Text>
+                  <Text className="text-gray-500">• 98 rides</Text>
+                </View>
               </View>
             </View>
-            <View className="flex-column justify-between mt-2 w-50%">
-              <Text className="text-amber-500 font-semibold text-right ">★ {rating}</Text>
-              <Text className="text-xs text-gray-600 font-CairoRegular">المقاعد المتاحة: {item.available_seats}</Text>
-            </View>
-              </View>
-            {/* التقييم والمقاعد */}
+            <Text className="text-gray-500">{item.driver?.car_type}</Text>
           </View>
         </TouchableOpacity>
       );
