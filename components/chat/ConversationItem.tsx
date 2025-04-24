@@ -13,7 +13,7 @@ export default function ConversationItem({ chat, onPress }: Props) {
 
   return (
     <TouchableOpacity 
-      className="flex-row items-center py-3 border-b border-gray-100"
+      className="flex-row items-center py-3 border-b border-gray-100 w-[90%] mx-auto"
       onPress={() => onPress(chat)}
     >
       {/* Avatar with unread indicator */}

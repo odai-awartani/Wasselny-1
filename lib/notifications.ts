@@ -33,18 +33,34 @@ const savePushTokenForUser = async (userId: string, token: string) => {
 // Setup notifications and request permissions
 export const setupNotifications = async (userId: string) => {
   try {
+    console.log('Setting up notifications for user:', userId);
+    
     // Request permissions
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
+      console.log('Requesting notification permissions...');
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
+      console.warn('Failed to get push token for push notification!');
       return;
+    }
+
+    // Configure Android notification channel
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('ride-requests', {
+        name: 'Ride Requests',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+        sound: 'default',
+        enableVibrate: true,
+        enableLights: true,
+      });
     }
 
     // Get push token with the correct project ID
@@ -52,9 +68,12 @@ export const setupNotifications = async (userId: string) => {
       projectId: '20c6abe0-3a09-4d59-8ae3-13afa64ee315',
     })).data;
 
+    console.log('Push token received:', token);
+
     // Save token to Firestore
-    if (userId) {
+    if (userId && token) {
       await savePushTokenForUser(userId, token);
+      console.log('Push token saved for user:', userId);
     }
 
     return token;

@@ -56,7 +56,7 @@ const SuggestedRides = ({ refreshKey }: { refreshKey: number }) => {
       const ridesRef = collection(db, 'rides');
       const q = query(ridesRef, 
         where('status', "==", "pending"),
-        limit(10)
+        limit(20)
       );
       const querySnapshot = await getDocs(q);
 

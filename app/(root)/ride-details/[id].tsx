@@ -158,6 +158,16 @@ const RideDetails = () => {
         try {
           const notificationRef = doc(db, 'notifications', notificationId);
           await updateDoc(notificationRef, { read: true });
+          
+          // Scroll to pending requests section
+          if (scrollViewRef.current) {
+            setTimeout(() => {
+              scrollViewRef.current?.scrollTo({
+                y: 1000, // Adjust this value based on your layout
+                animated: true
+              });
+            }, 500);
+          }
         } catch (error) {
           console.error('Error marking notification as read:', error);
         }
@@ -293,6 +303,16 @@ const RideDetails = () => {
           requests.push({ id: doc.id, ...doc.data() } as RideRequest);
         });
         setPendingRequests(requests);
+        
+        // If we have a notification and new requests, scroll to them
+        if (notificationId && requests.length > 0 && scrollViewRef.current) {
+          setTimeout(() => {
+            scrollViewRef.current?.scrollTo({
+              y: 1000, // Adjust this value based on your layout
+              animated: true
+            });
+          }, 500);
+        }
       },
       (error) => {
         console.error('Error fetching ride requests:', error);
@@ -300,7 +320,7 @@ const RideDetails = () => {
     );
 
     return () => unsubscribe();
-  }, [ride?.id, isDriver]);
+  }, [ride?.id, isDriver, notificationId]);
 
   // Fetch all passengers for the ride
   useEffect(() => {

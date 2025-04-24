@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
@@ -48,11 +49,13 @@ export default function ConversationScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [chatData, setChatData] = useState<Chat | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Listen to real-time message updates
   useEffect(() => {
     if (!chatId || !user?.id) return;
 
+    setLoading(true);
     // Get messages for this chat
     const messagesRef = collection(db, 'chats', chatId, 'messages');
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
@@ -70,6 +73,7 @@ export default function ConversationScreen() {
         } satisfies Message;
       });
       setMessages(messageList);
+      setLoading(false);
       
       // Mark messages as read
       markMessagesAsRead();
@@ -172,14 +176,17 @@ export default function ConversationScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-    >
+    className="flex-1 bg-white"
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+  >
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 pt-10 pb-3 border-b border-gray-200 bg-white">
+      <View className="flex-row items-center justify-between px-4 pt-10 pb-3 border-b border-gray-200 ">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            className="p-2"
+          >
             <Ionicons name="arrow-back" size={24} color="black" />
           </TouchableOpacity>
           {avatar ? (
@@ -188,12 +195,13 @@ export default function ConversationScreen() {
               className="w-10 h-10 rounded-full mx-3"
             />
           ) : (
-            <View className="w-10 h-10 rounded-full bg-purple-200 items-center justify-center mx-3">
-              <Text className="text-lg font-semibold text-orange-800">{name[0]}</Text>
+            <View className="w-10 h-10 rounded-full bg-primary items-center justify-center mx-3">
+              <Text className="text-lg font-semibold text-white">{name[0]}</Text>
             </View>
           )}
           <View>
             <Text className="text-base font-semibold text-black">{name}</Text>
+            <Text className="text-xs text-gray-500">Active now</Text>
           </View>
         </View>
       </View>
@@ -205,39 +213,57 @@ export default function ConversationScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 10 }}
       >
-        {messages.map((message) => (
-          <View
-            key={message.id}
-            className={`mb-3 ${message.sent ? 'items-end' : 'items-start'}`}
-          >
+        {loading ? (
+          <View className="flex-1 justify-center items-center py-10">
+            <ActivityIndicator size="large" color="#4F46E5" />
+          </View>
+        ) : messages.length === 0 ? (
+          <View className="flex-1 justify-center items-center py-10">
+            <Text className="text-gray-500 text-center">No messages yet. Start the conversation!</Text>
+          </View>
+        ) : (
+          messages.map((message) => (
             <View
-              className={`px-4 py-2 rounded-2xl max-w-[80%] ${
-                message.sent ? 'bg-orange-600 rounded-br-none' : 'bg-gray-200 rounded-bl-none'
-              }`}
+              key={message.id}
+              className={`mb-3  ${message.sent ? 'items-end' : 'items-start'}`}
             >
-              <Text className={`${message.sent ? 'text-white' : 'text-black'} text-sm`}>
-                {message.text}
+              <View
+                className={`px-4 py-2 rounded-2xl max-w-[80%] ${
+                  message.sent ? 'bg-primary-200 rounded-br-none' : 'bg-gray-100 rounded-bl-none'
+                }`}
+              >
+                <Text className={`${message.sent ? 'text-black' : 'text-black'} text-sm`}>
+                  {message.text}
+                </Text>
+              </View>
+              <Text className="text-xs text-gray-400 mt-1">
+                {message.timestamp?.toDate().toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit'
+                })}
               </Text>
             </View>
-            <Text className="text-xs text-gray-400 mt-1">
-              {message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-          </View>
-        ))}
+          ))
+        )}
       </ScrollView>
 
       {/* Input */}
-      <View className="p-2 bg-white border-t border-gray-200">
-        <View className="flex-row items-center bg-gray-100 rounded-full px-3 py-2">
+      <View className="p-4 bg-white border-t border-gray-200">
+        <View className="flex-row items-center bg-gray-50 rounded-full px-4 py-2">
           <TextInput
             value={newMessage}
             onChangeText={setNewMessage}
             placeholder="Type a message..."
+            placeholderTextColor="#9CA3AF"
             multiline
-            className="flex-1 text-sm px-2 max-h-20"
+            className="flex-1 text-sm text-gray-700 px-2  max-h-20"
           />
-          <TouchableOpacity className="ml-2" onPress={handleSend}>
-            <Ionicons name="send" size={22} color="#7c3aed" />
+          <TouchableOpacity 
+            className="ml-2 bg-primary p-2 rounded-full"
+            onPress={handleSend}
+            disabled={!newMessage.trim()}
+          >
+            <Ionicons name="send" size={25} color="orange" />
           </TouchableOpacity>
         </View>
       </View>
