@@ -1,4 +1,3 @@
-
 import { ClerkLoaded, ClerkProvider } from "@clerk/clerk-expo";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -8,7 +7,16 @@ import "react-native-reanimated";
 import { LanguageProvider } from '@/context/LanguageContext';
 import { tokenCache } from "@/lib/auth";
 import { LogBox } from "react-native";
-SplashScreen.preventAutoHideAsync();
+import * as Notifications from 'expo-notifications';
+
+// Configure how notifications should be handled when the app is in foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -19,11 +27,6 @@ if (!publishableKey) {
 }
 LogBox.ignoreLogs(["Clerk:"]);
 export default function RootLayout() {
-
- 
-
-
-
 
   const [loaded] = useFonts({
     "Jakarta-Bold": require("../assets/fonts/PlusJakartaSans-Bold.ttf"),
