@@ -267,6 +267,21 @@ export const sendTestNotification = async () => {
   try {
     console.log('Starting notification setup...');
     
+    // Check notification permissions
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    console.log('Current notification permission status:', existingStatus);
+    
+    if (existingStatus !== 'granted') {
+      console.log('Requesting notification permissions...');
+      const { status } = await Notifications.requestPermissionsAsync();
+      console.log('New permission status:', status);
+      
+      if (status !== 'granted') {
+        console.warn('Notification permissions not granted');
+        return false;
+      }
+    }
+    
     // Get the current user's push token
     const token = await registerForPushNotificationsAsync();
     console.log('Push token received:', token);
