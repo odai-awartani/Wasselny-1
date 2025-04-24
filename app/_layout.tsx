@@ -1,4 +1,5 @@
-import { ClerkLoaded, ClerkProvider, useAuth } from "@clerk/clerk-expo";
+
+import { ClerkLoaded, ClerkProvider } from "@clerk/clerk-expo";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -7,17 +8,7 @@ import "react-native-reanimated";
 import { LanguageProvider } from '@/context/LanguageContext';
 import { tokenCache } from "@/lib/auth";
 import { LogBox } from "react-native";
-import * as Notifications from 'expo-notifications';
-import { setupNotifications } from '@/lib/notifications';
-
-// Configure how notifications should be handled when the app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+SplashScreen.preventAutoHideAsync();
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -26,30 +17,14 @@ if (!publishableKey) {
     "Missing Publishable Key. Please set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in your .env",
   );
 }
-
 LogBox.ignoreLogs(["Clerk:"]);
-
-function AppContent() {
-  const { userId } = useAuth();
-
-  useEffect(() => {
-    if (userId) {
-      console.log('Setting up notifications for user:', userId);
-      setupNotifications(userId);
-    }
-  }, [userId]);
-
-  return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(root)" options={{ headerShown: false }} />
-      <Stack.Screen name="+not-found" />
-    </Stack>
-  );
-}
-
 export default function RootLayout() {
+
+ 
+
+
+
+
   const [loaded] = useFonts({
     "Jakarta-Bold": require("../assets/fonts/PlusJakartaSans-Bold.ttf"),
     "Jakarta-ExtraBold": require("../assets/fonts/PlusJakartaSans-ExtraBold.ttf"),
@@ -81,12 +56,21 @@ export default function RootLayout() {
   }
 
   return (
-    <LanguageProvider>
-      <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
-        <ClerkLoaded>
-          <AppContent />
-        </ClerkLoaded>
-      </ClerkProvider>
-    </LanguageProvider>
+  <LanguageProvider>
+  <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
+    <ClerkLoaded>
+      
+       
+        <Stack>
+           <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(root)" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        
+     
+  </ClerkLoaded> 
+</ClerkProvider>
+</LanguageProvider>
   );
 }
