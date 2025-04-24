@@ -70,7 +70,7 @@ const DEFAULT_CAR_IMAGE = 'https://via.placeholder.com/120x80';
 const RideDetails = () => {
   const [pendingRequests, setPendingRequests] = useState<RideRequest[]>([]);
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { id, notificationId } = useLocalSearchParams();
   const [ride, setRide] = useState<Ride | null>(null);
   const [rideRequest, setRideRequest] = useState<RideRequest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,7 +79,6 @@ const RideDetails = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
-  const [notificationId, setNotificationId] = useState<string | null>(null);
   const { userId } = useAuth();
   const isDriver = ride?.driver_id === userId;
   const isPassenger = ride?.driver_id === userId || (ride?.available_seats ?? 0) <= 0;
@@ -126,7 +125,6 @@ const RideDetails = () => {
             reminderTime,
             ride.id
           ).then((id) => {
-            setNotificationId(id);
             if (id) {
               console.log('Notification scheduled with ID:', id);
             } else {
@@ -142,11 +140,28 @@ const RideDetails = () => {
     }
   
     return () => {
-      if (notificationId) {
+      if (notificationId && typeof notificationId === 'string') {
         cancelNotification(notificationId);
       }
     };
   }, [ride]);
+
+  // Handle notification when page loads
+  useEffect(() => {
+    if (notificationId && typeof notificationId === 'string') {
+      // Mark notification as read
+      const markNotificationAsRead = async () => {
+        try {
+          const notificationRef = doc(db, 'notifications', notificationId);
+          await updateDoc(notificationRef, { read: true });
+        } catch (error) {
+          console.error('Error marking notification as read:', error);
+        }
+      };
+      markNotificationAsRead();
+    }
+  }, [notificationId]);
+
   // جلب تفاصيل الرحلة
   const fetchRideDetails = useCallback(async () => {
     try {
@@ -299,6 +314,18 @@ const RideDetails = () => {
         ride?.id || ''
       );
 
+      // Update notification status
+      if (notificationId && typeof notificationId === 'string') {
+        const updateData = {
+          read: true,
+          data: {
+            status: 'accepted',
+            rideId: ride?.id || ''
+          }
+        };
+        await updateDoc(doc(db, 'notifications', notificationId), updateData);
+      }
+
       Alert.alert('✅ تم قبول طلب الحجز بنجاح');
     } catch (error) {
       console.error('Error accepting request:', error);
@@ -319,8 +346,20 @@ const RideDetails = () => {
         userId,
         'تم رفض طلب الحجز',
         `عذراً، تم رفض طلب حجزك للرحلة من ${ride?.origin_address} إلى ${ride?.destination_address}`,
-        ride?.id
+        ride?.id || ''
       );
+
+      // Update notification status
+      if (notificationId && typeof notificationId === 'string') {
+        const updateData = {
+          read: true,
+          data: {
+            status: 'rejected',
+            rideId: ride?.id || ''
+          }
+        };
+        await updateDoc(doc(db, 'notifications', notificationId), updateData);
+      }
 
       Alert.alert('✅ تم رفض طلب الحجز');
     } catch (error) {
@@ -355,7 +394,8 @@ const RideDetails = () => {
         ride.driver_id,
         userName,
         ride.origin_address,
-        ride.destination_address
+        ride.destination_address,
+        ride.id
       );
 
       Alert.alert('✅ تم إرسال طلب الحجز بنجاح');

@@ -210,12 +210,22 @@ export const handleNotificationResponse = (
   response: Notifications.NotificationResponse
 ) => {
   const { notification } = response;
-  const rideId = notification.request.content.data?.rideId;
+  const data = notification.request.content.data;
+  const rideId = data?.rideId;
+  const type = data?.type;
+  const notificationId = data?.notificationId;
 
-  console.log('Notification clicked:', { rideId });
+  console.log('Notification clicked:', { rideId, type, notificationId });
 
-  // يمكنك هنا توجيه المستخدم إلى شاشة تفاصيل الرحلة
-  if (rideId) {
+  if (type === 'ride_request' && notificationId) {
+    // Navigate to ride details with the notification ID
+    const { router } = require('expo-router');
+    router.push({
+      pathname: `/ride-details/${rideId}`,
+      params: { notificationId }
+    });
+  } else if (rideId) {
+    // Navigate to ride details for other notifications
     const { router } = require('expo-router');
     router.push(`/ride-details/${rideId}`);
   }
@@ -347,7 +357,8 @@ export const sendRideRequestNotification = async (
   driverId: string,
   passengerName: string,
   pickupLocation: string,
-  dropoffLocation: string
+  dropoffLocation: string,
+  rideId: string
 ) => {
   try {
     // Get driver's push token from Firestore
@@ -369,6 +380,10 @@ export const sendRideRequestNotification = async (
       read: false,
       userId: driverId,
       createdAt: new Date(),
+      data: {
+        rideId,
+        notificationId: notificationRef.id
+      }
     };
 
     // Save notification to Firestore
@@ -382,7 +397,8 @@ export const sendRideRequestNotification = async (
       body: `${passengerName} requested a ride from ${pickupLocation} to ${dropoffLocation}`,
       data: { 
         type: 'ride_request',
-        notificationId: notificationRef.id
+        notificationId: notificationRef.id,
+        rideId
       },
       priority: 'high',
       channelId: 'ride-requests',

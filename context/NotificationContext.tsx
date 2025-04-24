@@ -14,6 +14,7 @@ type Notification = {
   data?: {
     rideId?: string;
     notificationId?: string;
+    status?: string;
   };
 };
 
@@ -81,7 +82,29 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       notifications.forEach(notification => {
         if (!notification.read) {
           const notificationRef = doc(db, 'notifications', notification.id);
-          batch.update(notificationRef, { read: true });
+          
+          // For ride requests, update the status to 'rejected' if not already handled
+          if (notification.type === 'ride_request' && !notification.data?.status) {
+            batch.update(notificationRef, {
+              read: true,
+              data: {
+                ...notification.data,
+                status: 'rejected'
+              }
+            });
+
+            // Also update the ride request status
+            if (notification.data?.rideId) {
+              const rideRequestRef = doc(db, 'ride_requests', notification.data.rideId);
+              batch.update(rideRequestRef, {
+                status: 'rejected',
+                updated_at: new Date(),
+              });
+            }
+          } else {
+            // For other notifications, just mark as read
+            batch.update(notificationRef, { read: true });
+          }
         }
       });
       await batch.commit();

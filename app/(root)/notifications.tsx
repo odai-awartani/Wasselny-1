@@ -1,9 +1,13 @@
 import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { icons } from '@/constants';
 import { useNotifications } from '@/context/NotificationContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { sendRideStatusNotification } from '@/lib/notifications';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const formatTimeAgo = (date: Date) => {
   const now = new Date();
@@ -17,46 +21,209 @@ const formatTimeAgo = (date: Date) => {
 
 type NotificationItemProps = {
   id: string;
+  type: 'ride_request' | 'ride_complete' | 'ride_status' | 'payment';
   title: string;
   message: string;
-  type: 'ride_request' | 'ride_complete' | 'payment' | 'ride_status';
-  read: boolean;
   createdAt: Date;
+  read: boolean;
+  userId: string;
   data?: {
     rideId?: string;
-    notificationId?: string;
+    status?: string;
   };
 };
 
-const NotificationItem = ({ item, onPress }: { item: NotificationItemProps; onPress: () => void }) => (
-  <TouchableOpacity 
-    className={`p-4 border rounded-lg border-gray-200 mb-2 w-[95%] mx-auto ${!item.read ? 'bg-gray-100' : 'bg-white'}`}
-    onPress={onPress}
-  >
-    <View className="flex-row items-start">
-      <View className="w-12 h-12 rounded-xl bg-red-50 items-center justify-center mr-3">
-        <Image 
-          source={
-            item.type === 'ride_request' ? icons.map :
-            item.type === 'ride_complete' ? icons.checkmark :
-            item.type === 'ride_status' ? icons.ring1 :
-            icons.dollar
-          }
-          className="w-5 h-5"
-          tintColor="#EA580C"
-        />
+const NotificationItem = ({ item, onPress }: { item: NotificationItemProps; onPress: () => void }) => {
+  const handleAccept = async () => {
+    try {
+      console.log('Accepting ride request:', item);
+      
+      // Find the ride request document using driver ID
+      const rideRequestsRef = collection(db, 'ride_requests');
+      const q = query(
+        rideRequestsRef,
+        where('driver_id', '==', item.userId),
+        where('status', '==', 'waiting')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        console.error('No waiting ride request found for driver:', item.userId);
+        return;
+      }
+
+      // Get the most recent ride request
+      const rideRequestDoc = querySnapshot.docs.reduce((latest, current) => {
+        const latestTime = latest.data().created_at?.toDate() || new Date(0);
+        const currentTime = current.data().created_at?.toDate() || new Date(0);
+        return currentTime > latestTime ? current : latest;
+      });
+
+      const rideId = rideRequestDoc.data().ride_id;
+      const passengerId = rideRequestDoc.data().user_id;
+      
+      if (!rideId) {
+        console.error('No ride ID found in ride request');
+        return;
+      }
+      
+      // Update ride request status
+      console.log('Updating ride request:', rideRequestDoc.id);
+      await updateDoc(doc(db, 'ride_requests', rideRequestDoc.id), {
+        status: 'accepted',
+        updated_at: new Date(),
+      });
+
+      // Send notification to passenger
+      console.log('Sending notification to passenger:', passengerId);
+      await sendRideStatusNotification(
+        passengerId,
+        'تم قبول طلب الحجز!',
+        'تم قبول طلب حجزك للرحلة',
+        rideId
+      );
+
+      // Update notification data
+      const notificationRef = doc(db, 'notifications', item.id);
+      console.log('Updating notification:', item.id);
+      const updateData = {
+        read: true,
+        data: {
+          status: 'accepted',
+          rideId: rideId
+        }
+      };
+      await updateDoc(notificationRef, updateData);
+
+      Alert.alert('✅ تم قبول طلب الحجز بنجاح');
+    } catch (error) {
+      console.error('Error accepting request:', error);
+      Alert.alert('حدث خطأ أثناء قبول الطلب.');
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      console.log('Rejecting ride request:', item);
+      
+      // Find the ride request document using driver ID
+      const rideRequestsRef = collection(db, 'ride_requests');
+      const q = query(
+        rideRequestsRef,
+        where('driver_id', '==', item.userId),
+        where('status', '==', 'waiting')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        console.error('No waiting ride request found for driver:', item.userId);
+        return;
+      }
+
+      // Get the most recent ride request
+      const rideRequestDoc = querySnapshot.docs.reduce((latest, current) => {
+        const latestTime = latest.data().created_at?.toDate() || new Date(0);
+        const currentTime = current.data().created_at?.toDate() || new Date(0);
+        return currentTime > latestTime ? current : latest;
+      });
+
+      const rideId = rideRequestDoc.data().ride_id;
+      const passengerId = rideRequestDoc.data().user_id;
+      
+      if (!rideId) {
+        console.error('No ride ID found in ride request');
+        return;
+      }
+      
+      // Update ride request status
+      console.log('Updating ride request:', rideRequestDoc.id);
+      await updateDoc(doc(db, 'ride_requests', rideRequestDoc.id), {
+        status: 'rejected',
+        updated_at: new Date(),
+      });
+
+      // Send notification to passenger
+      console.log('Sending notification to passenger:', passengerId);
+      await sendRideStatusNotification(
+        passengerId,
+        'تم رفض طلب الحجز',
+        'عذراً، تم رفض طلب حجزك للرحلة',
+        rideId
+      );
+
+      // Update notification data
+      const notificationRef = doc(db, 'notifications', item.id);
+      console.log('Updating notification:', item.id);
+      const updateData = {
+        read: true,
+        data: {
+          status: 'rejected',
+          rideId: rideId
+        }
+      };
+      await updateDoc(notificationRef, updateData);
+
+      Alert.alert('✅ تم رفض طلب الحجز');
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+      Alert.alert('حدث خطأ أثناء رفض الطلب.');
+    }
+  };
+
+  return (
+    <TouchableOpacity 
+      className={`p-4 border rounded-lg border-gray-200 mb-2 w-[95%] mx-auto ${!item.read ? 'bg-gray-100' : 'bg-white'}`}
+      onPress={onPress}
+    >
+      <View className="flex-row items-start">
+        <View className="w-12 h-12 rounded-xl bg-red-50 items-center justify-center mr-3">
+          <Image 
+            source={
+              item.type === 'ride_request' ? icons.map :
+              item.type === 'ride_complete' ? icons.checkmark :
+              item.type === 'ride_status' ? icons.ring1 :
+              icons.dollar
+            }
+            className="w-5 h-5"
+            tintColor="#EA580C"
+          />
+        </View>
+        <View className="flex-1">
+          <Text className="text-base font-JakartaBold text-gray-900">{item.title}</Text>
+          <Text className="text-[15px] text-gray-600 mt-1 leading-relaxed">{item.message}</Text>
+          <Text className="text-xs text-gray-400 mt-2">{formatTimeAgo(item.createdAt)}</Text>
+          
+          {/* Accept/Reject Buttons for Ride Requests */}
+          {item.type === 'ride_request' && !item.data?.status && (
+            <View className="flex-row justify-end mt-4 space-x-2">
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleAccept();
+                }}
+                className="bg-green-500 px-4 py-2 rounded-lg"
+              >
+                <Text className="text-white font-JakartaMedium">قبول</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleReject();
+                }}
+                className="bg-red-500 px-4 py-2 rounded-lg"
+              >
+                <Text className="text-white font-JakartaMedium">رفض</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+        {!item.read && (
+          <View className="w-2 h-2 rounded-full bg-orange-500" />
+        )}
       </View>
-      <View className="flex-1">
-        <Text className="text-base font-JakartaBold text-gray-900">{item.title}</Text>
-        <Text className="text-[15px] text-gray-600 mt-1 leading-relaxed">{item.message}</Text>
-        <Text className="text-xs text-gray-400 mt-2">{formatTimeAgo(item.createdAt)}</Text>
-      </View>
-      {!item.read && (
-        <View className="w-2 h-2 rounded-full bg-orange-500" />
-      )}
-    </View>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  );
+};
 
 export default function Notifications() {
   const router = useRouter();
