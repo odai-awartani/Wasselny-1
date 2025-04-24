@@ -1,102 +1,97 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { collection, query, where, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@clerk/clerk-expo';
 
-type NotificationType = {
+type Notification = {
   id: string;
   title: string;
   message: string;
-  type: 'ride_request' | 'ride_complete' | 'payment';
+  type: 'ride_request' | 'ride_complete' | 'payment' | 'ride_status';
   read: boolean;
   createdAt: Date;
+  userId: string;
+  data?: {
+    rideId?: string;
+    notificationId?: string;
+  };
 };
 
 type NotificationContextType = {
-  notifications: NotificationType[];
-  addNotification: (notification: Omit<NotificationType, 'id' | 'read' | 'createdAt'>) => void;
-  markAsRead: (id: string) => void;
-  markAllAsRead: () => void;
+  notifications: Notification[];
+  markAsRead: (notificationId: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  unreadCount: number;
 };
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const NotificationContext = createContext<NotificationContextType>({
+  notifications: [],
+  markAsRead: async () => {},
+  markAllAsRead: async () => {},
+  unreadCount: 0,
+});
 
-export const useNotifications = () => {
-  const context = useContext(NotificationContext);
-  if (context === undefined) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
-  }
-  return context;
-};
-
-const FAKE_NOTIFICATIONS = [
-  {
-    id: '1',
-    title: 'New Ride Request',
-    message: 'Ahmed has requested a ride to Cairo University',
-    type: 'ride_request',
-    read: false,
-    createdAt: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-  },
-  {
-    id: '2',
-    title: 'Ride Completed',
-    message: 'Your ride with Sarah has been completed successfully',
-    type: 'ride_complete',
-    read: false,
-    createdAt: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago
-  },
-  {
-    id: '3',
-    title: 'Payment Received',
-    message: 'You received a payment of 50 EGP for your last ride',
-    type: 'payment',
-    read: true,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-  },
-  {
-    id: '4',
-    title: 'Special Offer',
-    message: 'Complete 5 rides today and get a 20% bonus!',
-    type: 'payment',
-    read: true,
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-  }
-];
+export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
-  const [notifications, setNotifications] = useState<NotificationType[]>(FAKE_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const { userId } = useAuth();
 
-  const addNotification = useCallback((notification: Omit<NotificationType, 'id' | 'read' | 'createdAt'>) => {
-    const newNotification: NotificationType = {
-      ...notification,
-      id: Math.random().toString(36).substr(2, 9),
-      read: false,
-      createdAt: new Date(),
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-  }, []);
+  useEffect(() => {
+    if (!userId) return;
 
-  const markAsRead = useCallback((id: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id ? { ...notification, read: true } : notification
-      )
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(
+      notificationsRef,
+      where('userId', '==', userId)
     );
-  }, []);
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
-    );
-  }, []);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notificationsList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt.toDate(),
+      })) as Notification[];
+      
+      // Sort notifications by createdAt in descending order
+      const sortedNotifications = notificationsList.sort((a, b) => 
+        b.createdAt.getTime() - a.createdAt.getTime()
+      );
+      
+      setNotifications(sortedNotifications);
+      setUnreadCount(sortedNotifications.filter(n => !n.read).length);
+    });
+
+    return () => unsubscribe();
+  }, [userId]);
+
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const notificationRef = doc(db, 'notifications', notificationId);
+      await updateDoc(notificationRef, { read: true });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach(notification => {
+        if (!notification.read) {
+          const notificationRef = doc(db, 'notifications', notification.id);
+          batch.update(notificationRef, { read: true });
+        }
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
 
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-      }}
-    >
+    <NotificationContext.Provider value={{ notifications, markAsRead, markAllAsRead, unreadCount }}>
       {children}
     </NotificationContext.Provider>
   );

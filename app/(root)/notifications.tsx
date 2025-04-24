@@ -1,14 +1,13 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { icons } from '@/constants';
 import { useNotifications } from '@/context/NotificationContext';
 
-const formatTimeAgo = (date: Date | string) => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+const formatTimeAgo = (date: Date) => {
   const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
   if (diffInSeconds < 60) return 'just now';
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`;
@@ -20,14 +19,18 @@ type NotificationItemProps = {
   id: string;
   title: string;
   message: string;
-  type: 'ride_request' | 'ride_complete' | 'payment';
+  type: 'ride_request' | 'ride_complete' | 'payment' | 'ride_status';
   read: boolean;
   createdAt: Date;
+  data?: {
+    rideId?: string;
+    notificationId?: string;
+  };
 };
 
 const NotificationItem = ({ item, onPress }: { item: NotificationItemProps; onPress: () => void }) => (
   <TouchableOpacity 
-    className={`p-4 border rounded-lg border-gray-200 mb-2 w-[95%] mx-auto  ${!item.read ? 'bg-gray-100' : 'bg-white'}`}
+    className={`p-4 border rounded-lg border-gray-200 mb-2 w-[95%] mx-auto ${!item.read ? 'bg-gray-100' : 'bg-white'}`}
     onPress={onPress}
   >
     <View className="flex-row items-start">
@@ -36,6 +39,7 @@ const NotificationItem = ({ item, onPress }: { item: NotificationItemProps; onPr
           source={
             item.type === 'ride_request' ? icons.map :
             item.type === 'ride_complete' ? icons.checkmark :
+            item.type === 'ride_status' ? icons.ring1 :
             icons.dollar
           }
           className="w-5 h-5"
@@ -46,7 +50,7 @@ const NotificationItem = ({ item, onPress }: { item: NotificationItemProps; onPr
         <Text className="text-base font-JakartaBold text-gray-900">{item.title}</Text>
         <Text className="text-[15px] text-gray-600 mt-1 leading-relaxed">{item.message}</Text>
         <Text className="text-xs text-gray-400 mt-2">{formatTimeAgo(item.createdAt)}</Text>
-      </View> 
+      </View>
       {!item.read && (
         <View className="w-2 h-2 rounded-full bg-orange-500" />
       )}
@@ -56,20 +60,36 @@ const NotificationItem = ({ item, onPress }: { item: NotificationItemProps; onPr
 
 export default function Notifications() {
   const router = useRouter();
-  const { notifications, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
+
+  const handleNotificationPress = async (notification: NotificationItemProps) => {
+    await markAsRead(notification.id);
+    
+    // Navigate to ride details if there's a rideId
+    if (notification.data?.rideId) {
+      router.push(`/ride-details/${notification.data.rideId}`);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 w-full bg-white">
       {/* Header */}
-      <View className="px-4 pt-4 flex-row  justify-between items-center pb-3 border-b border-gray-100">
-        <View className="flex-row w-full justify-between  items-center">
+      <View className="px-4 pt-4 flex-row justify-between items-center pb-3 border-b border-gray-100">
+        <View className="flex-row w-full justify-between items-center">
           <TouchableOpacity 
             onPress={() => router.back()}
             className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
           >
             <Image source={icons.backArrow} className="w-5 h-5" />
           </TouchableOpacity>
-          <Text className="text-2xl font-JakartaBold text-gray-900">Notifications</Text>
+          <View className="flex-row items-center">
+            <Text className="text-2xl font-JakartaBold text-gray-900">Notifications</Text>
+            {unreadCount > 0 && (
+              <View className="ml-2 bg-orange-500 rounded-full w-6 h-6 items-center justify-center">
+                <Text className="text-white text-xs font-JakartaBold">{unreadCount}</Text>
+              </View>
+            )}
+          </View>
           <View className="w-10" />
         </View>
       </View>
@@ -87,8 +107,6 @@ export default function Notifications() {
         </View>
       )}
 
-      <View className="flex-1">
-
       {/* Notifications List */}
       <FlatList
         data={notifications}
@@ -96,7 +114,7 @@ export default function Notifications() {
         renderItem={({ item }) => (
           <NotificationItem 
             item={item} 
-            onPress={() => markAsRead(item.id)}
+            onPress={() => handleNotificationPress(item)}
           />
         )}
         contentContainerStyle={{ flexGrow: 1, paddingTop: 6, paddingBottom: 20 }}
@@ -115,8 +133,7 @@ export default function Notifications() {
             </Text>
           </View>
         }
-        />
-      </View>
+      />
     </SafeAreaView>
   );
 }
