@@ -1,3 +1,4 @@
+import React from 'react';
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { Image, Text, View, Alert } from "react-native";
 import { useState } from "react";
@@ -8,6 +9,8 @@ import { formatTime } from "@/lib/utils";
 import { useDriverStore, useLocationStore } from "@/store";
 import CustomButton from "@/components/CustomButton";
 import ReactNativeModal from "react-native-modal";
+import * as Notifications from 'expo-notifications';
+import { registerForPushNotificationsAsync, sendRideStatusNotification } from "@/lib/notifications";
 
 interface RideRequestData {
   origin_address: string;
@@ -40,7 +43,10 @@ const BookRide = () => {
   const [success, setSuccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const driverDetails = drivers?.find(driver => +driver.id === selectedDriver);
+  const driverDetails = drivers?.filter(
+    (driver) => +driver.id === selectedDriver,
+  )[0];
+
   const handleConfirmRide = async () => {
     setIsLoading(true);
     
@@ -101,11 +107,36 @@ const BookRide = () => {
       // Handle successful booking
       setSuccess(true);
 
+      // Send immediate notification about ride confirmation
+      await sendRideStatusNotification(
+        "Ride Confirmed!",
+        `Your ride from ${userAddress} to ${destinationAddress} has been confirmed. Your driver ${driverDetails.first_name} will arrive in approximately ${formatTime(driverDetails.time)}.`
+      );
+
+      // Schedule a notification for when the driver is about to arrive
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Driver Arriving Soon!",
+          body: `Your driver ${driverDetails.first_name} is about to arrive at your pickup location.`,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: {
+          seconds: (driverDetails.time - 5) * 60, // 5 minutes before arrival
+        },
+      });
+
     } catch (error: any) {
       console.error("Booking error:", error);
       Alert.alert(
         "Booking Failed",
         error.message || "Could not complete booking. Please try again."
+      );
+
+      // Send notification about booking error
+      await sendRideStatusNotification(
+        "Ride Booking Error",
+        "An unexpected error occurred. Please try again."
       );
     } finally {
       setIsLoading(false);

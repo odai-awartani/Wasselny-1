@@ -260,6 +260,16 @@ const Profile = () => {
           {/* Action Icons */}
           <View className="flex-row justify-center space-x-8">
             <TouchableOpacity 
+              onPress={() => router.push('/test-notification')}
+              className="items-center"
+            >
+              <View className="bg-gray-100 p-3 rounded-full">
+                <Ionicons name="notifications-outline" size={20} color="#374151" />
+              </View>
+              <Text className="text-xs text-gray-600 mt-1">Test Notifications</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
               onPress={() => Alert.alert('Coming Soon', 'Settings page will be available soon.')}
               className="items-center"
             >

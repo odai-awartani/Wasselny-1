@@ -9,8 +9,8 @@ import { icons } from '@/constants';
 import RideMap from '@/components/RideMap';
 import CustomButton from '@/components/CustomButton';
 import { useAuth } from '@clerk/clerk-expo';
-import { scheduleNotification, setupNotifications, cancelNotification } from '@/lib/notifications';
-import { sendPushNotification } from '@/lib/notifications';
+import { scheduleNotification, setupNotifications, cancelNotification, sendRideStatusNotification } from '@/lib/notifications';
+
 interface DriverData {
   car_seats?: number;
   car_type?: string;
@@ -86,8 +86,10 @@ const RideDetails = () => {
 
   // إعداد أذونات الإشعارات
   useEffect(() => {
-    setupNotifications();
-  }, []);
+    if (userId) {
+      setupNotifications(userId);
+    }
+  }, [userId]);
 
   // جدولة الإشعار للراكب
   useEffect(() => {
@@ -290,11 +292,11 @@ const RideDetails = () => {
       });
 
       // Send notification to user
-      await sendPushNotification(
+      await sendRideStatusNotification(
         userId,
         'تم قبول طلب الحجز!',
         `تم قبول طلب حجزك للرحلة من ${ride?.origin_address} إلى ${ride?.destination_address}`,
-        ride?.id
+        ride?.id || ''
       );
 
       Alert.alert('✅ تم قبول طلب الحجز بنجاح');
@@ -313,7 +315,7 @@ const RideDetails = () => {
       });
 
       // Send notification to user
-      await sendPushNotification(
+      await sendRideStatusNotification(
         userId,
         'تم رفض طلب الحجز',
         `عذراً، تم رفض طلب حجزك للرحلة من ${ride?.origin_address} إلى ${ride?.destination_address}`,
@@ -345,7 +347,7 @@ const RideDetails = () => {
       });
   
       // Send push notification to driver
-      await sendPushNotification(
+      await sendRideStatusNotification(
         ride.driver_id,
         'طلب حجز جديد!',
         `لقد طلب راكب جديد الانضمام إلى رحلتك من ${ride.origin_address} إلى ${ride.destination_address}`,
@@ -375,7 +377,7 @@ const RideDetails = () => {
       });
 
       // Send notification to driver
-      await sendPushNotification(
+      await sendRideStatusNotification(
         ride.driver_id!,
         'تم تسجيل الدخول!',
         'قام الراكب بتسجيل الدخول للرحلة',
@@ -399,6 +401,14 @@ const RideDetails = () => {
         updated_at: serverTimestamp(),
       });
 
+      // Send notification to driver
+      await sendRideStatusNotification(
+        ride.driver_id!,
+        'تم تسجيل الخروج!',
+        'قام الراكب بتسجيل الخروج من الرحلة',
+        ride.id
+      );
+
       // Show rating modal
       setShowRatingModal(true);
     } catch (error) {
@@ -418,12 +428,14 @@ const RideDetails = () => {
       });
 
       // Send notification to driver
-      await sendPushNotification(
-        ride.driver_id!,
-        'تقييم جديد!',
-        `قام الراكب بتقييم رحلتك بـ ${rating} نجوم`,
-        ride.id
-      );
+      if (ride.driver_id) {
+        await sendRideStatusNotification(
+          ride.driver_id,
+          'تقييم جديد!',
+          `قام الراكب بتقييم رحلتك بـ ${rating} نجوم`,
+          ride.id
+        );
+      }
 
       setShowRatingModal(false);
       Alert.alert('✅ شكراً على تقييمك!');
@@ -444,12 +456,14 @@ const RideDetails = () => {
       });
 
       // Send notification to driver
-      await sendPushNotification(
-        ride.driver_id!,
-        'تم إلغاء الحجز',
-        'قام الراكب بإلغاء حجز الرحلة',
-        ride.id
-      );
+      if (ride.driver_id) {
+        await sendRideStatusNotification(
+          ride.driver_id,
+          'تم إلغاء الحجز',
+          'قام الراكب بإلغاء حجز الرحلة',
+          ride.id
+        );
+      }
 
       Alert.alert('✅ تم إلغاء الحجز بنجاح');
     } catch (error) {
@@ -482,10 +496,17 @@ const RideDetails = () => {
 
   return (
     <RideLayout
-      title={
+      title={ride.driver?.name || DEFAULT_DRIVER_NAME}
+      snapPoints={["15%", "50%", "75%", "95%"]}
+      origin={{ latitude: ride.origin_latitude, longitude: ride.origin_longitude }}
+      destination={{ latitude: ride.destination_latitude, longitude: ride.destination_longitude }}
+      MapComponent={RideMap}
+    >
+      <View className="flex-1 p-4">
+        {/* Driver Profile Link */}
         <TouchableOpacity
           onPress={() => router.push(`/driver-profile/${ride.driver_id}`)}
-          className="flex flex-row items-center space-x-2"
+          className="flex flex-row items-center space-x-2 mb-4"
         >
           <Text className="text-xs text-red-600 font-CairoBold underline">
             (الملف الشخصي)
@@ -494,13 +515,7 @@ const RideDetails = () => {
             {ride.driver?.name}
           </Text>
         </TouchableOpacity>
-      }
-      snapPoints={["15%", "50%", "75%", "95%"]}
-      origin={{ latitude: ride.origin_latitude, longitude: ride.origin_longitude }}
-      destination={{ latitude: ride.destination_latitude, longitude: ride.destination_longitude }}
-      MapComponent={RideMap}
-    >
-      <View className="flex-1 p-4">
+
         {/* Location Section */}
         <View className="mb-4">
           <Text className="text-base font-semibold text-black mb-2 text-right font-CairoBold">من</Text>
