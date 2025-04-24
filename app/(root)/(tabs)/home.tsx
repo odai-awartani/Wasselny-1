@@ -3,11 +3,13 @@ import GoogleTextInput from "@/components/GoogleTextInput";
 import Map from "@/components/Map";
 import RideCard from "@/components/RideCard";
 import SuggestedRides from "@/components/SuggestedRides";
-import { icons, images } from "@/constants";
+import { icons } from '@/constants';
+import { useNotifications } from '@/context/NotificationContext';
 import { useLocationStore } from "@/store";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { router, useFocusEffect } from "expo-router";
-import { ActivityIndicator, Image, RefreshControl, TouchableOpacity } from "react-native";
+import { ActivityIndicator, Image, RefreshControl, TouchableOpacity, Alert } from "react-native";
+
 import { Text, View } from "react-native";
 import { FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,14 +22,19 @@ import { db } from '@/lib/firebase';
 
 export default function Home() {
   const { setUserLocation, setDestinationLocation } = useLocationStore();
+  const { unreadCount } = useNotifications();
   const { user } = useUser();
   const [hasPermission, setHasPermission] = useState<boolean>(false);
   const { signOut } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [isDriver, setIsDriver] = useState<boolean>(false);
+  const [isCheckingDriver, setIsCheckingDriver] = useState<boolean>(true);
 
   const checkIfUserIsDriver = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setIsCheckingDriver(false);
+      return;
+    }
     
     try {
       console.log('Checking driver status for user:', user.id);
@@ -45,6 +52,8 @@ export default function Home() {
     } catch (error) {
       console.error('Error checking driver status:', error);
       setIsDriver(false);
+    } finally {
+      setIsCheckingDriver(false);
     }
   };
 
@@ -131,10 +140,20 @@ export default function Home() {
                 Welcome{","} {user?.firstName}👋
               </Text>
               <TouchableOpacity
-                onPress={handleSignOut}
-                className="justify-center items-center w-10 h-10 rounded-full bg-white"
+                onPress={() => router.push('/(root)/notifications')}
+                className="justify-center items-center w-10 h-10 rounded-full bg-white shadow-sm"
               >
-                <Image source={icons.out} className="w-4 h-4" />
+                <Image 
+                  source={icons.ring1} 
+                  className="w-5 h-5" 
+                  tintColor="#374151"
+                />
+                {/* Red notification dot */}
+                {unreadCount > 0 && (
+                  <View className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full items-center justify-center">
+                    <Text className="text-[10px] text-white font-JakartaBold">{unreadCount}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
 
@@ -153,9 +172,9 @@ export default function Home() {
               </View>
             </>
 
-            {isDriver === false && (
+            {!isCheckingDriver && !isDriver && (
               <TouchableOpacity 
-                onPress={() => router.push('/(root)/(tabs)/add')}
+                onPress={() => router.push('/(root)/driverInfo')}
                 className="bg-white p-4 rounded-2xl my-5 flex-row items-center justify-between shadow-lg"
                 style={{
                   elevation: 3,
@@ -185,8 +204,8 @@ export default function Home() {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            colors={["#000"]}
-            tintColor="#000"
+            colors={["#F97316"]} // Orange color for Android
+            tintColor="#F97316" // Orange color for iOS
           />
         }
       />

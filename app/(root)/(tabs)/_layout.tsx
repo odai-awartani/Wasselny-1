@@ -1,10 +1,20 @@
 import { icons } from "@/constants";
 import { Tabs, Redirect } from "expo-router";
 import { View, Image, ImageSourcePropType } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, createContext, useContext } from "react";
+import { NotificationProvider } from '@/context/NotificationContext';
 import { useUser } from "@clerk/clerk-expo";
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+
+// Create context for driver status
+export const DriverStatusContext = createContext<{
+  isDriver: boolean;
+  recheckDriverStatus: () => Promise<void>;
+}>({ 
+  isDriver: false,
+  recheckDriverStatus: async () => {}
+});
 
 const TabIcon = ({ focused, source }: { focused: boolean; source: ImageSourcePropType }) => (
   <View
@@ -13,6 +23,8 @@ const TabIcon = ({ focused, source }: { focused: boolean; source: ImageSourcePro
     <Image source={source} tintColor="white" resizeMode="contain" className="w-7 h-7" />
   </View>
 );
+
+export const useDriverStatus = () => useContext(DriverStatusContext);
 
 const Layout = () => {
   const { user } = useUser();
@@ -42,7 +54,9 @@ const Layout = () => {
   }, [user?.id]);
 
   return (
-    <Tabs
+    <DriverStatusContext.Provider value={{ isDriver, recheckDriverStatus: checkIfUserIsDriver }}>
+      <NotificationProvider>
+      <Tabs
       screenOptions={{
         tabBarActiveTintColor: "white",
         tabBarInactiveTintColor: "white",
@@ -114,7 +128,9 @@ const Layout = () => {
           ),
         }}
       />
-    </Tabs>
+      </Tabs>
+      </NotificationProvider>
+    </DriverStatusContext.Provider>
   );
 };
 

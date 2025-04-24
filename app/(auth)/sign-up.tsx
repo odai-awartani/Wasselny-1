@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, Image, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import InputField from '@/components/InputField'; // استيراد InputField المعدل
 import { useLanguage } from '@/context/LanguageContext';
@@ -18,11 +18,13 @@ const SignUp = () => {
   const { isLoaded, signUp, setActive } = useSignUp(); // استخدام useSignUp من Clerk
   const [showSuccessModal, setShowSuccessModal] = useState(false); // حالة لعرض نافذة النجاح
   const [isAgreed, setIsAgreed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({
     phoneNumber: '',
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     gender: '',
     workIndustry: '',
   });
@@ -74,15 +76,33 @@ const industryMap = new Map([
     }
     
     
-    if (!form.email || !form.password || !form.name || !form.phoneNumber || !form.gender || !form.workIndustry) {
+    if (!form.email || !form.password || !form.confirmPassword || !form.name || !form.phoneNumber || !form.gender || !form.workIndustry) {
       Alert.alert(t.error, t.fillAllFields);
       return;
     }
 
+    // Check if passwords match
+    if (form.password !== form.confirmPassword) {
+      Alert.alert(
+        t.error,
+        language === 'ar' ? 'كلمات المرور غير متطابقة' : 'Passwords do not match'
+      );
+      return;
+    }
+
+    // Check password strength (at least 8 characters, including numbers and letters)
+    if (form.password.length < 8 || !/[A-Za-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+      Alert.alert(
+        t.error,
+        language === 'ar'
+          ? 'يجب أن تتكون كلمة المرور من 8 أحرف على الأقل وتحتوي على أحرف وأرقام'
+          : 'Password must be at least 8 characters long and contain both letters and numbers'
+      );
+      return;
+    }
     
     try {
-
-      
+      setIsLoading(true);
       const formattedPhoneNumber = formatPhoneNumber(form.phoneNumber);
         // تحويل الجنس والمجال إلى الإنجليزية
     const englishGender = genderMap.get(form.gender) || form.gender;
@@ -116,6 +136,8 @@ const industryMap = new Map([
       console.log(JSON.stringify(err, null, 2));
       console.error('Error during sign up:', err);
       Alert.alert(t.error, err.errors[0].longMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -176,7 +198,16 @@ const industryMap = new Map([
   };
   
   return (
-    <ScrollView className="flex-1 bg-white" showsHorizontalScrollIndicator={false}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView 
+        className="flex-1 bg-white" 
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       <View className="flex-1 bg-white">
         <View className="relative w-full h-[250px]">
           <Image source={images.signUpCar} className="z-0 w-full h-[250px]" />
@@ -224,6 +255,21 @@ const industryMap = new Map([
             value={form.password}
             onChangeText={(text) => setForm({ ...form, password: text })}
             secureTextEntry
+            textContentType="newPassword"
+            autoComplete="new-password"
+            labelStyle={language === 'ar' ? 'text-right font-CairoBold text-orange-500' : 'text-left font-JakartaBold text-orange-500'}
+            className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
+          />
+
+          {/* حقل تأكيد كلمة السر */}
+          <InputField
+            label={language === 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password'}
+            placeholder="**********"
+            value={form.confirmPassword}
+            onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
+            secureTextEntry
+            textContentType="newPassword"
+            autoComplete="new-password"
             labelStyle={language === 'ar' ? 'text-right font-CairoBold text-orange-500' : 'text-left font-JakartaBold text-orange-500'}
             className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
           />
@@ -270,11 +316,17 @@ const industryMap = new Map([
           {/* زر التسجيل */}
           <View className="items-center">
             <CustomButton
-              title={t.signUpButton}
+              title={isLoading ? '' : t.signUpButton}
               onPress={onSignUpPress}
-              
-              
-            />
+              disabled={isLoading}
+              className={isLoading ? 'opacity-70' : ''}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                t.signUpButton
+              )}
+            </CustomButton>
        
 
 
@@ -428,10 +480,9 @@ const industryMap = new Map([
 
 
       </View>
-    <StatusBar backgroundColor="#fff" style="dark" />
-      
-    </ScrollView>
-
+      </ScrollView>
+      <StatusBar backgroundColor="#fff" style="dark" />
+    </KeyboardAvoidingView>
   );
 };
 
