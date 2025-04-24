@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Modal, Pressable } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Modal, Pressable, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, onSnapshot, query, where, Query, setDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, onSnapshot, query, where, Query, setDoc, getDocs } from 'firebase/firestore';
 import { format, parseISO } from 'date-fns';
 import { db } from '@/lib/firebase';
 import RideLayout from '@/components/RideLayout';
@@ -69,8 +69,12 @@ const DEFAULT_CAR_IMAGE = 'https://via.placeholder.com/120x80';
 
 const RideDetails = () => {
   const [pendingRequests, setPendingRequests] = useState<RideRequest[]>([]);
+  const [allPassengers, setAllPassengers] = useState<RideRequest[]>([]);
+  const [passengerNames, setPassengerNames] = useState<Record<string, string>>({});
+  const [passengerGenders, setPassengerGenders] = useState<Record<string, string>>({});
   const router = useRouter();
-  const { id, notificationId } = useLocalSearchParams();
+  const { id, notificationId, scrollToRequests } = useLocalSearchParams();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [ride, setRide] = useState<Ride | null>(null);
   const [rideRequest, setRideRequest] = useState<RideRequest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -298,12 +302,85 @@ const RideDetails = () => {
     return () => unsubscribe();
   }, [ride?.id, isDriver]);
 
+  // Fetch all passengers for the ride
+  useEffect(() => {
+    if (!ride?.id) return;
+
+    const rideRequestsRef = collection(db, 'ride_requests');
+    const q = query(rideRequestsRef, 
+      where('ride_id', '==', ride.id),
+      where('status', 'in', ['accepted', 'checked_in', 'checked_out'])
+    );
+    const unsubscribe = onSnapshot(q,
+      (snapshot) => {
+        const passengers: RideRequest[] = [];
+        snapshot.forEach((doc) => {
+          passengers.push({ id: doc.id, ...doc.data() } as RideRequest);
+        });
+        setAllPassengers(passengers);
+      },
+      (error) => {
+        console.error('Error fetching passengers:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [ride?.id]);
+
+  // Fetch passenger names and genders when passengers change
+  useEffect(() => {
+    const fetchPassengerDetails = async () => {
+      const names: Record<string, string> = {};
+      const genders: Record<string, string> = {};
+      for (const passenger of allPassengers) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', passenger.user_id));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            names[passenger.user_id] = userData?.name || 'الراكب';
+            genders[passenger.user_id] = userData?.gender || 'غير محدد';
+          }
+        } catch (error) {
+          console.error('Error fetching passenger details:', error);
+          names[passenger.user_id] = 'الراكب';
+          genders[passenger.user_id] = 'غير محدد';
+        }
+      }
+      setPassengerNames(names);
+      setPassengerGenders(genders);
+    };
+
+    if (allPassengers.length > 0) {
+      fetchPassengerDetails();
+    }
+  }, [allPassengers]);
+
+  // Add useEffect to handle scrolling
+  useEffect(() => {
+    if (scrollToRequests === 'true' && scrollViewRef.current) {
+      // Wait for the content to be rendered
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          y: 1000, // Adjust this value based on your layout
+          animated: true
+        });
+      }, 500);
+    }
+  }, [scrollToRequests, pendingRequests]);
+
   // Handle driver accepting ride request
   const handleAcceptRequest = async (requestId: string, userId: string) => {
     try {
+      // Get passenger's name
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      const passengerName = userDoc.data()?.name || 'الراكب';
+
+      // Update ride request status and save passenger name
       await updateDoc(doc(db, 'ride_requests', requestId), {
         status: 'accepted',
         updated_at: serverTimestamp(),
+        passenger_name: passengerName,
+        passenger_id: userId
       });
 
       // Send notification to user
@@ -314,19 +391,29 @@ const RideDetails = () => {
         ride?.id || ''
       );
 
-      // Update notification status
-      if (notificationId && typeof notificationId === 'string') {
-        const updateData = {
+      // Find and update all related notifications
+      const notificationsRef = collection(db, 'notifications');
+      const q = query(
+        notificationsRef,
+        where('user_id', '==', userId),
+        where('data.rideId', '==', ride?.id),
+        where('type', '==', 'ride_request')
+      );
+
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach(async (doc) => {
+        await updateDoc(doc.ref, {
           read: true,
           data: {
             status: 'accepted',
-            rideId: ride?.id || ''
+            rideId: ride?.id,
+            type: 'ride_status',
+            passenger_name: passengerName
           }
-        };
-        await updateDoc(doc(db, 'notifications', notificationId), updateData);
-      }
+        });
+      });
 
-      Alert.alert('✅ تم قبول طلب الحجز بنجاح');
+      Alert.alert('✅ تم قبول طلب الحجز بنجاح', `تم قبول طلب ${passengerName}`);
     } catch (error) {
       console.error('Error accepting request:', error);
       Alert.alert('حدث خطأ أثناء قبول الطلب.');
@@ -336,9 +423,15 @@ const RideDetails = () => {
   // Handle driver rejecting ride request
   const handleRejectRequest = async (requestId: string, userId: string) => {
     try {
+      // Get passenger's name
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      const passengerName = userDoc.data()?.name || 'الراكب';
+
+      // Update ride request status
       await updateDoc(doc(db, 'ride_requests', requestId), {
         status: 'rejected',
         updated_at: serverTimestamp(),
+        passenger_name: passengerName
       });
 
       // Send notification to user
@@ -349,19 +442,29 @@ const RideDetails = () => {
         ride?.id || ''
       );
 
-      // Update notification status
-      if (notificationId && typeof notificationId === 'string') {
-        const updateData = {
+      // Find and update all related notifications
+      const notificationsRef = collection(db, 'notifications');
+      const q = query(
+        notificationsRef,
+        where('user_id', '==', userId),
+        where('data.rideId', '==', ride?.id),
+        where('type', '==', 'ride_request')
+      );
+
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach(async (doc) => {
+        await updateDoc(doc.ref, {
           read: true,
           data: {
             status: 'rejected',
-            rideId: ride?.id || ''
+            rideId: ride?.id,
+            type: 'ride_status',
+            passenger_name: passengerName
           }
-        };
-        await updateDoc(doc(db, 'notifications', notificationId), updateData);
-      }
+        });
+      });
 
-      Alert.alert('✅ تم رفض طلب الحجز');
+      Alert.alert('✅ تم رفض طلب الحجز', `تم رفض طلب ${passengerName}`);
     } catch (error) {
       console.error('Error rejecting request:', error);
       Alert.alert('حدث خطأ أثناء رفض الطلب.');
@@ -546,112 +649,102 @@ const RideDetails = () => {
       destination={{ latitude: ride.destination_latitude, longitude: ride.destination_longitude }}
       MapComponent={RideMap}
     >
-      <View className="flex-1 p-4">
-        {/* Driver Profile Link */}
-        <TouchableOpacity
-          onPress={() => router.push(`/driver-profile/${ride.driver_id}`)}
-          className="flex flex-row items-center space-x-2 mb-4"
-        >
-          <Text className="text-xs text-red-600 font-CairoBold underline">
-            (الملف الشخصي)
-          </Text>
-          <Text className="text-xl text-black-600 font-CairoBold">
-            {ride.driver?.name}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Location Section */}
-        <View className="mb-4">
-          <Text className="text-base font-semibold text-black mb-2 text-right font-CairoBold">من</Text>
-          <View className="flex-row items-center bg-gray-100 rounded-xl p-3 mb-4">
-            <Image source={icons.point} className="w-7 h-7 ml-1.5" resizeMode="contain" />
-            <Text className="flex-1 text-base text-gray-700 ml-2 text-right font-CairoBold">
-              {ride.origin_address}
-            </Text>
-          </View>
-
-          <Text className="text-base font-semibold text-black mb-2 text-right font-CairoBold">إلى</Text>
-          <View className="flex-row items-center bg-gray-100 rounded-xl p-3 mb-4">
-            <Image source={icons.map} className="w-7 h-7 ml-1.5" resizeMode="contain" />
-            <Text className="flex-1 text-base text-gray-700 ml-2 text-right font-CairoBold">
-              {ride.destination_address}
-            </Text>
-          </View>
-        </View>
-
-        {/* Date and Time Section */}
-        <View className="mb-4">
-          <View className="flex-row justify-between items-center py-2 border-b border-gray-200">
-            <Text className="text-base text-gray-600 text-right font-CairoBold">الوقت والتاريخ</Text>
-            <View className="flex-column">
-              <Text className="text-base text-red-700 font-medium text-right pb-2 font-CairoRegular">
-                {ride.ride_days?.join(', ') || 'غير محدد'}
+      <ScrollView 
+        ref={scrollViewRef}
+        className="flex-1 w-full" 
+        showsVerticalScrollIndicator={false}
+      >
+       
+          {/* Driver Profile Link */}
+          <TouchableOpacity
+            onPress={() => router.push(`/driver-profile/${ride.driver_id}`)}
+            className="flex flex-row items-center space-x-2 mb-6 bg-gray-50 p-3 rounded-xl"
+          >
+            <Image 
+              source={{ uri: ride.driver?.profile_image_url || DEFAULT_PROFILE_IMAGE }}
+              className="w-12 h-12 rounded-full"
+            />
+            <View className="flex-1">
+              <Text className="text-xl text-black-600 font-CairoBold">
+                {ride.driver?.name}
               </Text>
-              <Text className="text-base text-gray-700 font-medium text-right font-CairoRegular">
-                {ride.ride_datetime}
+              <Text className="text-xs text-red-600 font-CairoBold underline">
+                (الملف الشخصي)
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Location Section */}
+          <View className="mb-6 bg-white rounded-xl p-4 shadow-sm">
+            <Text className="text-base font-semibold text-black mb-3 text-right font-CairoBold">الموقع</Text>
+            <View className="flex-row items-center bg-gray-50 rounded-xl p-3 mb-3">
+              <Image source={icons.point} className="w-7 h-7 ml-1.5" resizeMode="contain" />
+              <Text className="flex-1 text-base text-gray-700 ml-2 text-right font-CairoBold">
+                {ride.origin_address}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center bg-gray-50 rounded-xl p-3">
+              <Image source={icons.map} className="w-7 h-7 ml-1.5" resizeMode="contain" />
+              <Text className="flex-1 text-base text-gray-700 ml-2 text-right font-CairoBold">
+                {ride.destination_address}
               </Text>
             </View>
           </View>
-        </View>
 
-        {/* Driver Section */}
-        <View className="mb-4">
-          <View className="flex-row justify-between items-center py-2 border-b border-gray-200">
-            <Text className="text-base text-gray-600 text-right font-CairoBold">السائق</Text>
-            <Text className="text-base text-gray-700 font-medium text-right font-CairoRegular">
-              {ride.driver?.name || DEFAULT_DRIVER_NAME}
-            </Text>
+          {/* Ride Details Section */}
+          <View className="mb-6 bg-white rounded-xl p-4 shadow-sm">
+            <Text className="text-base font-semibold text-black mb-3 text-right font-CairoBold">تفاصيل الرحلة</Text>
+            
+            <View className="flex-row justify-between items-center py-2 border-b border-gray-100">
+              <Text className="text-base text-gray-600 text-right font-CairoBold">الوقت والتاريخ</Text>
+              <View className="flex-column">
+                <Text className="text-base text-red-700 font-medium text-right pb-1 font-CairoRegular">
+                  {ride.ride_days?.join(', ') || 'غير محدد'}
+                </Text>
+                <Text className="text-base text-gray-700 font-medium text-right font-CairoRegular">
+                  {ride.ride_datetime}
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row justify-between items-center py-2 border-b border-gray-100">
+              <Text className="text-base text-gray-600 text-right font-CairoBold">عدد المقاعد المتاحة</Text>
+              <Text className="text-base text-red-600 font-medium text-right font-CairoBold">
+                {ride.available_seats}
+              </Text>
+            </View>
+
+            <View className="flex-row justify-between items-center py-2 border-b border-gray-100">
+              <Text className="text-base text-gray-600 text-right font-CairoBold">الجنس المطلوب</Text>
+              <Text className="text-base text-gray-700 font-medium text-right font-CairoRegular">
+                {ride.required_gender === 'كلاهما' ? 'ذكر وأنثى' : ride.required_gender}
+              </Text>
+            </View>
+
+            <View className="flex-row justify-between items-center py-2">
+              <Text className="text-base text-gray-600 text-right font-CairoBold">السيارة</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (ride.driver?.car_image_url) {
+                    setSelectedImage(ride.driver.car_image_url);
+                    setShowImageModal(true);
+                  }
+                }}
+              >
+                <Image
+                  source={{ uri: ride.driver?.car_image_url || DEFAULT_CAR_IMAGE }}
+                  className="w-32 h-20 rounded-xl"
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Available Seats Section */}
-        <View className="mb-4">
-          <View className="flex-row justify-between items-center py-2 border-b border-gray-200">
-            <Text className="text-base text-gray-600 text-right font-CairoBold">عدد المقاعد المتاحة</Text>
-            <Text className="text-base text-red-600 font-medium text-right font-CairoBold">
-              {ride.available_seats}
-            </Text>
-          </View>
-        </View>
-
-        {/* Car Section */}
-        <View className="mb-4">
-          <View className="flex-row justify-between items-center py-2 border-b border-gray-200">
-            <Text className="text-base text-gray-600 text-right font-CairoBold">السيارة</Text>
-            <TouchableOpacity
-              onPress={() => {
-                if (ride.driver?.car_image_url) {
-                  setSelectedImage(ride.driver.car_image_url);
-                  setShowImageModal(true);
-                }
-              }}
-            >
-              <Image
-                source={{ uri: ride.driver?.car_image_url || DEFAULT_CAR_IMAGE }}
-                className="w-32 h-20 rounded-xl"
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Gender Section */}
-        <View className="mb-4">
-          <View className="flex-row justify-between items-center py-2 border-b border-gray-200">
-            <Text className="text-base text-gray-600 text-right font-CairoBold">الجنس المطلوب</Text>
-            <Text className="text-base text-gray-700 font-medium text-right font-CairoRegular">
-              {ride.required_gender === 'كلاهما' ? 'ذكر وأنثى' : ride.required_gender}
-            </Text>
-          </View>
-        </View>
-
-        {/* Ride Rules Section */}
-        <View className="mb-4 w-full">
-          <View className="flex-row justify-between border-b border-gray-200 py-2 w-full">
-            <Text className="text-base text-gray-600 font-CairoBold text-left w-1/2">
-              قوانين الرحلة
-            </Text>
-            <View className="flex-col items-end w-1/2">
+          {/* Ride Rules Section */}
+          <View className="mb-6 bg-white rounded-xl p-4 shadow-sm">
+            <Text className="text-base font-semibold text-black mb-3 text-right font-CairoBold">قوانين الرحلة</Text>
+            <View className="flex-col space-y-2">
               {[
                 ride.no_children && 'بدون أطفال',
                 ride.no_music && 'بدون موسيقى',
@@ -659,101 +752,185 @@ const RideDetails = () => {
               ]
                 .filter(Boolean)
                 .map((rule, index) => (
-                  <Text
-                    key={index}
-                    className="text-base text-gray-700 text-right font-CairoRegular"
-                  >
-                    {rule}
-                  </Text>
+                  <View key={index} className="flex-row items-center bg-gray-50 p-3 rounded-xl">
+                    <Image source={icons.checkmark} className="w-5 h-5 ml-2" tintColor="#10B981" />
+                    <Text className="text-base text-gray-700 text-right font-CairoRegular">
+                      {rule}
+                    </Text>
+                  </View>
                 ))}
               {![ride.no_children, ride.no_music, ride.no_smoking].some(Boolean) && (
-                <Text className="text-base text-gray-700 text-right font-CairoBold">
+                <Text className="text-base text-gray-700 text-center font-CairoBold">
                   لا توجد قواعد خاصة
                 </Text>
               )}
             </View>
           </View>
-        </View>
 
-        {/* Buttons Section */}
-        {isDriver ? (
-          <Text className="text-red-500 text-center mt-4 font-CairoBold">
-            لا يمكنك حجز رحلتك الخاصة.
-          </Text>
-        ) : !rideRequest ? (
-          <CustomButton title="احجز الرحلة" onPress={handleBookRide} />
-        ) : rideRequest.status === 'waiting' ? (
-          <View className="flex-row justify-between mt-4">
-            <CustomButton
-              title="إلغاء الطلب"
-              onPress={handleCancelRide}
-              className="bg-red-500"
-            />
-            <Text className="text-gray-600">في انتظار موافقة السائق...</Text>
-          </View>
-        ) : rideRequest.status === 'accepted' ? (
-          <View className="flex-row justify-between mt-4">
-            <CustomButton
-              title="تسجيل الدخول"
-              onPress={handleCheckIn}
-              className="flex-1 mr-2 bg-green-500"
-            />
-            <CustomButton
-              title="إلغاء الحجز"
-              onPress={handleCancelRide}
-              className="flex-1 ml-2 bg-red-500"
-            />
-          </View>
-        ) : rideRequest.status === 'checked_in' ? (
-          <View className="flex-row justify-between mt-4">
-            <CustomButton
-              title="تسجيل الخروج"
-              onPress={handleCheckOut}
-              className="flex-1 mr-2 bg-blue-500"
-            />
-            <CustomButton
-              title="إلغاء الحجز"
-              onPress={handleCancelRide}
-              className="flex-1 ml-2 bg-red-500"
-            />
-          </View>
-        ) : rideRequest.status === 'rejected' ? (
-          <Text className="text-red-500 text-center mt-4 font-CairoBold">
-            تم رفض طلب الحجز.
-          </Text>
-        ) : rideRequest.status === 'checked_out' ? (
-          <Text className="text-green-500 text-center mt-4 font-CairoBold">
-            تم تسجيل خروجك من الرحلة!
-          </Text>
-        ) : rideRequest.status === 'cancelled' ? (
-          <Text className="text-red-500 text-center mt-4 font-CairoBold">
-            تم إلغاء الحجز.
-          </Text>
-        ) : isDriver && pendingRequests.length > 0 ? (
-          <View className="space-y-4">
-            <Text className="text-lg text-center font-CairoBold mb-2">طلبات الحجز المعلقة</Text>
-            {pendingRequests.map((request) => (
-              <View key={request.id} className="flex-row justify-between items-center bg-gray-100 p-4 rounded-xl">
-                <View className="flex-row space-x-2">
-                  <CustomButton
-                    title="قبول"
-                    onPress={() => handleAcceptRequest(request.id, request.user_id)}
-                    className="bg-green-500 px-4"
-                  />
-                  <CustomButton
-                    title="رفض"
-                    onPress={() => handleRejectRequest(request.id, request.user_id)}
-                    className="bg-red-500 px-4"
-                  />
+          {/* Current Passengers Section */}
+          <View className="mb-6 bg-white rounded-xl p-4 shadow-sm">
+            <Text className="text-base font-semibold text-black mb-3 text-right font-CairoBold">الركاب الحاليين</Text>
+            <View className="flex-col space-y-2">
+              {allPassengers.length > 0 ? (
+                <View className="border border-gray-200 rounded-lg overflow-hidden">
+                  {/* Table Header */}
+                  <View className="flex-row bg-gray-50 p-3 border-b border-gray-200">
+                    <View className="flex-1">
+                      <Text className="text-sm font-CairoBold text-gray-700 text-right">الاسم</Text>
+                    </View>
+                    <View className="w-24">
+                      <Text className="text-sm font-CairoBold text-gray-700 text-right">الجنس</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Table Rows */}
+                  {allPassengers.map((passenger) => (
+                    <View key={passenger.id} className="flex-row p-3 border-b border-gray-100">
+                      <View className="flex-1 flex-row items-center">
+                        <Image 
+                          source={passengerGenders[passenger.user_id] === 'Female' ? icons.person : icons.person} 
+                          className="w-5 h-5 ml-2" 
+                          tintColor={passengerGenders[passenger.user_id] === 'Female' ? "#FF69B4" : "#10B981"} 
+                        />
+                        <Text className="text-sm text-gray-700 text-right font-CairoRegular">
+                          {passengerNames[passenger.user_id] || 'الراكب'}
+                        </Text>
+                      </View>
+                      <View className="w-24 justify-center">
+                        <Text className="text-sm text-gray-700 text-right font-CairoRegular">
+                          {passengerGenders[passenger.user_id] || 'غير محدد'}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
-                <Text className="font-CairoBold">طلب حجز جديد</Text>
-              </View>
-            ))}
+              ) : (
+                <View className="bg-gray-50 p-4 rounded-xl">
+                  <Text className="text-base text-gray-700 text-center font-CairoBold">
+                    لا يوجد ركاب حالياً
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-        ) : (
-          <CustomButton title="احجز الرحلة" onPress={handleBookRide} />
-        )}
-      </View>
+
+          {/* Pending Requests Section for Driver */}
+          {isDriver && pendingRequests.length > 0 && (
+            <View className="mb-6 bg-white rounded-xl p-4 shadow-sm">
+              <Text className="text-lg text-center font-CairoBold mb-3 text-gray-800">
+                طلبات الحجز المعلقة ({pendingRequests.length})
+              </Text>
+              {pendingRequests.map((request) => (
+                <View key={request.id} className="bg-gray-50 p-4 rounded-xl mb-3 border border-gray-200">
+                  <View className="flex-row justify-between items-center mb-2">
+                    <Text className="font-CairoBold text-gray-700">
+                      {passengerNames[request.user_id] || 'الراكب'}
+                    </Text>
+                    <Text className="text-sm text-gray-500 font-CairoRegular">
+                      {format(new Date(request.created_at?.toDate()), 'HH:mm')}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between items-center">
+                    <View className="flex-row space-x-2">
+                      <CustomButton
+                        title="قبول"
+                        onPress={() => handleAcceptRequest(request.id, request.user_id)}
+                        className="bg-green-500 w-24 px-6"
+                      />
+                      <CustomButton
+                        title="رفض"
+                        onPress={() => handleRejectRequest(request.id, request.user_id)}
+                        className="bg-red-500 w-24 px-6"
+                      />
+                    </View>
+                    <View className="items-end">
+                      <Text className="text-sm text-gray-500 font-CairoRegular">طلب حجز جديد</Text>
+                      <Text className="text-xs text-gray-400 font-CairoRegular">
+                        {format(new Date(request.created_at?.toDate()), 'dd/MM/yyyy')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Action Buttons Section */}
+          <View className="mb-6">
+            {isDriver ? (
+              pendingRequests.length === 0 ? (
+                <Text className="text-gray-500 text-center mt-4 font-CairoBold">
+                  لا توجد طلبات حجز معلقة
+                </Text>
+              ) : null
+            ) : !rideRequest ? (
+              <CustomButton 
+                title="احجز الرحلة" 
+                onPress={handleBookRide}
+                className="bg-primary"
+              />
+            ) : rideRequest.status === 'waiting' ? (
+              <View className="flex-row justify-between items-center bg-gray-50 p-4 rounded-xl">
+                <CustomButton
+                  title="إلغاء الطلب"
+                  onPress={handleCancelRide}
+                  className="bg-red-500"
+                />
+                <Text className="text-gray-600 font-CairoRegular">في انتظار موافقة السائق...</Text>
+              </View>
+            ) : rideRequest.status === 'accepted' ? (
+              <View className="flex-row justify-between space-x-2">
+                <CustomButton
+                  title="تسجيل الدخول"
+                  onPress={handleCheckIn}
+                  className="flex-1 bg-green-500"
+                />
+                <CustomButton
+                  title="إلغاء الحجز"
+                  onPress={handleCancelRide}
+                  className="flex-1 bg-red-500"
+                />
+              </View>
+            ) : rideRequest.status === 'checked_in' ? (
+              <View className="flex-row justify-between space-x-2">
+                <CustomButton
+                  title="تسجيل الخروج"
+                  onPress={handleCheckOut}
+                  className="flex-1 bg-blue-500"
+                />
+                <CustomButton
+                  title="إلغاء الحجز"
+                  onPress={handleCancelRide}
+                  className="flex-1 bg-red-500"
+                />
+              </View>
+            ) : rideRequest.status === 'rejected' ? (
+              <View className="bg-red-50 p-4 rounded-xl">
+                <Text className="text-red-500 text-center font-CairoBold">
+                  تم رفض طلب الحجز.
+                </Text>
+              </View>
+            ) : rideRequest.status === 'checked_out' ? (
+              <View className="bg-green-50 p-4 rounded-xl">
+                <Text className="text-green-500 text-center font-CairoBold">
+                  تم تسجيل خروجك من الرحلة!
+                </Text>
+              </View>
+            ) : rideRequest.status === 'cancelled' ? (
+              <View className="bg-red-50 p-4 rounded-xl">
+                <Text className="text-red-500 text-center font-CairoBold">
+                  تم إلغاء الحجز.
+                </Text>
+              </View>
+            ) : (
+              <CustomButton 
+                title="احجز الرحلة" 
+                onPress={handleBookRide}
+                className="bg-primary"
+              />
+            )}
+          </View>
+      </ScrollView>
 
       {/* Rating Modal */}
       <Modal

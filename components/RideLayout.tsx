@@ -3,7 +3,7 @@ import React, { useCallback, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { icons } from '@/constants';
 import { router, usePathname } from 'expo-router';
-import Map from '@/components/Map'; // الكود الأول لـ Map
+import Map from '@/components/Map';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 
 interface Location {
@@ -17,7 +17,7 @@ const RideLayout = ({
   children,
   origin,
   destination,
-  MapComponent = Map, // استخدام الكود الأول لـ Map افتراضيًا
+  MapComponent = Map,
 }: {
   title: string;
   snapPoints?: string[];
@@ -41,6 +41,12 @@ const RideLayout = ({
     }
   }, [pathname]);
 
+  const handleChange = useCallback((index: number) => {
+    if (index === 2) { // أعلى نقطة (90%)
+      bottomSheetRef.current?.snapToIndex(1); // ارجع للنقطة اللي قبلها (75%)
+    }
+  }, []);
+
   return (
     <GestureHandlerRootView className="flex-1">
       <View className="flex-1 bg-white">
@@ -58,16 +64,22 @@ const RideLayout = ({
         <BottomSheet
           keyboardBehavior="extend"
           ref={bottomSheetRef}
-          snapPoints={snapPoints || ['45%', '85%', '100%']}
+          snapPoints={snapPoints || ['40%', '75%', '90%']}
           index={1}
-          backgroundStyle={{
-            borderRadius: 24,
-            backgroundColor: '#fff',
+          enablePanDownToClose={false}
+          enableOverDrag={false}
+          onChange={handleChange}
+          topInset={50} // لو بتشتغلي على iOS
+          style={{
             shadowColor: '#000',
             shadowOffset: { width: 0, height: -2 },
             shadowOpacity: 0.1,
             shadowRadius: 8,
             elevation: 5,
+          }}
+          backgroundStyle={{
+            borderRadius: 24,
+            backgroundColor: '#fff',
           }}
           handleIndicatorStyle={{
             backgroundColor: '#ccc',

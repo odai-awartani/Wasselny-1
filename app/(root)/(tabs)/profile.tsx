@@ -223,11 +223,14 @@ const Profile = () => {
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={["#F97316"]}  
+          tintColor="#F97316" // Orange color for iOS
+          />
         }
         className="px-5"
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
+        
       >
         {/* Profile Header */}
         <View className="items-center mt-6 mb-4">

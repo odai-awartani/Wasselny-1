@@ -40,7 +40,7 @@ const DEFAULT_DRIVER_NAME = 'Unknown Driver';
 const DEFAULT_CAR_SEATS = 4;
 const DEFAULT_CAR_TYPE = 'Unknown';
 
-const SuggestedRides = () => {
+const SuggestedRides = ({ refreshKey }: { refreshKey: number }) => {
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +54,10 @@ const SuggestedRides = () => {
 
       // Fetch pending rides
       const ridesRef = collection(db, 'rides');
-      const q = query(ridesRef,   where('status', 'in', ['pending','in-progress']), limit(10));
+      const q = query(ridesRef, 
+        where('status', "==", "pending"),
+        limit(10)
+      );
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
@@ -80,7 +83,7 @@ const SuggestedRides = () => {
           driverDataMap[driverId] = userDocSnap.data() as UserData;
         } else {
           console.warn(`User not found for driver_id: ${driverId}`);
-          driverDataMap[driverId] = { name: DEFAULT_DRIVER_NAME, driver: null };
+          driverDataMap[driverId] = { name: DEFAULT_DRIVER_NAME, driver: undefined };
         }
       }
       console.log('Driver data map:', driverDataMap);
@@ -95,7 +98,7 @@ const SuggestedRides = () => {
           id: docSnap.id,
           origin_address: rideData.origin_address || 'Unknown Origin',
           destination_address: rideData.destination_address || 'Unknown Destination',
-          created_at: rideData.created_at, // Firestore Timestamp
+          created_at: rideData.created_at,
           ride_datetime: rideData.ride_datetime || 'Unknown Time',
           status: rideData.status,
           available_seats: rideData.available_seats || 0,
@@ -129,9 +132,10 @@ const SuggestedRides = () => {
     }
   }, []);
 
+  // Only fetch rides when refreshKey changes
   useEffect(() => {
     fetchRides();
-  }, [fetchRides]);
+  }, [fetchRides, refreshKey]);
 
   const renderRideCard = useCallback(
     ({ item }: { item: Ride }) => {

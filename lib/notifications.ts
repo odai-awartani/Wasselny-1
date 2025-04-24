@@ -272,13 +272,13 @@ export const scheduleRideNotification = async (title: string, body: string, time
   const triggerDate = new Date(Date.now() + timeInMinutes * 60 * 1000);
   
   await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      sound: true,
-      priority: Notifications.AndroidNotificationPriority.HIGH,
-    },
-    trigger: {
+      content: {
+        title,
+        body,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: {
       date: triggerDate,
     } as Notifications.NotificationTriggerInput,
   });
@@ -407,15 +407,15 @@ export const sendRideRequestNotification = async (
     };
 
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(message),
-    });
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
       throw new Error('Failed to send push notification');
     }
 
