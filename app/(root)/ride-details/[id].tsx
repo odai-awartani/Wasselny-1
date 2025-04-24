@@ -9,7 +9,7 @@ import { icons } from '@/constants';
 import RideMap from '@/components/RideMap';
 import CustomButton from '@/components/CustomButton';
 import { useAuth } from '@clerk/clerk-expo';
-import { scheduleNotification, setupNotifications, cancelNotification, sendRideStatusNotification } from '@/lib/notifications';
+import { scheduleNotification, setupNotifications, cancelNotification, sendRideStatusNotification, sendRideRequestNotification } from '@/lib/notifications';
 
 interface DriverData {
   car_seats?: number;
@@ -336,7 +336,11 @@ const RideDetails = () => {
         Alert.alert('معلومات الرحلة غير مكتملة');
         return;
       }
-  
+
+      // Get user's name for the notification
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      const userName = userDoc.data()?.name || 'A passenger';
+
       // Create the ride request document
       const rideRequestRef = await addDoc(collection(db, 'ride_requests'), {
         ride_id: ride.id,
@@ -345,15 +349,15 @@ const RideDetails = () => {
         status: 'waiting',
         created_at: serverTimestamp(),
       });
-  
+
       // Send push notification to driver
-      await sendRideStatusNotification(
+      await sendRideRequestNotification(
         ride.driver_id,
-        'طلب حجز جديد!',
-        `لقد طلب راكب جديد الانضمام إلى رحلتك من ${ride.origin_address} إلى ${ride.destination_address}`,
-        ride.id
+        userName,
+        ride.origin_address,
+        ride.destination_address
       );
-  
+
       Alert.alert('✅ تم إرسال طلب الحجز بنجاح');
     } catch (error) {
       console.error('Booking error:', error);

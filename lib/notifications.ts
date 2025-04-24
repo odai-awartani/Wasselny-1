@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getMessaging, getToken } from 'firebase/messaging';
 import firebase from 'firebase/app';
@@ -15,6 +15,20 @@ Notifications.setNotificationHandler({
     shouldSetBadge: true,
   }),
 });
+
+// Save push token for the current user
+const savePushTokenForUser = async (userId: string, token: string) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, { 
+      pushToken: token,
+      updatedAt: new Date()
+    }, { merge: true });
+    console.log('Push token saved successfully for user:', userId);
+  } catch (error) {
+    console.error('Error saving push token:', error);
+  }
+};
 
 // Setup notifications and request permissions
 export const setupNotifications = async (userId: string) => {
@@ -40,10 +54,7 @@ export const setupNotifications = async (userId: string) => {
 
     // Save token to Firestore
     if (userId) {
-      await setDoc(doc(db, 'users', userId), { 
-        pushToken: token,
-        updatedAt: new Date()
-      }, { merge: true });
+      await savePushTokenForUser(userId, token);
     }
 
     return token;
@@ -327,6 +338,75 @@ export const sendTestNotification = async () => {
     return true;
   } catch (error) {
     console.error('Error sending test notification:', error);
+    return false;
+  }
+};
+
+// Send ride request notification
+export const sendRideRequestNotification = async (
+  driverId: string,
+  passengerName: string,
+  pickupLocation: string,
+  dropoffLocation: string
+) => {
+  try {
+    // Get driver's push token from Firestore
+    const driverDoc = await getDoc(doc(db, 'users', driverId));
+    if (!driverDoc.exists() || !driverDoc.data().pushToken) {
+      console.warn('No push token found for driver:', driverId);
+      return;
+    }
+
+    const pushToken = driverDoc.data().pushToken;
+
+    // Create notification in Firestore
+    const notificationRef = doc(collection(db, 'notifications'));
+    const notificationData = {
+      id: notificationRef.id,
+      title: 'New Ride Request',
+      message: `${passengerName} requested a ride from ${pickupLocation} to ${dropoffLocation}`,
+      type: 'ride_request',
+      read: false,
+      userId: driverId,
+      createdAt: new Date(),
+    };
+
+    // Save notification to Firestore
+    await setDoc(notificationRef, notificationData);
+
+    // Send push notification
+    const message = {
+      to: pushToken,
+      sound: 'default',
+      title: 'New Ride Request',
+      body: `${passengerName} requested a ride from ${pickupLocation} to ${dropoffLocation}`,
+      data: { 
+        type: 'ride_request',
+        notificationId: notificationRef.id
+      },
+      priority: 'high',
+      channelId: 'ride-requests',
+      badge: 1,
+      vibrate: [0, 250, 250, 250],
+    };
+
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to send push notification');
+    }
+
+    console.log('Ride request notification sent successfully');
+    return true;
+  } catch (error) {
+    console.error('Error sending ride request notification:', error);
     return false;
   }
 };
