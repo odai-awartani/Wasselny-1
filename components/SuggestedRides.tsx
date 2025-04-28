@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
-import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { icons, images } from '@/constants';
 
@@ -46,17 +46,76 @@ const SuggestedRides = ({ refreshKey }: { refreshKey: number }) => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useUser();
 
+  const parseDateString = (dateStr: string) => {
+    // Handle both formats: "DD/MM/YYYY HH:mm" and "DD/MM/YYYY HH:mm AM/PM"
+    const [datePart, timePart] = dateStr.split(' ');
+    const [day, month, year] = datePart.split('/').map(Number);
+    
+    let hours = 0;
+    let minutes = 0;
+    
+    // Parse time part
+    if (timePart) {
+      if (timePart.includes('AM') || timePart.includes('PM')) {
+        // Handle 12-hour format
+        const isPM = timePart.includes('PM');
+        const [time] = timePart.split(' ');
+        const [h, m] = time.split(':').map(Number);
+        hours = isPM ? (h === 12 ? 12 : h + 12) : (h === 12 ? 0 : h);
+        minutes = m;
+      } else {
+        // Handle 24-hour format
+        const [h, m] = timePart.split(':').map(Number);
+        hours = h;
+        minutes = m;
+      }
+    }
+    
+    return new Date(year, month - 1, day, hours, minutes);
+  };
+
+  const isRideOutdated = (rideDateTime: string) => {
+    try {
+      const rideDate = parseDateString(rideDateTime);
+      const currentDate = new Date();
+      
+      console.log('Checking ride date:', {
+        rideDateTime,
+        parsedRideDate: rideDate.toISOString(),
+        currentDate: currentDate.toISOString(),
+        isOutdated: rideDate < currentDate
+      });
+      
+      return rideDate < currentDate;
+    } catch (err) {
+      console.error('Error parsing ride date:', rideDateTime, err);
+      return false;
+    }
+  };
+
+  const updateRideStatus = async (rideId: string) => {
+    try {
+      const rideRef = doc(db, 'rides', rideId);
+      await updateDoc(rideRef, {
+        status: 'ended'
+      });
+      console.log(`Updated ride ${rideId} status to ended`);
+    } catch (err) {
+      console.error(`Error updating ride ${rideId} status:`, err);
+    }
+  };
+
   const fetchRides = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       console.log('Fetching rides...');
 
-      // Fetch pending rides
+      // Fetch pending and ended rides
       const ridesRef = collection(db, 'rides');
       const q = query(ridesRef, 
-        where('status', "==", "pending"),
-        limit(20)
+        where('status', 'in', ['pending', 'ended']),
+        limit(50)
       );
       const querySnapshot = await getDocs(q);
 
@@ -86,7 +145,24 @@ const SuggestedRides = ({ refreshKey }: { refreshKey: number }) => {
           driverDataMap[driverId] = { name: DEFAULT_DRIVER_NAME, driver: undefined };
         }
       }
-      console.log('Driver data map:', driverDataMap);
+
+      // Check for outdated rides and update their status
+      const updatePromises = [];
+      for (const docSnap of querySnapshot.docs) {
+        const rideData = docSnap.data();
+        console.log('Checking ride:', {
+          id: docSnap.id,
+          status: rideData.status,
+          ride_datetime: rideData.ride_datetime
+        });
+        if (rideData.status === 'pending' && isRideOutdated(rideData.ride_datetime)) {
+          console.log('Updating outdated ride:', docSnap.id);
+          updatePromises.push(updateRideStatus(docSnap.id));
+        }
+      }
+      
+      // Wait for all updates to complete
+      await Promise.all(updatePromises);
 
       // Map rides with driver data
       const ridesData = querySnapshot.docs.map((docSnap) => {
@@ -123,7 +199,7 @@ const SuggestedRides = ({ refreshKey }: { refreshKey: number }) => {
       });
 
       setRides(sortedRides);
-      console.log('Rides fetched:', sortedRides);
+      
     } catch (err) {
       console.error('Error fetching rides:', err);
       setError('Failed to load rides. Please try again.');
@@ -146,8 +222,8 @@ const SuggestedRides = ({ refreshKey }: { refreshKey: number }) => {
         >
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-lg font-bold">Ride #{item.id}</Text>
-            <View className="bg-green-50 px-3 py-1 rounded-full">
-              <Text className="text-green-700 text-sm">{item.status}</Text>
+            <View className={`px-3 py-1 rounded-full ${item.status === 'ended' ? 'bg-red-50' : 'bg-green-50'}`}>
+              <Text className={`text-sm ${item.status === 'ended' ? 'text-red-700' : 'text-green-700'}`}>{item.status}</Text>
             </View>
           </View>
 

@@ -262,15 +262,7 @@ const Profile = () => {
 
           {/* Action Icons */}
           <View className="flex-row justify-center space-x-8">
-            <TouchableOpacity 
-              onPress={() => router.push('/test-notification')}
-              className="items-center"
-            >
-              <View className="bg-gray-100 p-3 rounded-full">
-                <Ionicons name="notifications-outline" size={20} color="#374151" />
-              </View>
-              <Text className="text-xs text-gray-600 mt-1">Test Notifications</Text>
-            </TouchableOpacity>
+            
             
             <TouchableOpacity 
               onPress={() => Alert.alert('Coming Soon', 'Settings page will be available soon.')}
@@ -324,16 +316,16 @@ const Profile = () => {
               <View className="space-y-4">
                 <View>
                   <View className="flex-row items-center mb-1">
-                    <MaterialCommunityIcons name="car" size={16} color="#6B7280" />
-                    <Text className="text-gray-500 text-sm ml-2">Car Type</Text>
+                  
+                    <Text className="text-gray-500 text-sm">Car Type</Text>
                   </View>
                   <Text className="font-JakartaMedium">{userData.data?.driver?.car_type || 'Not specified'}</Text>
                 </View>
 
                 <View>
                   <View className="flex-row items-center mb-1">
-                    <MaterialCommunityIcons name="car-seat" size={16} color="#6B7280" />
-                    <Text className="text-gray-500 text-sm ml-2">Number of Seats</Text>
+                   
+                    <Text className="text-gray-500 text-sm">Number of Seats</Text>
                   </View>
                   <Text className="font-JakartaMedium">{userData.data?.driver?.car_seats || 0}</Text>
                 </View>
@@ -341,8 +333,8 @@ const Profile = () => {
                 {userData.data?.driver?.car_image_url && (
                   <View>
                     <View className="flex-row items-center mb-1">
-                      <MaterialCommunityIcons name="image" size={16} color="#6B7280" />
-                      <Text className="text-gray-500 text-sm ml-2">Car Image</Text>
+                      
+                      <Text className="text-gray-500 text-sm">Car Image</Text>
                     </View>
                     <Image
                       source={{ uri: userData.data.driver.car_image_url }}

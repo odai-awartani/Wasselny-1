@@ -107,36 +107,11 @@ const BookRide = () => {
       // Handle successful booking
       setSuccess(true);
 
-      // Send immediate notification about ride confirmation
-      await sendRideStatusNotification(
-        "Ride Confirmed!",
-        `Your ride from ${userAddress} to ${destinationAddress} has been confirmed. Your driver ${driverDetails.first_name} will arrive in approximately ${formatTime(driverDetails.time)}.`
-      );
-
-      // Schedule a notification for when the driver is about to arrive
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Driver Arriving Soon!",
-          body: `Your driver ${driverDetails.first_name} is about to arrive at your pickup location.`,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-        },
-        trigger: {
-          seconds: (driverDetails.time - 5) * 60, // 5 minutes before arrival
-        },
-      });
-
     } catch (error: any) {
       console.error("Booking error:", error);
       Alert.alert(
         "Booking Failed",
         error.message || "Could not complete booking. Please try again."
-      );
-
-      // Send notification about booking error
-      await sendRideStatusNotification(
-        "Ride Booking Error",
-        "An unexpected error occurred. Please try again."
       );
     } finally {
       setIsLoading(false);

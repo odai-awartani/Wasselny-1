@@ -201,7 +201,7 @@ export default function Home() {
             <Text className="text-xl font-JakartaBold mt-5 mb-3">
               Suggested Rides
             </Text>
-            <SuggestedRides key={refreshKey} />
+            <SuggestedRides key={refreshKey} refreshKey={refreshKey} />
           </>
         }
         refreshControl={

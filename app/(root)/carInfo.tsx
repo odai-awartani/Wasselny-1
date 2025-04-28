@@ -13,6 +13,7 @@ import ReactNativeModal from "react-native-modal";
 import { useLocationStore } from "@/store";
 import { doc, setDoc, getDocs, collection, query, orderBy, limit, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { scheduleDriverRideReminder } from '@/lib/notifications';
 
 interface RideRequestData {
   origin_address: string;
@@ -67,7 +68,6 @@ const CarInfoScreen = () => {
 
   const handleConfirmRide = useCallback(async () => {
     setIsLoading(true);
-
     try {
       if (!userAddress || !destinationAddress || !user?.id) {
         throw new Error("Missing required ride information");
@@ -81,6 +81,37 @@ const CarInfoScreen = () => {
       let rideDateTimeStr = params.ride_datetime as string;
       if (!rideDateTimeStr) {
         throw new Error("Ride date and time are required");
+      }
+
+      // Validate that the selected time is at least one hour from now
+      const [datePart, timePart] = rideDateTimeStr.split(' ');
+      const [day, month, year] = datePart.split('/').map(Number);
+      const [hours, minutes] = timePart.split(':').map(Number);
+      const selectedDateTime = new Date(year, month - 1, day, hours, minutes);
+      const now = new Date();
+      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // Add one hour to current time
+
+      // Check if it's the same day
+      const isSameDay = selectedDateTime.getDate() === now.getDate() &&
+                        selectedDateTime.getMonth() === now.getMonth() &&
+                        selectedDateTime.getFullYear() === now.getFullYear();
+
+      if (isSameDay && selectedDateTime <= oneHourFromNow) {
+        Alert.alert(
+          "خطأ في الوقت",
+          "يجب اختيار وقت بعد ساعة واحدة على الأقل من الآن"
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      if (selectedDateTime < now) {
+        Alert.alert(
+          "خطأ في التاريخ",
+          "لا يمكن اختيار تاريخ في الماضي"
+        );
+        setIsLoading(false);
+        return;
       }
 
       // Check for time conflicts
@@ -154,7 +185,7 @@ const CarInfoScreen = () => {
           // Calculate the time difference
           const timeDiff = newRideDate.getTime() - existingRideDate.getTime();
           
-          // Check if the new ride is within 15 minutes before or after the existing ride
+          // Check if the new ride is within 2 minutes before or after the existing ride
           if (Math.abs(timeDiff) < fifteenMinutes) {
             console.log("Time conflict found:", {
               newRideTime: newRideDate.toISOString(),
@@ -169,7 +200,7 @@ const CarInfoScreen = () => {
         if (hasConflict) {
           Alert.alert(
             "Schedule Conflict",
-            "You already have a ride scheduled around this time. For scheduling and safety reasons, you can't create another ride within 15 minutes before or after your current ride."
+            "You already have a ride scheduled around this time. For scheduling and safety reasons, you can't create another ride within 2 minutes before or after your current ride."
           );
           setIsLoading(false);
           return;

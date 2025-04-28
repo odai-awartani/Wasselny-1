@@ -85,8 +85,8 @@ export default function Notifications() {
       // Navigate to ride details if there's a rideId
       if (notification.data?.rideId) {
         router.push({
-          pathname: `/ride-details/${notification.data.rideId}`,
-          params: { scrollToRequests: true }
+          pathname: '/(root)/ride-details/[id]',
+          params: { id: notification.data.rideId, expandSheet: 'true' }
         });
       }
     } catch (error) {

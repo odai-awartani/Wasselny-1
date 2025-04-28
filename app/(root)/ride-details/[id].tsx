@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Modal, Pressable, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, onSnapshot, query, where, Query, setDoc, getDocs } from 'firebase/firestore';
-import { format, parseISO } from 'date-fns';
+import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, onSnapshot, query, where, Query, setDoc, getDocs, Timestamp } from 'firebase/firestore';
+import { format, parse } from 'date-fns';
 import { db } from '@/lib/firebase';
 import RideLayout from '@/components/RideLayout';
 import { icons } from '@/constants';
 import RideMap from '@/components/RideMap';
 import CustomButton from '@/components/CustomButton';
 import { useAuth } from '@clerk/clerk-expo';
-import { scheduleNotification, setupNotifications, cancelNotification, sendRideStatusNotification, sendRideRequestNotification } from '@/lib/notifications';
+import { scheduleNotification, setupNotifications, cancelNotification, sendRideStatusNotification, sendRideRequestNotification, startRideNotificationService, schedulePassengerRideReminder, sendCheckOutNotificationForDriver, sendRideCancellationNotification, scheduleDriverRideReminder, scheduleRideNotification } from '@/lib/notifications';
 
 interface DriverData {
   car_seats?: number;
@@ -59,6 +59,8 @@ interface RideRequest {
   status: 'waiting' | 'accepted' | 'rejected' | 'checked_in' | 'checked_out' | 'cancelled';
   created_at: any;
   rating?: number;
+  notification_id?: string;
+
 }
 
 const DEFAULT_DRIVER_NAME = 'Unknown Driver';
@@ -66,6 +68,8 @@ const DEFAULT_CAR_SEATS = 4;
 const DEFAULT_CAR_TYPE = 'Unknown';
 const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/40';
 const DEFAULT_CAR_IMAGE = 'https://via.placeholder.com/120x80';
+const DATE_FORMAT = 'dd/MM/yyyy HH:mm';
+
 
 const RideDetails = () => {
   const [pendingRequests, setPendingRequests] = useState<RideRequest[]>([]);
@@ -85,87 +89,26 @@ const RideDetails = () => {
   const [rating, setRating] = useState(0);
   const { userId } = useAuth();
   const isDriver = ride?.driver_id === userId;
-  const isPassenger = ride?.driver_id === userId || (ride?.available_seats ?? 0) <= 0;
+  const isPassenger = rideRequest && rideRequest.status === 'accepted';
 
-  // إعداد أذونات الإشعارات
+  // Setup notifications
   useEffect(() => {
     if (userId) {
       setupNotifications(userId);
+      startRideNotificationService(userId, true);
     }
   }, [userId]);
-
-  // جدولة الإشعار للراكب
-  useEffect(() => {
-    if (ride && ride.ride_datetime) {
-      try {
-        // Parse ride_datetime from DD/MM/YYYY HH:mm format (local time)
-        const [datePart, timePart] = ride.ride_datetime.split(' ');
-        const [day, month, year] = datePart.split('/').map(Number);
-        const [hours, minutes] = timePart.split(':').map(Number);
-  
-        // Create a Date object in local time
-        const rideDate = new Date(year, month - 1, day, hours, minutes);
-  
-        // Validate the date
-        if (isNaN(rideDate.getTime())) {
-          console.warn('Invalid ride_datetime after parsing:', ride.ride_datetime);
-          return;
-        }
-  
-        // Calculate reminder time (15 minutes before)
-        const reminderTime = new Date(rideDate.getTime() - 15 * 60 * 1000);
-        const now = new Date();
-  
-        // Log times for debugging
-        console.log('Current time:', now.toISOString());
-        console.log('Ride time:', rideDate.toISOString());
-        console.log('Reminder time:', reminderTime.toISOString());
-  
-        // Check if reminder time is in the future
-        if (reminderTime > now) {
-          scheduleNotification(
-            'تذكير: رحلتك على وشك البدء!',
-            `تستعد للانطلاق من ${ride.origin_address} إلى ${ride.destination_address}`,
-            reminderTime,
-            ride.id
-          ).then((id) => {
-            if (id) {
-              console.log('Notification scheduled with ID:', id);
-            } else {
-              console.warn('Failed to schedule notification');
-            }
-          });
-        } else {
-          console.warn('Reminder time is in the past:', reminderTime.toISOString());
-        }
-      } catch (error) {
-        console.error('Error scheduling notification:', error);
-      }
-    }
-  
-    return () => {
-      if (notificationId && typeof notificationId === 'string') {
-        cancelNotification(notificationId);
-      }
-    };
-  }, [ride]);
 
   // Handle notification when page loads
   useEffect(() => {
     if (notificationId && typeof notificationId === 'string') {
-      // Mark notification as read
       const markNotificationAsRead = async () => {
         try {
           const notificationRef = doc(db, 'notifications', notificationId);
           await updateDoc(notificationRef, { read: true });
-          
-          // Scroll to pending requests section
           if (scrollViewRef.current) {
             setTimeout(() => {
-              scrollViewRef.current?.scrollTo({
-                y: 1000, // Adjust this value based on your layout
-                animated: true
-              });
+              scrollViewRef.current?.scrollTo({ y: 1000, animated: true });
             }, 500);
           }
         } catch (error) {
@@ -176,7 +119,7 @@ const RideDetails = () => {
     }
   }, [notificationId]);
 
-  // جلب تفاصيل الرحلة
+  // Fetch ride details
   const fetchRideDetails = useCallback(async () => {
     try {
       setLoading(true);
@@ -204,21 +147,20 @@ const RideDetails = () => {
         }
       }
 
-      let formattedDateTime = rideData.ride_datetime || 'وقت غير معروف';
-      try {
-        const date = new Date(rideData.ride_datetime);
-        if (!isNaN(date.getTime())) {
-          formattedDateTime = date.toLocaleString('ar-EG', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric',
-            hour12: true,
-          });
+      let formattedDateTime = rideData.ride_datetime;
+      if (rideData.ride_datetime instanceof Timestamp) {
+        formattedDateTime = format(rideData.ride_datetime.toDate(), DATE_FORMAT);
+      } else {
+        try {
+          const parsedDate = parse(rideData.ride_datetime, DATE_FORMAT, new Date());
+          if (!isNaN(parsedDate.getTime())) {
+            formattedDateTime = format(parsedDate, DATE_FORMAT);
+          } else {
+            console.warn('Invalid ride_datetime format');
+          }
+        } catch {
+          console.warn('Invalid ride_datetime format');
         }
-      } catch {
-        console.warn('Invalid ride_datetime format');
       }
 
       const rideDetails: Ride = {
@@ -388,57 +330,73 @@ const RideDetails = () => {
     }
   }, [scrollToRequests, pendingRequests]);
 
-  // Handle driver accepting ride request
-  const handleAcceptRequest = async (requestId: string, userId: string) => {
-    try {
-      // Get passenger's name
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      const passengerName = userDoc.data()?.name || 'الراكب';
+// Handle driver accepting ride request
+const handleAcceptRequest = async (requestId: string, userId: string) => {
+  try {
+    // Get passenger's name
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    const passengerName = userDoc.data()?.name || 'الراكب';
 
-      // Update ride request status and save passenger name
-      await updateDoc(doc(db, 'ride_requests', requestId), {
-        status: 'accepted',
-        updated_at: serverTimestamp(),
-        passenger_name: passengerName,
-        passenger_id: userId
-      });
-
-      // Send notification to user
-      await sendRideStatusNotification(
-        userId,
-        'تم قبول طلب الحجز!',
-        `تم قبول طلب حجزك للرحلة من ${ride?.origin_address} إلى ${ride?.destination_address}`,
-        ride?.id || ''
-      );
-
-      // Find and update all related notifications
-      const notificationsRef = collection(db, 'notifications');
-      const q = query(
-        notificationsRef,
-        where('user_id', '==', userId),
-        where('data.rideId', '==', ride?.id),
-        where('type', '==', 'ride_request')
-      );
-
-      const querySnapshot = await getDocs(q);
-      querySnapshot.forEach(async (doc) => {
-        await updateDoc(doc.ref, {
-          read: true,
-          data: {
-            status: 'accepted',
-            rideId: ride?.id,
-            type: 'ride_status',
-            passenger_name: passengerName
-          }
-        });
-      });
-
-      Alert.alert('✅ تم قبول طلب الحجز بنجاح', `تم قبول طلب ${passengerName}`);
-    } catch (error) {
-      console.error('Error accepting request:', error);
-      Alert.alert('حدث خطأ أثناء قبول الطلب.');
+    // افترض أن ride هو كائن تم تعريفه مسبقًا (يحتوي على id, driver_id, origin_address, destination_address)
+    if (!ride) {
+      throw new Error('بيانات الرحلة غير متوفرة');
     }
-  };
+
+    if (!ride.driver_id) {
+      throw new Error('معرف السائق غير موجود');
+    }
+
+    // جدولة إشعار للراكب
+    const passengerNotificationId = await scheduleRideNotification(ride.id, userId, false); // false لأنه راكب
+
+    // جدولة إشعار للسائق
+    const driverNotificationId = await scheduleRideNotification(ride.id, ride.driver_id, true); // true لأنه سائق
+
+    // تحديث حالة طلب الرحلة إلى "مقبول"
+    await updateDoc(doc(db, 'ride_requests', requestId), {
+      status: 'accepted',
+      updated_at: serverTimestamp(),
+      passenger_name: passengerName,
+      passenger_id: userId,
+      notification_id: passengerNotificationId || null, // تخزين معرف الإشعار للراكب
+    });
+
+    // إرسال إشعار فوري للراكب
+    await sendRideStatusNotification(
+      userId,
+      'تم قبول طلب الحجز!',
+      `تم قبول طلب حجزك للرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
+      ride.id
+    );
+
+    // تحديث الإشعارات السابقة المتعلقة بالطلب
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(
+      notificationsRef,
+      where('user_id', '==', userId),
+      where('data.rideId', '==', ride.id),
+      where('type', '==', 'ride_request')
+    );
+
+    const querySnapshot = await getDocs(q);
+    for (const doc of querySnapshot.docs) {
+      await updateDoc(doc.ref, {
+        read: true,
+        data: {
+          status: 'accepted',
+          rideId: ride.id,
+          type: 'ride_status',
+          passenger_name: passengerName,
+        },
+      });
+    }
+
+    Alert.alert('✅ تم قبول طلب الحجز بنجاح', `تم قبول طلب ${passengerName}`);
+  } catch (error) {
+    console.error('Error accepting request:', error);
+    Alert.alert('حدث خطأ أثناء قبول الطلب.');
+  }
+};
 
   // Handle driver rejecting ride request
   const handleRejectRequest = async (requestId: string, userId: string) => {
@@ -451,7 +409,6 @@ const RideDetails = () => {
       await updateDoc(doc(db, 'ride_requests', requestId), {
         status: 'rejected',
         updated_at: serverTimestamp(),
-        passenger_name: passengerName
       });
 
       // Send notification to user
@@ -491,18 +448,32 @@ const RideDetails = () => {
     }
   };
 
-  // User booking the ride
   const handleBookRide = async () => {
     try {
       if (!ride || !ride.id || !ride.driver_id || !userId) {
         Alert.alert('معلومات الرحلة غير مكتملة');
         return;
       }
-
-      // Get user's name for the notification
+      console.log('Booking ride for user:', ride.driver_id);
+  
+      // Get user's data (name and gender)
       const userDoc = await getDoc(doc(db, 'users', userId));
-      const userName = userDoc.data()?.name || 'A passenger';
-
+      const userData = userDoc.data();
+      const userName = userData?.name || 'الراكب';
+      const userGender = userData?.gender || 'غير محدد';
+  
+      // Check if the user's gender matches the ride's required gender
+      if (ride.required_gender !== 'كلاهما') {
+        if (ride.required_gender === 'ذكر' && userGender !== 'Male') {
+          Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الذكور فقط.');
+          return;
+        }
+        if (ride.required_gender === 'أنثى' && userGender !== 'Female') {
+          Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الإناث فقط.');
+          return;
+        }
+      }
+  
       // Create the ride request document
       const rideRequestRef = await addDoc(collection(db, 'ride_requests'), {
         ride_id: ride.id,
@@ -510,6 +481,7 @@ const RideDetails = () => {
         driver_id: ride.driver_id,
         status: 'waiting',
         created_at: serverTimestamp(),
+        passenger_name: userName,
       });
 
       // Send push notification to driver
@@ -520,7 +492,7 @@ const RideDetails = () => {
         ride.destination_address,
         ride.id
       );
-
+  
       Alert.alert('✅ تم إرسال طلب الحجز بنجاح');
     } catch (error) {
       console.error('Booking error:', error);
@@ -531,7 +503,7 @@ const RideDetails = () => {
   // Handle check-in
   const handleCheckIn = async () => {
     try {
-      if (!rideRequest || !ride) return;
+      if (!rideRequest || !ride || !userId) return;
 
       await updateDoc(doc(db, 'ride_requests', rideRequest.id), {
         status: 'checked_in',
@@ -543,44 +515,103 @@ const RideDetails = () => {
         available_seats: ride.available_seats - 1,
       });
 
-      // Send notification to driver
-      await sendRideStatusNotification(
-        ride.driver_id!,
-        'تم تسجيل الدخول!',
-        'قام الراكب بتسجيل الدخول للرحلة',
-        ride.id
-      );
+         // Send notification to the driver that passenger has checked in
+    await sendRideStatusNotification(
+      ride?.driver_id || '',
+      'الراكب وصل',
+      `الراكب قد وصل وبدأ الرحلة من ${ride?.origin_address} إلى ${ride?.destination_address}`,
+      ride?.id || ''
+    );
+  } catch (error) {
+    console.error('Error during check-in:', error);
+  }
+};
 
-      Alert.alert('✅ تم تسجيل دخولك للرحلة');
-    } catch (error) {
-      console.error('Check-in error:', error);
-      Alert.alert('حدث خطأ أثناء تسجيل الدخول.');
+const handleCheckOut = async () => {
+  try {
+    if (!rideRequest || !ride || !userId) {
+      console.error('Missing required data: rideRequest, ride, or userId');
+      return;
     }
-  };
 
-  // Handle check-out
-  const handleCheckOut = async () => {
+    // إلغاء الإشعار المجدول إذا كان موجودًا
+    if (rideRequest.notification_id) {
+      await cancelNotification(rideRequest.notification_id);
+      console.log(`Cancelled notification ${rideRequest.notification_id}`);
+    }
+
+    // تحديث حالة طلب الحجز إلى checked_out
+    await updateDoc(doc(db, 'ride_requests', rideRequest.id), {
+      status: 'checked_out',
+      updated_at: serverTimestamp(),
+    });
+
+    // إرسال إشعار للسائق
+    const notificationSent = await sendCheckOutNotificationForDriver(
+      ride.driver_id || '',
+      passengerNames[userId] || 'الراكب', // تمرير اسم الراكب
+      ride.id
+    );
+
+    if (!notificationSent) {
+      console.warn('Failed to send check-out notification to driver');
+    }
+
+    // فتح نافذة التقييم
+    setShowRatingModal(true);
+  } catch (error) {
+    console.error('Check-out error:', error);
+    Alert.alert('حدث خطأ أثناء تسجيل الخروج.');
+  }
+};
+
+
+  // Handle ride cancellation
+  const handleCancelRide = async () => {
     try {
-      if (!rideRequest || !ride) return;
-
+      if (!rideRequest || !ride || !userId) {
+        console.error('Missing required data: rideRequest, ride, or userId');
+        return;
+      }
+  
+      // إلغاء الإشعار المجدول إذا كان موجودًا
+      if (rideRequest.notification_id) {
+        await cancelNotification(rideRequest.notification_id);
+        console.log(`Cancelled notification ${rideRequest.notification_id}`);
+      }
+  
+      // تحديث حالة طلب الحجز إلى cancelled
       await updateDoc(doc(db, 'ride_requests', rideRequest.id), {
-        status: 'checked_out',
+        status: 'cancelled',
         updated_at: serverTimestamp(),
       });
-
-      // Send notification to driver
-      await sendRideStatusNotification(
-        ride.driver_id!,
-        'تم تسجيل الخروج!',
-        'قام الراكب بتسجيل الخروج من الرحلة',
-        ride.id
-      );
-
-      // Show rating modal
-      setShowRatingModal(true);
+  
+      // تحديث عدد المقاعد المتاحة إذا كان الطلب مقبولًا أو تم تسجيل الدخول
+      if (rideRequest.status === 'accepted' || rideRequest.status === 'checked_in') {
+        await updateDoc(doc(db, 'rides', ride.id), {
+          available_seats: ride.available_seats + 1,
+        });
+        console.log(`Increased available_seats for ride ${ride.id}`);
+      }
+  
+      // إرسال إشعار إلى السائق
+      if (ride.driver_id) {
+        const passengerName = passengerNames[userId] || 'الراكب';
+        const notificationSent = await sendRideStatusNotification(
+          ride.driver_id,
+          'تم إلغاء الحجز',
+          `قام ${passengerName} بإلغاء حجز الرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
+          ride.id
+        );
+        if (!notificationSent) {
+          console.warn('Failed to send cancellation notification to driver');
+        }
+      }
+  
+      Alert.alert('✅ تم إلغاء الحجز بنجاح');
     } catch (error) {
-      console.error('Check-out error:', error);
-      Alert.alert('حدث خطأ أثناء تسجيل الخروج.');
+      console.error('Cancellation error:', error);
+      Alert.alert('حدث خطأ أثناء إلغاء الحجز.');
     }
   };
 
@@ -588,13 +619,14 @@ const RideDetails = () => {
   const handleRateDriver = async () => {
     try {
       if (!rideRequest || !ride) return;
-
+  
+      // Update the ride request with the rating
       await updateDoc(doc(db, 'ride_requests', rideRequest.id), {
         rating: rating,
         updated_at: serverTimestamp(),
       });
-
-      // Send notification to driver
+  
+      // Send notification to the driver
       if (ride.driver_id) {
         await sendRideStatusNotification(
           ride.driver_id,
@@ -603,7 +635,8 @@ const RideDetails = () => {
           ride.id
         );
       }
-
+  
+      // Close the rating modal and show success alert
       setShowRatingModal(false);
       Alert.alert('✅ شكراً على تقييمك!');
     } catch (error) {
@@ -612,32 +645,7 @@ const RideDetails = () => {
     }
   };
 
-  // Handle ride cancellation
-  const handleCancelRide = async () => {
-    try {
-      if (!rideRequest || !ride) return;
 
-      await updateDoc(doc(db, 'ride_requests', rideRequest.id), {
-        status: 'cancelled',
-        updated_at: serverTimestamp(),
-      });
-
-      // Send notification to driver
-      if (ride.driver_id) {
-        await sendRideStatusNotification(
-          ride.driver_id,
-          'تم إلغاء الحجز',
-          'قام الراكب بإلغاء حجز الرحلة',
-          ride.id
-        );
-      }
-
-      Alert.alert('✅ تم إلغاء الحجز بنجاح');
-    } catch (error) {
-      console.error('Cancellation error:', error);
-      Alert.alert('حدث خطأ أثناء إلغاء الحجز.');
-    }
-  };
 
   if (loading) {
     return (

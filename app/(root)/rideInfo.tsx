@@ -105,6 +105,29 @@ const AddRideDetails = () => {
       Alert.alert("الرجاء اختيار وقت الرحلة");
       return false;
     }
+
+    // Validate that the selected time is at least one hour from now
+    const [day, month, year] = tripDate.split('/').map(Number);
+    const [hours, minutes] = tripTime.split(':').map(Number);
+    const selectedDateTime = new Date(year, month - 1, day, hours, minutes);
+    const now = new Date();
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // Add one hour to current time
+
+    // Check if it's the same day
+    const isSameDay = selectedDateTime.getDate() === now.getDate() &&
+                      selectedDateTime.getMonth() === now.getMonth() &&
+                      selectedDateTime.getFullYear() === now.getFullYear();
+
+    if (isSameDay && selectedDateTime <= oneHourFromNow) {
+      Alert.alert("خطأ في الوقت", "يجب اختيار وقت بعد ساعة واحدة على الأقل من الآن");
+      return false;
+    }
+
+    if (selectedDateTime < now) {
+      Alert.alert("خطأ في التاريخ", "لا يمكن اختيار تاريخ في الماضي");
+      return false;
+    }
+
     if (!availableSeats || isNaN(parseInt(availableSeats))) {
       Alert.alert("الرجاء إدخال عدد صحيح للمقاعد المتاحة");
       return false;
