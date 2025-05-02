@@ -20,16 +20,29 @@ interface Location {
 interface RideMapProps {
   origin?: Location;
   destination?: Location;
+  onTargetPress?: () => void;
 }
 
 const directionsAPI = process.env.EXPO_PUBLIC_DIRECTIONS_API_KEY;
 
-const RideMap = ({ origin, destination }: RideMapProps) => {
+const RideMap = ({ origin, destination, onTargetPress }: RideMapProps) => {
   const [userLocation, setUserLocation] = useState<LocationCoords | null>(null);
   const mapRef = useRef<MapView | null>(null);
 
   const hasOrigin = origin?.latitude && origin?.longitude;
   const hasDestination = destination?.latitude && destination?.longitude;
+
+  // Validate coordinates
+  const isValidCoordinate = (coord: number) => {
+    return coord >= -90 && coord <= 90;
+  };
+
+  const isValidRoute = hasOrigin && 
+    hasDestination && 
+    isValidCoordinate(origin.latitude!) && 
+    isValidCoordinate(origin.longitude!) && 
+    isValidCoordinate(destination.latitude!) && 
+    isValidCoordinate(destination.longitude!);
 
   // جلب موقع المستخدم الحالي
   useEffect(() => {
@@ -99,44 +112,54 @@ const RideMap = ({ origin, destination }: RideMapProps) => {
         />
 
         {/* رسم المسار */}
-        <MapViewDirections
-          origin={{
-            latitude: origin.latitude!,
-            longitude: origin.longitude!,
-          }}
-          destination={{
-            latitude: destination.latitude!,
-            longitude: destination.longitude!,
-          }}
-          apikey={directionsAPI!}
-          strokeColor="#0286FF"
-          strokeWidth={2}
-          optimizeWaypoints={true}
-          onError={(errorMessage) => {
-            console.warn("حدث خطأ في رسم المسار:", errorMessage);
-          }}
-        />
+        {isValidRoute && (
+          <MapViewDirections
+            origin={{
+              latitude: origin.latitude!,
+              longitude: origin.longitude!,
+            }}
+            destination={{
+              latitude: destination.latitude!,
+              longitude: destination.longitude!,
+            }}
+            apikey={directionsAPI!}
+            strokeColor="#0286FF"
+            strokeWidth={2}
+            optimizeWaypoints={true}
+            onError={(errorMessage) => {
+              console.warn("حدث خطأ في رسم المسار:", errorMessage);
+            }}
+            onReady={(result) => {
+              console.log("Route calculated successfully:", result);
+            }}
+          />
+        )}
       </MapView>
 
       {/* زر الذهاب للموقع الحالي */}
       {userLocation && (
         <TouchableOpacity
-        onPress={() => {
-          mapRef.current?.animateToRegion({
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          });
-        }}
-        className="absolute right-3 top-1/3 -translate-y-1/2 bg-amber-300 p-3 rounded-full shadow-md z-10"
-      >
-        <Image
-          source={icons.target} // أيقونة الموقع
-          style={{ width: 30, height: 30 }}
-          resizeMode="contain"
-        />
-      </TouchableOpacity>
+          onPress={() => {
+            // First, collapse the bottom sheet
+            onTargetPress?.();
+            // Then, zoom to user's location after a short delay
+            setTimeout(() => {
+              mapRef.current?.animateToRegion({
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              });
+            }, 300); // 300ms delay to let the bottom sheet animation start
+          }}
+          className="absolute right-3 top-1/3 -translate-y-1/2 bg-amber-300 p-3 rounded-full shadow-md z-10"
+        >
+          <Image
+            source={icons.target}
+            style={{ width: 30, height: 30 }}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
       )}
     </View>
   );

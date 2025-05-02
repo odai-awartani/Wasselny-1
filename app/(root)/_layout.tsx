@@ -20,7 +20,9 @@ const RootLayout = () => {
                <Stack.Screen name="notifications" options={{ headerShown: false }} />
                <Stack.Screen name="test-notification" options={{ headerShown: false }} />
                <Stack.Screen name="profile" options={{ headerShown: false }} />
-
+               <Stack.Screen name="create-ride" options={{ headerShown: false }} />
+               <Stack.Screen name="admin/driverApplications" options={{ headerShown: false }} />
+               <Stack.Screen name="ride-requests" options={{ headerShown: false }} />
 
 
 

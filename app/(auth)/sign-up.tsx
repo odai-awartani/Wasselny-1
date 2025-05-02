@@ -164,7 +164,7 @@ const industryMap = new Map([
         });
   
         // Use setDoc with Clerk ID as document ID
-        await setDoc(doc(db, "users", completeSignUp.createdUserId), {
+        await setDoc(doc(db, "users", completeSignUp.createdUserId || ''), {
           name: form.name,
           email: form.email,
           phone: formattedPhoneNumber,
@@ -198,11 +198,7 @@ const industryMap = new Map([
   };
   
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
+       <View className="flex-1">
       <ScrollView 
         className="flex-1 bg-white" 
         showsHorizontalScrollIndicator={false}
@@ -482,7 +478,7 @@ const industryMap = new Map([
       </View>
       </ScrollView>
       <StatusBar backgroundColor="#fff" style="dark" />
-    </KeyboardAvoidingView>
+      </View>
   );
 };
 

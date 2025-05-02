@@ -11,7 +11,7 @@ import { useUser } from "@clerk/clerk-expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import InputField from "@/components/InputField";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc, setDoc, getDoc, collection, addDoc } from "firebase/firestore";
 import { ActivityIndicator } from "react-native";
 interface DriverFormData {
   carType: string;
@@ -55,19 +55,38 @@ const driverInfo = () => {
       // Get user document from Firestore
       const userDoc = await getDoc(doc(db, "users", user.id));
       
-
       if (userDoc.exists()) {
         const userData = userDoc.data();
         // Check if user has driver data
-        if (userData.driver && userData.driver.is_active) {
-          console.log("User is a driver, redirecting to locationInfo");
-          await AsyncStorage.setItem('driverData', JSON.stringify(userData.driver));
-          router.replace({
-            pathname: "/(root)/locationInfo",
-            params: { driverId: user.id },
-            
-          });
-          return;
+        if (userData.driver) {
+          if (userData.driver.status === 'pending') {
+            Alert.alert(
+              "تنبيه",
+              "لديك طلب قيد المراجعة. يرجى الانتظار حتى يتم مراجعة طلبك من قبل الإدارة."
+            );
+            router.replace("/(root)/(tabs)/home");
+            return;
+          } else if (userData.driver.status === 'rejected') {
+            Alert.alert(
+              "تنبيه",
+              `تم رفض طلبك السابق للأسباب التالية:\n${userData.driver.rejection_reason || 'لم يتم تحديد السبب'}\n\nيمكنك تعديل بياناتك وإعادة التقديم.`
+            );
+            // Pre-fill the form with existing data
+            setDriverFormData({
+              carType: userData.driver.car_type || "",
+              carSeats: userData.driver.car_seats?.toString() || "",
+              carImage: userData.driver.car_image_url || null,
+              profileImage: userData.driver.profile_image_url || null,
+            });
+          } else if (userData.driver.is_active) {
+            console.log("User is a driver, redirecting to locationInfo");
+            await AsyncStorage.setItem('driverData', JSON.stringify(userData.driver));
+            router.replace({
+              pathname: "/(root)/locationInfo",
+              params: { driverId: user.id },
+            });
+            return;
+          }
         }
       }
       
@@ -165,15 +184,38 @@ const driverInfo = () => {
         profile_image_url: profileImageUrl,
         car_seats: Number(carSeats),
         created_at: new Date().toISOString(),
-        is_active: true
+        is_active: false,
+        status: 'pending',
+        user_id: user?.id,
+        user_name: user?.fullName,
+        user_email: user?.primaryEmailAddress?.emailAddress,
+        rejection_reason: null // Clear any previous rejection reason
       };
 
       // Get user reference using Clerk ID
       const userRef = doc(db, "users", user?.id!);
       
-      // Update the existing user document with driver data
+      // Update the existing user document with driver data and profile image
       await updateDoc(userRef, {
-        driver: driverData
+        driver: driverData,
+        profile_image_url: profileImageUrl
+      });
+
+      // Create notification for admin
+      const notificationsRef = collection(db, 'notifications');
+      await addDoc(notificationsRef, {
+        type: 'driver_request',
+        title: 'طلب جديد للتسجيل كسائق',
+        message: `طلب جديد من ${user?.fullName} للتسجيل كسائق`,
+        created_at: new Date(),
+        read: false,
+        user_id: 'admin', // This will be received by all admin users
+        data: {
+          driver_id: user?.id,
+          driver_name: user?.fullName,
+          car_type: carType.trim(),
+          car_seats: Number(carSeats)
+        }
       });
 
       // Save to AsyncStorage for local access
@@ -182,11 +224,8 @@ const driverInfo = () => {
       // Recheck driver status to update tabs
       await recheckDriverStatus();
 
-      Alert.alert("نجاح", "تم تسجيلك كسائق بنجاح", [
-        { text: "حسناً", onPress: () => router.push({
-          pathname: "/(root)/locationInfo",
-          params: { driverId: user?.id }
-        })}
+      Alert.alert("نجاح", "تم تقديم طلب التسجيل كسائق بنجاح. سيتم مراجعة طلبك من قبل الإدارة", [
+        { text: "حسناً", onPress: () => router.push("/(root)/(tabs)/home")}
       ]);
     } catch (error: any) {
       console.error("Registration error:", error);

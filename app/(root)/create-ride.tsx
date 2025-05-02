@@ -1,5 +1,4 @@
-import CreateRideStepper from "@/components/CreateRideStepper";
-
+import CreateRideStepper from '../../components/CreateRideStepper';
 
 export default function CreateRideScreen() {
   return <CreateRideStepper />;

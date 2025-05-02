@@ -22,6 +22,7 @@ interface UserData {
     created_at: string;
   };
   profile_image_url?: string;
+  role?: string;
 }
 
 const Profile = () => {
@@ -36,11 +37,13 @@ const Profile = () => {
     isLoading: boolean;
     profileImage: string | null;
     data: UserData | null;
+    isAdmin: boolean;
   }>({ 
     isDriver: false,
     isLoading: true,
     profileImage: null,
-    data: null
+    data: null,
+    isAdmin: false
   });
   
   const [isUploading, setIsUploading] = useState(false);
@@ -68,7 +71,8 @@ const Profile = () => {
           ...prev,
           isLoading: false,
           isDriver: false,
-          profileImage: user?.imageUrl || null
+          profileImage: user?.imageUrl || null,
+          isAdmin: false
         }));
       }
       return;
@@ -82,19 +86,25 @@ const Profile = () => {
 
       if (userDoc.exists()) {
         const data = userDoc.data() as UserData;
+        console.log('User Data:', data); // Debug log
+        console.log('Is Admin:', data.role === 'admin'); // Debug log
+        
         setUserData({
           isDriver: !!data.driver?.is_active,
           isLoading: false,
-          profileImage: data.profile_image_url || user?.imageUrl || null,
-          data
+          profileImage: data.driver?.profile_image_url || user?.imageUrl || null,
+          data,
+          isAdmin: data.role === 'admin'
         });
       } else {
+        console.log('User document does not exist'); // Debug log
         setUserData(prev => ({
           ...prev,
           isDriver: false,
           isLoading: false,
           profileImage: user?.imageUrl || null,
-          data: null
+          data: null,
+          isAdmin: false
         }));
       }
     } catch (error) {
@@ -104,7 +114,8 @@ const Profile = () => {
           ...prev,
           isDriver: false,
           isLoading: false,
-          profileImage: user?.imageUrl || null
+          profileImage: user?.imageUrl || null,
+          isAdmin: false
         }));
       }
     }
@@ -182,10 +193,18 @@ const Profile = () => {
         const userDoc = await getDoc(userRef);
         
         if (userDoc.exists()) {
-          // Update the existing user document
-          await updateDoc(userRef, {
-            profile_image_url: uploadedImageUrl
-          });
+          const userData = userDoc.data() as UserData;
+          // If user is a driver, update the profile image in driver data
+          if (userData.driver?.is_active) {
+            await updateDoc(userRef, {
+              'driver.profile_image_url': uploadedImageUrl
+            });
+          } else {
+            // If user is not a driver, update the profile image in user data
+            await updateDoc(userRef, {
+              profile_image_url: uploadedImageUrl
+            });
+          }
         } else {
           // Create a new user document with profile image
           await setDoc(userRef, {
@@ -415,6 +434,31 @@ const Profile = () => {
               </View>
             </View>
           </View>
+
+          {/* Admin Section - Only visible to admins */}
+          {userData.isAdmin && (
+            <View className="bg-white rounded-xl p-5 mt-4">
+              <Text className="text-lg font-JakartaBold mb-4">لوحة التحكم</Text>
+              <View className="space-y-4">
+                <TouchableOpacity
+                  onPress={() => router.push("/(root)/admin/driverApplications")}
+                  className="flex-row items-center justify-between p-4 bg-gray-50 rounded-lg"
+                >
+                  <View className="flex-row items-center">
+                    <MaterialCommunityIcons name="car" size={24} color="#F97316" />
+                    <View className="mr-3">
+                      <Text className="text-lg font-CairoBold">طلبات السائقين</Text>
+                      <Text className="text-gray-500 text-sm">إدارة طلبات التسجيل كسائق</Text>
+                    </View>
+                  </View>
+                  <AntDesign name="left" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Debug Info - Only visible in development */}
+          
 
           <View className="h-32" />
       </ScrollView>
