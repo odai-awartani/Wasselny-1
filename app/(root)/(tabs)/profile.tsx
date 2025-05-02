@@ -6,7 +6,6 @@ import { useLanguage } from '@/context/LanguageContext';
 import { icons } from '@/constants';
 import { AntDesign, MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
-import { useDriverStatus } from "./_layout";
 import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import * as ImagePicker from "expo-image-picker";
@@ -137,7 +136,6 @@ const Profile = () => {
     };
   }, [user?.id, user?.imageUrl]);
 
-  const { recheckDriverStatus } = useDriverStatus();
 
   const handleRegisterDriver = () => {
     router.push("/(root)/driverInfo");

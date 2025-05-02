@@ -152,7 +152,8 @@ const RideMap = ({ origin, destination, onTargetPress }: RideMapProps) => {
               });
             }, 300); // 300ms delay to let the bottom sheet animation start
           }}
-          className="absolute right-3 top-1/3 -translate-y-1/2 bg-amber-300 p-3 rounded-full shadow-md z-10"
+          className="absolute right-3 top-1/4 -translate-y-1/2 bg-amber-300 p-3 rounded-full shadow-md "
+
         >
           <Image
             source={icons.target}

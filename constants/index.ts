@@ -45,7 +45,9 @@ import upload from "@/assets/icons/upload.png";
 import street from "@/assets/icons/street.png";
 import location from "@/assets/icons/location.png";
 import loadingCar from "../assets/images/loading-car.gif";
-
+import goArrow from "@/assets/icons/go-arrow.png";
+import barrier from "@/assets/icons/barrier.png";
+import car from "@/assets/icons/car.png";
 export const images = {
     onboarding1,
     onboarding2,
@@ -60,6 +62,9 @@ export const images = {
 };
 
 export const icons = {
+    car,
+    barrier,
+    goArrow,
     street,
     upload,
     clock,

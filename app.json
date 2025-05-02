@@ -7,6 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
+    
     "splash": {
       "image": "./assets/images/adaptive-icon.png",
       "resizeMode": "contain",
@@ -17,12 +18,23 @@
       "supportsTablet": true
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "com.anonymous.Wasselny"
-    },
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/images/adaptive-icon.png",
+    "backgroundColor": "#ffffff"
+  },
+  "package": "com.anonymous.Wasselny",
+  "softwareKeyboardLayoutMode": "pan",
+  "permissions": [
+    "android.permission.RECEIVE_BOOT_COMPLETED",
+    "android.permission.WAKE_LOCK"
+  ],
+  "config": {
+    "googleMaps": {
+      "apiKey": "AIzaSyAFN2L36ban-13Kkl_zxvWR7kn05JFuCpU"
+    }
+  }
+},
+
     "web": {
       "bundler": "metro",
       "output": "server",
@@ -62,6 +74,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": "https://uber.dev/"
+      },
+      "eas": {
+        "projectId": "342b004d-ee91-4e68-8013-2ff930fd8928"
+      }
+    },
+    "owner": "abdullrahman.r"
   }
 }

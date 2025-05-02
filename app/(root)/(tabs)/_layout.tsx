@@ -1,11 +1,9 @@
 import { icons } from "@/constants";
 import { Tabs, Redirect } from "expo-router";
-import { View, Image, ImageSourcePropType } from "react-native";
-import { useEffect, useState, createContext, useContext } from "react";
+import { View, Image, ImageSourcePropType, Text } from "react-native";
+import { createContext} from "react";
 import { NotificationProvider } from '@/context/NotificationContext';
-import { useUser } from "@clerk/clerk-expo";
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+
 
 // Create context for driver status
 export const DriverStatusContext = createContext<{
@@ -16,45 +14,30 @@ export const DriverStatusContext = createContext<{
   recheckDriverStatus: async () => {}
 });
 
-const TabIcon = ({ focused, source }: { focused: boolean; source: ImageSourcePropType }) => (
-  <View
-    className={`w-12 h-12 items-center justify-center rounded-full ${focused ? 'bg-orange-100' : ''}`}
-  >
-    <Image source={source} tintColor="white" resizeMode="contain" className="w-7 h-7" />
+const TabIcon = ({ focused, source, name }: { focused: boolean; source: ImageSourcePropType; name: string }) => (
+  <View className="items-center justify-center w-16">
+  <View className={`w-10 h-10 items-center justify-center rounded-full ${focused ? 'bg-orange-400' : ''}`}>
+    <Image 
+      source={source} 
+      tintColor="white" 
+      resizeMode="contain" 
+      className="w-6 h-6" 
+    />
   </View>
+  <Text
+    className={`text-xs text-center ${focused ? 'text-orange-400 font-bold' : 'text-white'}`}
+    numberOfLines={1}
+    adjustsFontSizeToFit
+  >
+    {name}
+  </Text>
+</View>
 );
 
-export const useDriverStatus = () => useContext(DriverStatusContext);
 
 const Layout = () => {
-  const { user } = useUser();
-  const [isDriver, setIsDriver] = useState(false);
-
-  const checkIfUserIsDriver = async () => {
-    if (!user?.id) return;
-    
-    try {
-      const userRef = doc(db, 'users', user.id);
-      const userDoc = await getDoc(userRef);
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setIsDriver(userData.driver?.is_active === true);
-      } else {
-        setIsDriver(false);
-      }
-    } catch (error) {
-      console.error('Error checking driver status:', error);
-      setIsDriver(false);
-    }
-  };
-
-  useEffect(() => {
-    checkIfUserIsDriver();
-  }, [user?.id]);
 
   return (
-    <DriverStatusContext.Provider value={{ isDriver, recheckDriverStatus: checkIfUserIsDriver }}>
       <NotificationProvider>
       <Tabs
       screenOptions={{
@@ -63,10 +46,11 @@ const Layout = () => {
         tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: "black",
-          borderRadius: 50,
-          paddingBottom: 25,
-          marginHorizontal: 10,
-          marginBottom: 25,
+          borderRadius: 20,
+          paddingTop:20,
+          paddingBottom: 50,
+          marginHorizontal: 0,
+          marginBottom: 0,
           height: 78,
           display: "flex",
           justifyContent: "space-evenly",
@@ -81,12 +65,12 @@ const Layout = () => {
         },
       }}
     >
-      <Tabs.Screen
+       <Tabs.Screen
         name="home"
         options={{
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} source={icons.home} />
+            <TabIcon focused={focused} source={icons.home} name="Home" />
           ),
         }}
       />
@@ -96,26 +80,27 @@ const Layout = () => {
           title: "rides",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} source={icons.list} />
+            <TabIcon focused={focused} source={icons.list} name="Rides"/>
           ),
         }}
       />
       <Tabs.Screen
-        name="add"
+        name="barriers"
         options={{
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} source={icons.add} />
+            <TabIcon focused={focused} source={icons.barrier} name="Barrier" />
+           
           ),
-          href: isDriver ? "/(root)/(tabs)/add" : null,
         }}
       />
+      
       <Tabs.Screen
         name="chat"
         options={{
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} source={icons.chat} />
+            <TabIcon focused={focused} source={icons.chat} name="Chat"/>
           ),
         }}
       />
@@ -124,13 +109,12 @@ const Layout = () => {
         options={{
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} source={icons.profile} />
+            <TabIcon focused={focused} source={icons.profile} name="Profile"/>
           ),
         }}
       />
       </Tabs>
       </NotificationProvider>
-    </DriverStatusContext.Provider>
   );
 };
 

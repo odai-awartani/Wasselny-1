@@ -1,10 +1,11 @@
-import { View, Text, Image, TouchableOpacity } from 'react-native';
-import React, { useCallback, useRef } from 'react';
+import { View, Text, Image, TouchableOpacity, Platform } from 'react-native';
+import React, { useCallback } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { icons } from '@/constants';
 import { router, usePathname } from 'expo-router';
-import Map from '@/components/Map'; // الكود الأول لـ Map
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import Map from '@/components/Map';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import * as Haptics from 'expo-haptics';
 
 interface Location {
   latitude?: number;
@@ -17,7 +18,7 @@ const RideLayout = ({
   children,
   origin,
   destination,
-  MapComponent = Map, // استخدام الكود الأول لـ Map افتراضيًا
+  MapComponent = Map,
   bottomSheetRef,
 }: {
   title: string;
@@ -42,12 +43,24 @@ const RideLayout = ({
     }
   }, [pathname]);
 
+  const handleSheetChanges = useCallback((index: number) => {
+    if (Platform.OS === 'android') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    console.log('BottomSheet index changed to:', index);
+  }, []);
+
   return (
     <GestureHandlerRootView className="flex-1">
       <View className="flex-1 bg-white">
         <View className="flex flex-col h-screen bg-orange-400">
           <View className="flex flex-row absolute z-10 top-16 items-center justify-start px-5">
-            <TouchableOpacity onPress={() => handleBackPress()}>
+            <TouchableOpacity onPress={() => {
+              if (Platform.OS === 'android') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              }
+              handleBackPress();
+            }}>
               <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
                 <Image source={icons.backArrow} resizeMode="contain" className="w-6 h-6" />
               </View>
@@ -57,11 +70,13 @@ const RideLayout = ({
           <MapComponent origin={origin} destination={destination} />
         </View>
         <BottomSheet
-          keyboardBehavior="extend"
           ref={bottomSheetRef}
           snapPoints={snapPoints || ['15%', '50%', '85%']}
-          index={3}
+          index={1} // Start at 50% height
           topInset={50}
+          keyboardBehavior="extend"
+          enableHandlePanningGesture={true}
+          enableContentPanningGesture={true}
           backgroundStyle={{
             borderRadius: 24,
             backgroundColor: '#fff',
@@ -78,15 +93,19 @@ const RideLayout = ({
             borderRadius: 3,
             marginTop: 10,
           }}
+          onChange={handleSheetChanges}
         >
-          <BottomSheetView
-            style={{
-              flex: 1,
-              padding: 20,
+          <BottomSheetScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              padding: 10,
+              paddingBottom: 80,
             }}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
           >
             {children}
-          </BottomSheetView>
+          </BottomSheetScrollView>
         </BottomSheet>
       </View>
     </GestureHandlerRootView>

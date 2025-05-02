@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { uploadImageToCloudinary } from "@/lib/upload";
 import { useRouter } from "expo-router";
-import { useDriverStatus } from "@/app/(root)/(tabs)/_layout";
 import CustomButton from "@/components/CustomButton";
 import { icons, images } from "@/constants";
 import { useUser } from "@clerk/clerk-expo";
@@ -32,7 +31,6 @@ interface FirebaseDriverData {
 const driverInfo = () => {
   const { user } = useUser();
   const router = useRouter();
-  const { recheckDriverStatus } = useDriverStatus();
   const [driverFormData, setDriverFormData] = useState<DriverFormData>({
     carType: "",
     carSeats: "",
@@ -222,7 +220,6 @@ const driverInfo = () => {
       await AsyncStorage.setItem('driverData', JSON.stringify(driverData));
 
       // Recheck driver status to update tabs
-      await recheckDriverStatus();
 
       Alert.alert("نجاح", "تم تقديم طلب التسجيل كسائق بنجاح. سيتم مراجعة طلبك من قبل الإدارة", [
         { text: "حسناً", onPress: () => router.push("/(root)/(tabs)/home")}

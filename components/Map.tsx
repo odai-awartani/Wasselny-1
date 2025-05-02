@@ -135,7 +135,14 @@ const Map = () => {
       showsPointsOfInterest={true}
       initialRegion={currentLocation}
       showsUserLocation={true}
-      userInterfaceStyle="light"
+      showsMyLocationButton={true}
+      followsUserLocation={true}
+      zoomEnabled={true}
+      loadingEnabled={true}
+      loadingIndicatorColor="#F97316"
+      loadingBackgroundColor="#FFFFFF"
+      moveOnMarkerPress={false}
+      minZoomLevel={10}
     >
       {/* السائقين */}
       {markers.map((marker) => (
@@ -180,7 +187,7 @@ const Map = () => {
       )}
     </MapView>
      {/* زر الذهاب للموقع الحالي */}
-          {userLocation && (
+     {Platform.OS === 'ios' &&userLocation && (
             <TouchableOpacity
             onPress={() => {
               mapRef.current?.animateToRegion({
