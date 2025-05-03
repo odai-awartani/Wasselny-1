@@ -16,7 +16,7 @@ export const DriverStatusContext = createContext<{
 
 const TabIcon = ({ focused, source, name }: { focused: boolean; source: ImageSourcePropType; name: string }) => (
   <View className="items-center justify-center w-16">
-  <View className={`w-10 h-10 items-center justify-center rounded-full ${focused ? 'bg-orange-400' : ''}`}>
+  <View className={`w-10 h-10 items-center justify-center rounded-full ${focused ? 'bg-orange-100' : ''}`}>
     <Image 
       source={source} 
       tintColor="white" 
@@ -25,7 +25,7 @@ const TabIcon = ({ focused, source, name }: { focused: boolean; source: ImageSou
     />
   </View>
   <Text
-    className={`text-xs text-center ${focused ? 'text-orange-400 font-bold' : 'text-white'}`}
+    className={`text-xs text-center ${focused ? 'text-orange-100 font-bold' : 'text-white'}`}
     numberOfLines={1}
     adjustsFontSizeToFit
   >

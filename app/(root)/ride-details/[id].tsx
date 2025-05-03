@@ -363,7 +363,6 @@ const RideDetails = () => {
 
       const passengerNotificationId = await schedulePassengerRideReminder(
         ride.id,
-        userId,
         ride.ride_datetime,
         ride.origin_address,
         ride.destination_address,
@@ -939,16 +938,46 @@ const RideDetails = () => {
       if (isDriver) {
         return (
           <View className="p-4 m-3">
+            {allPassengers.length > 0 ? (
+              <View className="mb-4">
+                <CustomButton
+                  title={`عرض الركاب الحاليين (${allPassengers.length})`}
+                  onPress={() => {
+                    if (Platform.OS === 'android') {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    }
+                    router.push({
+                      pathname: '/ride-requests',
+                      params: { rideId: ride?.id, view: 'current' },
+                    });
+                  }}
+                  className="bg-blue-500 py-3 rounded-xl"
+                />
+              </View>
+            ) : (
+              <View className="mb-4">
+                <CustomButton
+                  title="لا يوجد ركاب حالياً"
+                  onPress={() => {
+                    if (Platform.OS === 'android') {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    }
+                    Alert.alert('معلومات', 'لا يوجد ركاب مسجلين في هذه الرحلة حالياً.');
+                  }}
+                  className="bg-gray-500 py-3 rounded-xl"
+                />
+              </View>
+            )}
             {pendingRequests.length > 0 ? (
               <CustomButton
-                title="إدارة الطلبات"
+                title="إدارة طلبات الحجز الجديدة"
                 onPress={() => {
                   if (Platform.OS === 'android') {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   }
                   router.push({
                     pathname: '/ride-requests',
-                    params: { rideId: ride?.id },
+                    params: { rideId: ride?.id, view: 'pending' },
                   });
                 }}
                 className="bg-orange-500 py-3 rounded-xl"

@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from '@expo/vector-icons';
+import Header from "@/components/Header";
 
 export default function Home() {
   const { setUserLocation, setDestinationLocation } = useLocationStore();
@@ -149,83 +150,55 @@ export default function Home() {
   };
 
   return (
-    <SafeAreaView className="bg-general-500">
+    <SafeAreaView className="bg-general-500  flex-1">
+      {/* Fixed Header */}
+      
+        <Header pageTitle="Home" />
+  
+
+      {/* Content with Barrier Section below Header */}
       <FlatList 
         data={[]}
         renderItem={() => null}
-        className="px-5"
         keyboardShouldPersistTaps="handled" 
-        contentContainerStyle={{ paddingBottom: 100 }}  
+        contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }} // Adjust paddingTop to account for fixed header height
         ListHeaderComponent={
           <>
-            <View className="py-3 w-full my-2">
-              <View className="flex-row-reverse items-center justify-between">
-                <View className="flex-row-reverse items-center">
-                  <TouchableOpacity
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      handleSignOut();
-                    }}
-                    className="justify-center items-center w-10 h-10"
-                    activeOpacity={0.8}
-                  >
-                    <MaterialIcons name="logout" size={24} color="#333333" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      router.push('/(root)/notifications');
-                    }}
-                    className="justify-center items-center w-10 h-10"
-                    activeOpacity={0.8}
-                  >
-                    <Image source={icons.ring1} className="w-6 h-6" tintColor="#333333" />
-                    {unreadCount > 0 && (
-                      <View className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full items-center justify-center">
-                        <Text className="text-[12px] text-white font-JakartaBold">{unreadCount}</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </View>
-                <View className="flex-row items-center">
-                  <TouchableOpacity
-                onPress={() => router.push('/(root)/(tabs)/profile')}
-                >
-                  {profileImageUrl ? (
-                    <Image
-                      source={{ uri: profileImageUrl }}
-                      className="w-12 h-12 rounded-full border border-2 mr-2"
-                      resizeMode="contain"
-                      onError={(e) => {
-                        console.log('Image load error:', e.nativeEvent.error);
-                        setProfileImageUrl(null); // Reset on error
-                      }}
-                    />
-                    
-                  ) : (
-                    <MaterialIcons name="person" size={24} color="#333333" className="mr-2" />
-                  )}
-                  </TouchableOpacity>
-                  <Text className="text-xs mt-5 mr-1 font-CairoBold text-gray-700">
-                    {user?.fullName || 'User'}
-                  </Text>
-                </View>
+            <TouchableOpacity 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.push('/(root)/(tabs)/barriers');
+              }}
+              className="bg-white p-4 mx-3 rounded-2xl my-5 flex-row items-center justify-between shadow-lg"
+              style={{
+                elevation: 3,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 3.84,
+              }}
+            >
+              <View className="flex-1">
+                <Text className="text-gray-900 text-lg font-bold mb-1">حواجز الصمود</Text>
+                <Text className="text-gray-600">تعرف على تأثير الحواجز في فلسطين</Text>
               </View>
-            </View>
+              <View className="bg-orange-500 px-4 py-2 rounded-full">
+                <Text className="text-white font-medium">استكشف</Text>
+              </View>
+            </TouchableOpacity>
 
-            
             <GoogleTextInput
+            
               icon={icons.search}
-              containerStyle="bg-white shadow-sm mt-5"
+              containerStyle="bg-white shadow-lg mx-2 mt-5"
               handlePress={handleDestinationPress}
             />
 
-          
             <>
-              <Text className="text-xl font-JakartaBold mt-5 mb-3">
+              <Text className="text-xl font-JakartaBold px-2 mt-5 mb-3">
                 Your current location
               </Text>
-              <View className="flex flex-row items-center bg-transparent h-[300px]">
+              <View className="flex flex-row items-center px-2 bg-transparent h-[300px]">
                 <Map/> 
               </View>
             </>
@@ -233,7 +206,7 @@ export default function Home() {
             {!isCheckingDriver && !isDriver && (
               <TouchableOpacity 
                 onPress={() => router.push('/(root)/driverInfo')}
-                className="bg-white p-4 rounded-2xl my-5 flex-row items-center justify-between shadow-lg"
+                className="bg-white p-4 px-2 rounded-2xl my-5 flex-row items-center justify-between shadow-lg"
                 style={{
                   elevation: 3,
                   shadowColor: '#000',
@@ -252,9 +225,8 @@ export default function Home() {
               </TouchableOpacity>
             )}
 
-          
             {/* Suggested Rides and Available Rides Side by Side */}
-            <View className="flex-row-reverse items-center justify-between mt-5 mb-3">
+            <View className="flex-row-reverse items-center px-2 justify-between mt-5 mb-3">
               <View className="flex-row items-center">
                 <TouchableOpacity
                   onPress={() => {
@@ -288,50 +260,26 @@ export default function Home() {
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
-               
               </View>
               <Text className="text-xl font-JakartaBold">
                 Suggested Rides
               </Text>
             </View>
             <SuggestedRides key={refreshKey} refreshKey={refreshKey} />
-
-
-            <TouchableOpacity 
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.push('/(root)/(tabs)/barriers');
-              }}
-              className="bg-white p-4 rounded-2xl my-5 flex-row items-center justify-between shadow-lg"
-              style={{
-                elevation: 3,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.25,
-                shadowRadius: 3.84,
-              }}
-            >
-              <View className="flex-1">
-                <Text className="text-gray-900 text-lg font-bold mb-1">حواجز الصمود</Text>
-                <Text className="text-gray-600">تعرف على تأثير الحواجز في فلسطين</Text>
-              </View>
-              <View className="bg-orange-500 px-4 py-2 rounded-full">
-                <Text className="text-white font-medium">استكشف</Text>
-              </View>
-            </TouchableOpacity>
           </>
         }
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            colors={["#000", "#000"]}
+            colors={["#F87000", "#F87000"]}
             tintColor="#000"
+            className="z-10"
           />
         }
       />
 
-      <StatusBar backgroundColor="#f97316" style="dark" />
+      <StatusBar backgroundColor="#F87000" style="dark" />
     </SafeAreaView>
   );
 }

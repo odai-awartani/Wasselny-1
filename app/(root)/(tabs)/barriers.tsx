@@ -12,118 +12,70 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { icons, images } from "@/constants";
+import Header from "@/components/Header";
 
-const CheckpointsScreen = () => {
+// Define the type for city objects
+interface City {
+  id: string;
+  name: string;
+}
+
+const CheckpointsScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Placeholder stories (can be replaced with real data)
-  const stories = [
-    {
-      id: 1,
-      title: "تأخير يومي",
-      description: "سامي، طالب جامعي، يضطر للانتظار ساعتين يوميًا على حاجز قلنديا للوصول إلى الجامعة.",
-    },
-    {
-      id: 2,
-      title: "رحلة إلى المستشفى",
-      description: "أم محمد اضطرت لتأخير علاجها بسبب إغلاق حاجز مفاجئ، مما زاد من معاناتها.",
-    },
+  const cities: City[] = [
+    { id: "nablus", name: "نابلس" },
+    { id: "hebron", name: "الخليل" },
+    { id: "ramallah", name: "رام الله" },
+    { id: "jenin", name: "جنين" },
+    { id: "bethlehem", name: "بيت لحم" },
+    { id: "gaza", name: "غزة" },
+    { id: "jerusalem", name: "القدس" },
+    { id: "tulkarem", name: "طولكرم" },
+    { id: "qalqilya", name: "قلقيلية" },
+    { id: "tubas", name: "طوباس" },
+    { id: "salfit", name: "سلفيت" },
   ];
 
+  const handleCityPress = (cityId: string): void => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/(root)/cityCheckpoints/${cityId}`);
+  };
+
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#fff" }}>
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#f4f4f4" }}>
+      <Header pageTitle="Barriers" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingBottom: insets.bottom + 100,
         }}
       >
-        {/* Header */}
-        <LinearGradient
-          colors={["#15803d", "#000000"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{
-            paddingVertical: 20,
-            paddingHorizontal: 16,
-            borderBottomLeftRadius: 20,
-            borderBottomRightRadius: 20,
-          }}
-        >
-          <Text className="text-3xl font-CairoBold text-white text-right">
-            حواجز الصمود
-          </Text>
-          <Text className="text-lg font-CairoRegular text-white text-right mt-2">
-            توثيق الحواجز في فلسطين وتأثيرها على الحياة اليومية
-          </Text>
-        </LinearGradient>
 
-        {/* Info Section */}
-        <View className="px-4 mt-6">
-          <Text className="text-xl font-JakartaBold text-right mb-3">
-            ما هي الحواجز؟
+        {/* Cities Section */}
+        <View className="px-4 py-4">
+          <Text className="text-xl font-CairoBold text-right mb-3 text-gray-800">
+            اختر مدينة
           </Text>
-          <Text className="text-base font-CairoRegular text-gray-700 text-right leading-6">
-            الحواجز هي نقاط تفتيش عسكرية تقيد حركة الفلسطينيين في الضفة الغربية. يوجد أكثر من 700 حاجز، منها حواجز ثابتة وطيارة، تؤثر على الحياة اليومية، التعليم، والرعاية الصحية.
-          </Text>
-          <View className="flex-row justify-between mt-4">
-            <View className="bg-orange-100 p-4 rounded-xl flex-1 mr-2">
-              <Text className="text-lg font-JakartaBold text-center text-orange-500">
-                700+
-              </Text>
-              <Text className="text-sm font-CairoRegular text-center text-gray-600">
-                حاجز في الضفة
-              </Text>
-            </View>
-            <View className="bg-green-100 p-4 rounded-xl flex-1 ml-2">
-              <Text className="text-lg font-JakartaBold text-center text-green-600">
-                2M+
-              </Text>
-              <Text className="text-sm font-CairoRegular text-center text-gray-600">
-                متأثر يوميًا
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Stories Section */}
-        <View className="px-4 mt-6">
-          <Text className="text-xl font-JakartaBold text-right mb-3">
-            قصص من الحواجز
-          </Text>
-          {stories.map((story) => (
-            <View
-              key={story.id}
-              className="bg-white p-4 rounded-xl mb-4 shadow-sm"
+          {cities.map((city) => (
+            <TouchableOpacity
+              key={city.id}
+              onPress={() => handleCityPress(city.id)}
+              className="bg-white p-4 rounded-xl mb-3 border border-gray-200"
               style={{
                 elevation: Platform.OS === "android" ? 3 : 0,
                 shadowColor: "#000",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.22,
-                shadowRadius: 2.22,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.15,
+                shadowRadius: 3,
               }}
             >
-              <Text className="text-lg font-JakartaSemiBold text-right text-gray-800">
-                {story.title}
+              <Text className="text-lg font-CairoSemiBold text-right text-gray-800">
+                {city.name}
               </Text>
-              <Text className="text-base font-CairoRegular text-right text-gray-600 mt-2">
-                {story.description}
-              </Text>
-            </View>
+            </TouchableOpacity>
           ))}
-        </View>
-
-        {/* Placeholder Image */}
-        <View className="px-4 mt-6">
-          <Image
-            source={images.palestineMap || images.placeholder}
-            className="w-full h-48 rounded-xl"
-            resizeMode="cover"
-          />
-          <Text className="text-sm font-CairoRegular text-gray-500 text-center mt-2">
-            خريطة فلسطين
-          </Text>
         </View>
       </ScrollView>
 
