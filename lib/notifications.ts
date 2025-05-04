@@ -554,7 +554,12 @@ export const sendRideRequestNotification = async (
         ride_id: rideId,
         notification_id: notificationId,
         created_at: serverTimestamp(),
-        read: false
+        read: false,
+        data: {
+          rideId,
+          type: 'ride_request',
+          notificationId
+        }
       });
       return true;
     }

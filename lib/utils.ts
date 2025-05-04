@@ -10,45 +10,74 @@ export const sortRides = (rides: Ride[]): Ride[] => {
   return result.reverse();
 };
 
-export function formatTime(minutes: number): string {
-  // تحقق من أن minutes هو عدد صحيح
-  if (typeof minutes !== "number" || isNaN(minutes)) {
-    return "Invalid time"; // أو أي نص يعبر عن خطأ في الوقت
+export const formatTime = (dateString: string) => {
+  console.log('formatTime input:', dateString);
+  
+  if (!dateString || typeof dateString !== 'string') {
+    console.log('Invalid time input');
+    return '--:--';
   }
 
-  const formattedMinutes = +minutes.toFixed(0) || 0;
-
-  if (formattedMinutes < 60) {
-    return `${formattedMinutes} min`;
-  } else {
-    const hours = Math.floor(formattedMinutes / 60);
-    const remainingMinutes = formattedMinutes % 60;
-    return `${hours}h ${remainingMinutes}m`;
+  // Directly parse the time part
+  const timeMatch = dateString.match(/(\d{2}):(\d{2})$/);
+  if (!timeMatch) {
+    console.log('No time match found');
+    return '--:--';
   }
-}
+
+  const [, hours, minutes] = timeMatch;
+  const hour = parseInt(hours, 10);
+  const minute = parseInt(minutes, 10);
+
+  if (isNaN(hour) || isNaN(minute)) {
+    console.log('Invalid hour or minute:', { hour, minute });
+    return '--:--';
+  }
+
+  // Convert to 12-hour format
+  const period = hour >= 12 ? 'م' : 'ص';
+  const hour12 = hour % 12 || 12;
+
+  const result = `${hour12}:${minute.toString().padStart(2, '0')} ${period}`;
+  console.log('formatTime result:', result);
+  return result;
+};
 
 export function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  const day = date.getDate();
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  const month = monthNames[date.getMonth()];
-  const year = date.getFullYear();
+  console.log('formatDate input:', dateString);
+  
+  if (!dateString || typeof dateString !== 'string') {
+    console.log('Invalid date input');
+    return '--/--/----';
+  }
 
-  return `${day < 10 ? "0" + day : day} ${month} ${year}`;
+  // Directly parse the date part
+  const dateMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!dateMatch) {
+    console.log('No date match found');
+    return '--/--/----';
+  }
+
+  const [, day, month, year] = dateMatch;
+  const dayNum = parseInt(day, 10);
+  const monthNum = parseInt(month, 10);
+  const yearNum = parseInt(year, 10);
+
+  if (isNaN(dayNum) || isNaN(monthNum) || isNaN(yearNum)) {
+    console.log('Invalid date numbers:', { dayNum, monthNum, yearNum });
+    return '--/--/----';
+  }
+
+  const months = [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+  ];
+
+  const result = `${dayNum} ${months[monthNum - 1]} ${yearNum}`;
+  console.log('formatDate result:', result);
+  return result;
 }
+
 export const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // Radius of the Earth in km
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -61,4 +90,4 @@ export const haversine = (lat1: number, lon1: number, lat2: number, lon2: number
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c; // in km
     return distance;
-  };
+};

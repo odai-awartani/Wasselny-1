@@ -254,7 +254,7 @@ const RideCreationScreen = () => {
         return false;
       }
       const now = new Date();
-      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+      const oneHourFromNow = new Date(now.getTime() + 1 * 60 * 1000);
       const isSameDay =
         selectedDateTime.getDate() === now.getDate() &&
         selectedDateTime.getMonth() === now.getMonth() &&
@@ -317,7 +317,7 @@ const RideCreationScreen = () => {
       const conflictQuery = query(
         ridesRef,
         where("driver_id", "==", user.id),
-        where("status", "in", ["pending", "active"])
+        where("status", "in", ["available", "active"])
       );
       const conflictSnapshot = await getDocs(conflictQuery);
       let hasConflict = false;
@@ -379,7 +379,7 @@ const RideCreationScreen = () => {
         driver_id: user.id,
         user_id: user.id,
         is_recurring: isRecurring,
-        status: "pending",
+        status: "available",
         created_at: new Date(),
         ride_number: nextRideNumber,
       };
