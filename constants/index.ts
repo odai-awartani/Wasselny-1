@@ -48,6 +48,7 @@ import loadingCar from "../assets/images/loading-car.gif";
 import goArrow from "@/assets/icons/go-arrow.png";
 import barrier from "@/assets/icons/barrier.png";
 import car from "@/assets/icons/car.png";
+import filter from "@/assets/icons/filter.png";
 export const images = {
     onboarding1,
     onboarding2,
@@ -62,6 +63,7 @@ export const images = {
 };
 
 export const icons = {
+    filter,
     car,
     barrier,
     goArrow,
