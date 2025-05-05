@@ -49,6 +49,7 @@ import goArrow from "@/assets/icons/go-arrow.png";
 import barrier from "@/assets/icons/barrier.png";
 import car from "@/assets/icons/car.png";
 import filter from "@/assets/icons/filter.png";
+import repeat from "@/assets/icons/repeat.png";
 export const images = {
     onboarding1,
     onboarding2,
@@ -63,6 +64,7 @@ export const images = {
 };
 
 export const icons = {
+    repeat,
     filter,
     car,
     barrier,
