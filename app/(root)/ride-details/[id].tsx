@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Platform } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Platform, TextInput } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, onSnapshot, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, onSnapshot, query, where, getDocs, Timestamp, orderBy, limit, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, parse } from 'date-fns';
 import { db } from '@/lib/firebase';
@@ -66,6 +66,26 @@ interface RideRequest {
   rating?: number;
   notification_id?: string;
   passenger_name?: string;
+  is_waitlist?: boolean;
+}
+
+interface Rating {
+  overall: number;
+  driving: number;
+  behavior: number;
+  punctuality: number;
+  cleanliness: number;
+  comment?: string;
+  ride_id: string;
+  driver_id: string;
+  passenger_id: string;
+  passenger_name: string;
+  ride_details: {
+    origin_address: string;
+    destination_address: string;
+    ride_datetime: string;
+  };
+  created_at: any;
 }
 
 const DEFAULT_DRIVER_NAME = 'Unknown Driver';
@@ -91,7 +111,24 @@ const RideDetails = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
-  const [rating, setRating] = useState(0);
+  const [rating, setRating] = useState<Rating>({
+    overall: 0,
+    driving: 0,
+    behavior: 0,
+    punctuality: 0,
+    cleanliness: 0,
+    comment: '',
+    ride_id: '',
+    driver_id: '',
+    passenger_id: '',
+    passenger_name: '',
+    ride_details: {
+      origin_address: '',
+      destination_address: '',
+      ride_datetime: ''
+    },
+    created_at: null
+  });
   const { userId } = useAuth();
   const isDriver = ride?.driver_id === userId;
   const isPassenger = rideRequest && rideRequest.status === 'accepted';
@@ -359,6 +396,144 @@ const RideDetails = () => {
     }
   }, [scrollToRequests, pendingRequests]);
 
+  // Handle booking a ride
+  const handleBookRide = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      if (!ride || !ride.id || !ride.driver_id || !userId) {
+        Alert.alert('معلومات الرحلة غير مكتملة');
+        return;
+      }
+
+      // Check if ride has already started or completed
+      if (ride.status === 'in-progress' || ride.status === 'completed' || ride.status === 'cancelled' || ride.status === 'on-hold') {
+        Alert.alert('غير متاح', 'لا يمكن حجز هذه الرحلة لأنها قد بدأت أو انتهت أو تم إلغاؤها أو في وضع الانتظار.');
+        return;
+      }
+
+      // Check if ride is full
+      if (ride.available_seats === undefined || ride.available_seats <= 0) {
+        Alert.alert(
+          'الرحلة ممتلئة',
+          'الرحلة ممتلئة حالياً، ولكن يمكنك إرسال طلب حجز. إذا غادر أي راكب، سيتم إخطارك عند قبول طلبك.',
+          [
+            {
+              text: 'إلغاء',
+              style: 'cancel'
+            },
+            {
+              text: 'إرسال طلب',
+              onPress: async () => {
+                try {
+                  const userDoc = await getDoc(doc(db, 'users', userId));
+                  const userData = userDoc.data();
+                  const userName = userData?.name || 'الراكب';
+                  const userGender = userData?.gender || 'غير محدد';
+
+                  if (ride.required_gender !== 'كلاهما') {
+                    if (ride.required_gender === 'ذكر' && userGender !== 'Male') {
+                      Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الذكور فقط.');
+                      return;
+                    }
+                    if (ride.required_gender === 'أنثى' && userGender !== 'Female') {
+                      Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الإناث فقط.');
+                      return;
+                    }
+                  }
+
+                  const rideRequestRef = await addDoc(collection(db, 'ride_requests'), {
+                    ride_id: ride.id,
+                    user_id: userId,
+                    driver_id: ride.driver_id,
+                    status: 'waiting',
+                    created_at: serverTimestamp(),
+                    passenger_name: userName,
+                    is_waitlist: true, // Mark this request as waitlist
+                  });
+
+                  if (ride.driver_id) {
+                    const driverNotificationId = await scheduleDriverRideReminder(
+                      ride.id,
+                      ride.driver_id,
+                      ride.ride_datetime,
+                      ride.origin_address || '',
+                      ride.destination_address || ''
+                    );
+
+                    await sendRideRequestNotification(
+                      ride.driver_id,
+                      userName,
+                      ride.origin_address || '',
+                      ride.destination_address || '',
+                      ride.id
+                    );
+                  }
+
+                  Alert.alert('✅ تم إرسال طلب الحجز بنجاح', 'سيتم إخطارك إذا أصبح هناك مقعد متاح');
+                } catch (error) {
+                  console.error('Booking error:', error);
+                  Alert.alert('حدث خطأ أثناء إرسال طلب الحجز.');
+                }
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      const userData = userDoc.data();
+      const userName = userData?.name || 'الراكب';
+      const userGender = userData?.gender || 'غير محدد';
+
+      if (ride.required_gender !== 'كلاهما') {
+        if (ride.required_gender === 'ذكر' && userGender !== 'Male') {
+          Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الذكور فقط.');
+          return;
+        }
+        if (ride.required_gender === 'أنثى' && userGender !== 'Female') {
+          Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الإناث فقط.');
+          return;
+        }
+      }
+
+      const rideRequestRef = await addDoc(collection(db, 'ride_requests'), {
+        ride_id: ride.id,
+        user_id: userId,
+        driver_id: ride.driver_id,
+        status: 'waiting',
+        created_at: serverTimestamp(),
+        passenger_name: userName,
+        is_waitlist: false,
+      });
+
+      if (ride.driver_id) {
+        const driverNotificationId = await scheduleDriverRideReminder(
+          ride.id,
+          ride.driver_id,
+          ride.ride_datetime,
+          ride.origin_address || '',
+          ride.destination_address || ''
+        );
+
+        await sendRideRequestNotification(
+          ride.driver_id,
+          userName,
+          ride.origin_address || '',
+          ride.destination_address || '',
+          ride.id
+        );
+      }
+
+      Alert.alert('✅ تم إرسال طلب الحجز بنجاح');
+    } catch (error) {
+      console.error('Booking error:', error);
+      Alert.alert('حدث خطأ أثناء إرسال طلب الحجز.');
+    }
+  };
+
   // Handle driver accepting ride request
   const handleAcceptRequest = async (requestId: string, userId: string) => {
     try {
@@ -370,6 +545,15 @@ const RideDetails = () => {
 
       if (!ride || !ride.driver_id) {
         throw new Error('بيانات الرحلة أو السائق غير متوفرة');
+      }
+
+      // Check if ride is full
+      if (ride.available_seats <= 0) {
+        Alert.alert(
+          'الرحلة ممتلئة',
+          'لا يمكن قبول المزيد من الطلبات لأن الرحلة ممتلئة. سيتم إخطار الراكب عندما يصبح هناك مقعد متاح.'
+        );
+        return;
       }
 
       const passengerNotificationId = await schedulePassengerRideReminder(
@@ -420,126 +604,6 @@ const RideDetails = () => {
     } catch (error) {
       console.error('Error accepting request:', error);
       Alert.alert('حدث خطأ أثناء قبول الطلب.');
-    }
-  };
-
-  // Handle driver rejecting ride request
-  const handleRejectRequest = async (requestId: string, userId: string) => {
-    try {
-      if (Platform.OS === 'android') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      const passengerName = userDoc.data()?.name || 'الراكب';
-
-      await updateDoc(doc(db, 'ride_requests', requestId), {
-        status: 'rejected',
-        updated_at: serverTimestamp(),
-      });
-
-      await sendRideStatusNotification(
-        userId,
-        'تم رفض طلب الحجز',
-        `عذراً، تم رفض طلب حجزك للرحلة من ${ride?.origin_address} إلى ${ride?.destination_address}`,
-        ride?.id || ''
-      );
-
-      const notificationsRef = collection(db, 'notifications');
-      const q = query(
-        notificationsRef,
-        where('user_id', '==', userId),
-        where('data.rideId', '==', ride?.id),
-        where('type', '==', 'ride_request')
-      );
-
-      const querySnapshot = await getDocs(q);
-      for (const doc of querySnapshot.docs) {
-        await updateDoc(doc.ref, {
-          read: true,
-          data: {
-            status: 'rejected',
-            rideId: ride?.id,
-            type: 'ride_status',
-            passenger_name: passengerName,
-          },
-        });
-      }
-
-      Alert.alert('✅ تم رفض طلب الحجز', `تم رفض طلب ${passengerName}`);
-    } catch (error) {
-      console.error('Error rejecting request:', error);
-      Alert.alert('حدث خطأ أثناء رفض الطلب.');
-    }
-  };
-
-  // Handle booking a ride
-  const handleBookRide = async () => {
-    try {
-      if (Platform.OS === 'android') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-      if (!ride || !ride.id || !ride.driver_id || !userId) {
-        Alert.alert('معلومات الرحلة غير مكتملة');
-        return;
-      }
-
-      // Check if ride has already started or completed
-      if (ride.status === 'in-progress' || ride.status === 'completed' || ride.status === 'cancelled') {
-        Alert.alert('غير متاح', 'لا يمكن حجز هذه الرحلة لأنها قد بدأت أو انتهت أو تم إلغاؤها.');
-        return;
-      }
-
-      // Check if ride is full
-      if (ride.available_seats === undefined || ride.available_seats <= 0) {
-        Alert.alert('غير متاح', 'لا توجد مقاعد متاحة في هذه الرحلة.');
-        return;
-      }
-
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      const userData = userDoc.data();
-      const userName = userData?.name || 'الراكب';
-      const userGender = userData?.gender || 'غير محدد';
-
-      if (ride.required_gender !== 'كلاهما') {
-        if (ride.required_gender === 'ذكر' && userGender !== 'Male') {
-          Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الذكور فقط.');
-          return;
-        }
-        if (ride.required_gender === 'أنثى' && userGender !== 'Female') {
-          Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الإناث فقط.');
-          return;
-        }
-      }
-
-      const rideRequestRef = await addDoc(collection(db, 'ride_requests'), {
-        ride_id: ride.id,
-        user_id: userId,
-        driver_id: ride.driver_id,
-        status: 'waiting',
-        created_at: serverTimestamp(),
-        passenger_name: userName,
-      });
-
-      const driverNotificationId = await scheduleDriverRideReminder(
-        ride.id,
-        ride.driver_id,
-        ride.ride_datetime,
-        ride.origin_address,
-        ride.destination_address
-      );
-
-      await sendRideRequestNotification(
-        ride.driver_id,
-        userName,
-        ride.origin_address,
-        ride.destination_address,
-        ride.id
-      );
-
-      Alert.alert('✅ تم إرسال طلب الحجز بنجاح');
-    } catch (error) {
-      console.error('Booking error:', error);
-      Alert.alert('حدث خطأ أثناء إرسال طلب الحجز.');
     }
   };
 
@@ -629,6 +693,14 @@ const RideDetails = () => {
         updated_at: serverTimestamp(),
       });
 
+      // If the ride was full and this was an accepted request, update ride status to available
+      if (ride.status === 'full' && rideRequest.status === 'accepted') {
+        await updateDoc(doc(db, 'rides', ride.id), {
+          status: 'available',
+          updated_at: serverTimestamp(),
+        });
+      }
+
       // Removed updating available_seats to keep it unchanged in Firestore
       if (ride.driver_id) {
         const passengerName = passengerNames[userId] || 'الراكب';
@@ -653,21 +725,51 @@ const RideDetails = () => {
       if (Platform.OS === 'android') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      if (!rideRequest || !ride) {
+      if (!rideRequest || !ride || !userId) {
         Alert.alert('معلومات الرحلة غير مكتملة');
         return;
       }
 
+      // Check if all ratings are provided
+      if (Object.values(rating).some(value => value === 0)) {
+        Alert.alert('خطأ', 'الرجاء تقييم جميع النقاط');
+        return;
+      }
+
+      // Get passenger name
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      const passengerName = userDoc.data()?.name || 'الراكب';
+
+      // Create rating document
+      const ratingData: Rating = {
+        ...rating,
+        ride_id: ride.id,
+        driver_id: ride.driver_id || '',
+        passenger_id: userId,
+        passenger_name: passengerName,
+        ride_details: {
+          origin_address: ride.origin_address,
+          destination_address: ride.destination_address,
+          ride_datetime: ride.ride_datetime
+        },
+        created_at: serverTimestamp()
+      };
+
+      // Save to ratings collection
+      await addDoc(collection(db, 'ratings'), ratingData);
+
+      // Update ride request with rating reference
       await updateDoc(doc(db, 'ride_requests', rideRequest.id), {
-        rating: rating,
+        has_rating: true,
         updated_at: serverTimestamp(),
       });
 
+      // Notify driver
       if (ride.driver_id) {
         await sendRideStatusNotification(
           ride.driver_id,
           'تقييم جديد!',
-          `قام الراكب بتقييم رحلتك بـ ${rating} نجوم`,
+          `قام ${passengerName} بتقييم رحلتك بـ ${rating.overall} نجوم`,
           ride.id
         );
       }
@@ -1014,7 +1116,82 @@ const RideDetails = () => {
         );
       }
 
-      Alert.alert('✅ تم إنهاء الرحلة بنجاح');
+      // If it's a recurring ride, ask the driver if they want to continue next week
+      if (ride.is_recurring) {
+        Alert.alert(
+          'رحلة متكررة',
+          'هل تريد تكرار هذه الرحلة للأسبوع القادم؟',
+          [
+            {
+              text: 'لا',
+              style: 'cancel',
+              onPress: () => {
+                Alert.alert('✅ تم إنهاء الرحلة بنجاح');
+              }
+            },
+            {
+              text: 'نعم',
+              onPress: async () => {
+                try {
+                  // Calculate next week's date
+                  const currentRideDate = parse(ride.ride_datetime, DATE_FORMAT, new Date());
+                  const nextWeekDate = new Date(currentRideDate);
+                  nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+                  const nextWeekDateTime = format(nextWeekDate, DATE_FORMAT);
+
+                  // Get the highest ride number
+                  const ridesRef = collection(db, 'rides');
+                  const q = query(ridesRef, orderBy('ride_number', 'desc'), limit(1));
+                  const querySnapshot = await getDocs(q);
+                  const highestRide = querySnapshot.docs[0];
+                  const nextRideNumber = highestRide ? highestRide.data().ride_number + 1 : 1;
+
+                  // Create new ride document with custom ID
+                  const newRideId = `(${ride.ride_number})`;
+                  await setDoc(doc(db, 'rides', newRideId), {
+                    origin_address: ride.origin_address,
+                    destination_address: ride.destination_address,
+                    origin_latitude: ride.origin_latitude,
+                    origin_longitude: ride.origin_longitude,
+                    destination_latitude: ride.destination_latitude,
+                    destination_longitude: ride.destination_longitude,
+                    ride_datetime: nextWeekDateTime,
+                    driver_id: ride.driver_id,
+                    status: 'available',
+                    available_seats: ride.driver?.car_seats || DEFAULT_CAR_SEATS,
+                    is_recurring: true,
+                    no_children: ride.no_children,
+                    no_music: ride.no_music,
+                    no_smoking: ride.no_smoking,
+                    required_gender: ride.required_gender,
+                    ride_days: ride.ride_days,
+                    ride_number: nextRideNumber,
+                    created_at: serverTimestamp(),
+                  });
+
+                  // Notify driver about the new ride
+                  await sendRideStatusNotification(
+                    ride.driver_id || '',
+                    'تم إنشاء رحلة جديدة',
+                    `تم إنشاء رحلة جديدة للأسبوع القادم من ${ride.origin_address} إلى ${ride.destination_address}`,
+                    newRideId
+                  );
+
+                  Alert.alert(
+                    '✅ تم إنشاء الرحلة الجديدة',
+                    'تم إنشاء رحلة جديدة للأسبوع القادم بنفس التفاصيل'
+                  );
+                } catch (error) {
+                  console.error('Error creating next week ride:', error);
+                  Alert.alert('حدث خطأ أثناء إنشاء الرحلة الجديدة');
+                }
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('✅ تم إنهاء الرحلة بنجاح');
+      }
     } catch (error) {
       console.error('Error finishing ride:', error);
       Alert.alert('حدث خطأ أثناء إنهاء الرحلة.');
@@ -1057,7 +1234,7 @@ const RideDetails = () => {
   useEffect(() => {
     if (!ride || !ride.ride_datetime) return;
 
-    const checkRideTime = () => {
+    const checkRideTime = async () => {
       const rideTime = parse(ride.ride_datetime, DATE_FORMAT, new Date());
       const now = new Date();
       
@@ -1066,10 +1243,40 @@ const RideDetails = () => {
       
       // If current time is past grace period and ride is still available/full
       if (now > gracePeriodEnd && (ride.status === 'available' || ride.status === 'full')) {
-        updateDoc(doc(db, 'rides', ride.id), {
+        // Update ride status to on-hold
+        await updateDoc(doc(db, 'rides', ride.id), {
           status: 'on-hold',
           updated_at: serverTimestamp(),
         });
+
+        // Notify driver that the ride is on hold
+        if (ride.driver_id) {
+          await sendRideStatusNotification(
+            ride.driver_id,
+            'الرحلة في وضع الانتظار',
+            `لم يتم بدء الرحلة بعد 15 دقيقة من وقتها المحدد. الرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
+            ride.id
+          );
+        }
+
+        // Notify all accepted passengers
+        const rideRequestsRef = collection(db, 'ride_requests');
+        const q = query(
+          rideRequestsRef,
+          where('ride_id', '==', ride.id),
+          where('status', '==', 'accepted')
+        );
+        const querySnapshot = await getDocs(q);
+        
+        for (const doc of querySnapshot.docs) {
+          const request = doc.data();
+          await sendRideStatusNotification(
+            request.user_id,
+            'الرحلة في وضع الانتظار',
+            `لم يتم بدء الرحلة بعد 15 دقيقة من وقتها المحدد. الرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
+            ride.id
+          );
+        }
       }
     };
 
@@ -1088,7 +1295,8 @@ const RideDetails = () => {
     const checkRideTime = () => {
       const rideTime = parse(ride.ride_datetime, DATE_FORMAT, new Date());
       const now = new Date();
-      setIsRideTime(now >= rideTime);
+      const gracePeriodEnd = new Date(rideTime.getTime() + 15 * 60000);
+      setIsRideTime(now >= gracePeriodEnd);
     };
 
     // Check immediately
@@ -1104,15 +1312,45 @@ const RideDetails = () => {
     if (!ride?.id) return;
 
     const rideDocRef = doc(db, 'rides', ride.id);
-    const unsubscribe = onSnapshot(rideDocRef, (doc) => {
+    const unsubscribe = onSnapshot(rideDocRef, async (doc) => {
       if (doc.exists()) {
         const updatedData = doc.data();
-        setRide(prevRide => prevRide ? { ...prevRide, status: updatedData.status } : null);
+        const oldStatus = ride.status;
+        const newStatus = updatedData.status;
+        
+        setRide(prevRide => prevRide ? { ...prevRide, status: newStatus } : null);
+
+        // If status changed to on-hold, notify driver
+        if (oldStatus !== 'on-hold' && newStatus === 'on-hold' && ride.driver_id) {
+          await sendRideStatusNotification(
+            ride.driver_id,
+            'الرحلة في وضع الانتظار',
+            `لم يتم بدء الرحلة بعد 15 دقيقة من وقتها المحدد. الرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
+            ride.id
+          );
+        }
       }
     });
 
     return () => unsubscribe();
   }, [ride?.id]);
+
+  // Update rating state when ride changes
+  useEffect(() => {
+    if (ride && userId) {
+      setRating(prev => ({
+        ...prev,
+        ride_id: ride.id,
+        driver_id: ride.driver_id || '',
+        passenger_id: userId,
+        ride_details: {
+          origin_address: ride.origin_address,
+          destination_address: ride.destination_address,
+          ride_datetime: ride.ride_datetime
+        }
+      }));
+    }
+  }, [ride, userId]);
 
   // Modify the renderActionButtons function
   const renderActionButtons = useCallback(() => {
@@ -1181,16 +1419,14 @@ const RideDetails = () => {
     } else {
       // Passenger buttons
       if (!rideRequest) {
-        // Only show book button if ride is available or full and has seats
-        if ((ride?.status === 'available' || ride?.status === 'full') && 
-            ride?.available_seats !== undefined && 
-            ride.available_seats > 0) {
+        // Show book button if ride is available or full
+        if (ride?.status === 'available' || ride?.status === 'full') {
           return (
             <View className="p-4 m-3">
               <CustomButton
-                title="طلب حجز الرحلة"
+                title={ride.available_seats > 0 ? "طلب حجز الرحلة" : "طلب حجز (قائمة الانتظار)"}
                 onPress={handleBookRide}
-                className="bg-orange-500 py-3 rounded-xl"
+                className={`${ride.available_seats > 0 ? "bg-orange-500" : "bg-yellow-500"} py-3 rounded-xl`}
               />
             </View>
           );
@@ -1218,11 +1454,11 @@ const RideDetails = () => {
               </Text>
             </View>
           );
-        } else if (ride?.available_seats === undefined || ride.available_seats <= 0) {
+        } else if (ride?.status === 'on-hold') {
           return (
-            <View className="p-4 m-3 bg-gray-100 rounded-xl">
-              <Text className="text-gray-700 font-CairoBold text-center text-lg">
-                لا توجد مقاعد متاحة
+            <View className="p-4 m-3 bg-yellow-100 rounded-xl">
+              <Text className="text-yellow-800 font-CairoBold text-center text-lg">
+                الرحلة في وضع الانتظار - لا يمكن حجز مقعد
               </Text>
             </View>
           );
@@ -1235,7 +1471,7 @@ const RideDetails = () => {
               <View className="p-4 m-3">
                 <View className="bg-yellow-100 p-4 rounded-xl mb-3">
                   <Text className="text-yellow-800 font-CairoBold text-center text-lg">
-                    في انتظار موافقة السائق
+                    {rideRequest.is_waitlist ? 'في قائمة الانتظار - سيتم إخطارك عند توفر مقعد' : 'في انتظار موافقة السائق'}
                   </Text>
                 </View>
                 <CustomButton
@@ -1305,6 +1541,158 @@ const RideDetails = () => {
     fetchRideDetails();
   }, [fetchRideDetails]);
 
+  // Replace the existing Rating Modal with this new one
+  const renderRatingModal = () => (
+    <Modal
+      visible={showRatingModal}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowRatingModal(false)}
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' }}>
+        <ScrollView className="w-[90%] max-h-[80%]">
+          <View className="bg-white p-6 rounded-2xl">
+            {/* Header */}
+            <View className="items-center mb-6">
+              <MaterialIcons name="star" size={40} color="#f97316" />
+              <Text className="text-2xl font-CairoBold mt-2 text-center text-gray-800">قيّم رحلتك</Text>
+              <Text className="text-sm font-CairoRegular mt-1 text-center text-gray-500">ساعدنا في تحسين خدمتنا</Text>
+            </View>
+
+            {/* Rating Categories */}
+            <View className="space-y-6">
+              {/* Overall Rating */}
+              <View className="bg-gray-50 p-4 rounded-xl">
+                <Text className="text-lg font-CairoBold mb-3 text-right text-gray-800">التقييم العام</Text>
+                <View className="flex-row justify-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity 
+                      key={star} 
+                      onPress={() => setRating(prev => ({ ...prev, overall: star }))}
+                      className="p-2"
+                    >
+                      <Text style={{ fontSize: 32 }}>{star <= rating.overall ? '⭐' : '☆'}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Driving Rating */}
+              <View className="bg-gray-50 p-4 rounded-xl">
+                <View className="flex-row-reverse items-center justify-between mb-3">
+                  <Text className="text-lg font-CairoBold text-gray-800">قيادة السيارة</Text>
+                  <MaterialIcons name="directions-car" size={24} color="#f97316" />
+                </View>
+                <View className="flex-row justify-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity 
+                      key={star} 
+                      onPress={() => setRating(prev => ({ ...prev, driving: star }))}
+                      className="p-2"
+                    >
+                      <Text style={{ fontSize: 32 }}>{star <= rating.driving ? '⭐' : '☆'}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Behavior Rating */}
+              <View className="bg-gray-50 p-4 rounded-xl">
+                <View className="flex-row-reverse items-center justify-between mb-3">
+                  <Text className="text-lg font-CairoBold text-gray-800">الأخلاق والسلوك</Text>
+                  <MaterialIcons name="people" size={24} color="#f97316" />
+                </View>
+                <View className="flex-row justify-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity 
+                      key={star} 
+                      onPress={() => setRating(prev => ({ ...prev, behavior: star }))}
+                      className="p-2"
+                    >
+                      <Text style={{ fontSize: 32 }}>{star <= rating.behavior ? '⭐' : '☆'}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Punctuality Rating */}
+              <View className="bg-gray-50 p-4 rounded-xl">
+                <View className="flex-row-reverse items-center justify-between mb-3">
+                  <Text className="text-lg font-CairoBold text-gray-800">الالتزام بالمواعيد</Text>
+                  <MaterialIcons name="access-time" size={24} color="#f97316" />
+                </View>
+                <View className="flex-row justify-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity 
+                      key={star} 
+                      onPress={() => setRating(prev => ({ ...prev, punctuality: star }))}
+                      className="p-2"
+                    >
+                      <Text style={{ fontSize: 32 }}>{star <= rating.punctuality ? '⭐' : '☆'}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Cleanliness Rating */}
+              <View className="bg-gray-50 p-4 rounded-xl">
+                <View className="flex-row-reverse items-center justify-between mb-3">
+                  <Text className="text-lg font-CairoBold text-gray-800">نظافة السيارة</Text>
+                  <MaterialIcons name="cleaning-services" size={24} color="#f97316" />
+                </View>
+                <View className="flex-row justify-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity 
+                      key={star} 
+                      onPress={() => setRating(prev => ({ ...prev, cleanliness: star }))}
+                      className="p-2"
+                    >
+                      <Text style={{ fontSize: 32 }}>{star <= rating.cleanliness ? '⭐' : '☆'}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Comment Input */}
+              <View className="bg-gray-50 p-4 rounded-xl">
+                <View className="flex-row-reverse items-center justify-between mb-3">
+                  <Text className="text-lg font-CairoBold text-gray-800">تعليقك (اختياري)</Text>
+                  <MaterialIcons name="comment" size={24} color="#f97316" />
+                </View>
+                <TextInput
+                  className="border border-gray-200 rounded-xl p-3 text-right bg-white"
+                  multiline
+                  numberOfLines={3}
+                  placeholder="اكتب تعليقك هنا..."
+                  placeholderTextColor="#9CA3AF"
+                  value={rating.comment}
+                  onChangeText={(text) => setRating(prev => ({ ...prev, comment: text }))}
+                  style={{ textAlignVertical: 'top' }}
+                />
+              </View>
+            </View>
+
+            {/* Buttons */}
+            <View className="flex-row justify-between mt-6 space-x-3">
+              <CustomButton
+                title="إرسال التقييم"
+                onPress={handleRateDriver}
+                className="flex-1 bg-orange-500 py-3 rounded-xl"
+                icon={<MaterialIcons name="send" size={20} color="white" />}
+              />
+              <CustomButton
+                title="إلغاء"
+                onPress={() => setShowRatingModal(false)}
+                className="flex-1 bg-gray-500 py-3 rounded-xl"
+                icon={<MaterialIcons name="close" size={20} color="white" />}
+              />
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
@@ -1364,38 +1752,7 @@ const RideDetails = () => {
         {renderActionButtons()}
       </ScrollView>
 
-      {/* Rating Modal */}
-      <Modal
-        visible={showRatingModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowRatingModal(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' }}>
-          <View className="bg-white p-6 rounded-xl w-[90%]">
-            <Text className="text-xl font-CairoBold mb-4 text-center">قيّم رحلتك</Text>
-            <View className="flex-row justify-center space-x-2 mb-6">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                  <Text style={{ fontSize: 40 }}>{star <= rating ? '⭐' : '☆'}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View className="flex-row justify-between">
-              <CustomButton
-                title="إرسال"
-                onPress={handleRateDriver}
-                className="flex-1 mr-2 bg-green-500"
-              />
-              <CustomButton
-                title="إلغاء"
-                onPress={() => setShowRatingModal(false)}
-                className="flex-1 ml-2 bg-gray-500"
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {renderRatingModal()}
 
       {/* Image Modal */}
       <Modal

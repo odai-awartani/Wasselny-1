@@ -23,6 +23,23 @@ interface UserProfile {
     total_rides?: number;
   };
 }
+
+interface DetailedRating {
+  overall: number;
+  driving: number;
+  behavior: number;
+  punctuality: number;
+  cleanliness: number;
+  comment?: string;
+  passenger_name: string;
+  created_at: any;
+  ride_details: {
+    origin_address: string;
+    destination_address: string;
+    ride_datetime: string;
+  };
+}
+
 interface Ride {
   id: string;
   origin_address: string;
@@ -44,6 +61,8 @@ export default function Profile() {
   const [messageLoading, setMessageLoading] = useState(false);
   const { user: currentUser } = useUser();
   const router = useRouter();
+  const [ratings, setRatings] = useState<DetailedRating[]>([]);
+  const [showRatings, setShowRatings] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -71,6 +90,34 @@ export default function Profile() {
             total_rides: userData.driver.total_rides || 0,
           } : undefined
         });
+
+        // Fetch detailed ratings if user is a driver
+        if (userData.driver) {
+          const ratingsQuery = query(
+            collection(db, 'ratings'),
+            where('driver_id', '==', id)
+          );
+          
+          const ratingsSnapshot = await getDocs(ratingsQuery);
+          const ratingsData = ratingsSnapshot.docs.map(doc => ({
+            ...doc.data()
+          })) as DetailedRating[];
+          
+          setRatings(ratingsData);
+
+          // Calculate average rating
+          if (ratingsData.length > 0) {
+            const avgRating = ratingsData.reduce((acc, curr) => acc + curr.overall, 0) / ratingsData.length;
+            setProfile(prev => ({
+              ...prev,
+              driver: {
+                ...prev.driver!,
+                rating: avgRating,
+                total_rides: ratingsData.length
+              }
+            }));
+          }
+        }
 
         // Fetch user's rides if they are a driver
         if (userData.driver) {
@@ -120,6 +167,79 @@ export default function Profile() {
       </View>
     );
   }
+
+  const renderDetailedRatings = () => {
+    if (!profile.driver || ratings.length === 0) return null;
+
+    return (
+      <View className="bg-white mx-4 p-4 rounded-xl shadow-sm mb-6">
+        <TouchableOpacity 
+          onPress={() => setShowRatings(!showRatings)}
+          className="flex-row justify-between items-center mb-4"
+        >
+          <Text className="text-lg font-CairoBold text-gray-900 text-right">
+            التقييمات التفصيلية
+          </Text>
+          <MaterialCommunityIcons 
+            name={showRatings ? "chevron-up" : "chevron-down"} 
+            size={24} 
+            color="#374151" 
+          />
+        </TouchableOpacity>
+
+        {showRatings && (
+          <View className="space-y-4">
+            {ratings.map((rating, index) => (
+              <View key={index} className="bg-gray-50 p-4 rounded-xl">
+                <View className="flex-row justify-between items-center mb-2">
+                  <Text className="text-sm font-CairoRegular text-gray-600">
+                    {rating.passenger_name}
+                  </Text>
+                  <View className="flex-row items-center">
+                    <Text className="text-base font-CairoBold text-gray-900 mr-1">
+                      {rating.overall.toFixed(1)}
+                    </Text>
+                    <Image source={icons.star} style={{ width: 16, height: 16 }} />
+                  </View>
+                </View>
+
+                <View className="space-y-2">
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm font-CairoRegular text-gray-600">قيادة السيارة</Text>
+                    <Text className="text-sm font-CairoBold text-gray-900">{rating.driving}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm font-CairoRegular text-gray-600">الأخلاق والسلوك</Text>
+                    <Text className="text-sm font-CairoBold text-gray-900">{rating.behavior}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm font-CairoRegular text-gray-600">الالتزام بالمواعيد</Text>
+                    <Text className="text-sm font-CairoBold text-gray-900">{rating.punctuality}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm font-CairoRegular text-gray-600">نظافة السيارة</Text>
+                    <Text className="text-sm font-CairoBold text-gray-900">{rating.cleanliness}</Text>
+                  </View>
+                </View>
+
+                {rating.comment && (
+                  <View className="mt-2 p-2 bg-white rounded-lg">
+                    <Text className="text-sm font-CairoRegular text-gray-600 text-right">
+                      {rating.comment}
+                    </Text>
+                  </View>
+                )}
+
+                <Text className="text-xs font-CairoRegular text-gray-500 mt-2 text-left">
+                  {rating.ride_details.origin_address} → {rating.ride_details.destination_address}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white ">
@@ -224,81 +344,82 @@ export default function Profile() {
         )}
       </View>
       <ScrollView className="pt-4 flex-1 bg-gray-100">
-      {/* Driver Car Details */}
-      {profile.driver && (
-        <View className="bg-white mx-4 p-4 rounded-xl shadow-sm mb-6">
-          <Text className="text-lg font-CairoBold text-gray-900 mb-4 text-right">
-            معلومات السيارة
-          </Text>
-          <View className="space-y-4">
-            <View className="flex-row justify-between items-center">
-              <Text className="text-base font-CairoRegular text-gray-900">
-                {profile.driver.car_type}
-              </Text>
-              <Text className="text-base font-CairoBold text-gray-600">
-                نوع السيارة
-              </Text>
+        {renderDetailedRatings()}
+        {/* Driver Car Details */}
+        {profile.driver && (
+          <View className="bg-white mx-4 p-4 rounded-xl shadow-sm mb-6">
+            <Text className="text-lg font-CairoBold text-gray-900 mb-4 text-right">
+              معلومات السيارة
+            </Text>
+            <View className="space-y-4">
+              <View className="flex-row justify-between items-center">
+                <Text className="text-base font-CairoRegular text-gray-900">
+                  {profile.driver.car_type}
+                </Text>
+                <Text className="text-base font-CairoBold text-gray-600">
+                  نوع السيارة
+                </Text>
+              </View>
+              <View className="flex-row justify-between items-center">
+                <Text className="text-base font-CairoRegular text-gray-900">
+                  {profile.driver.car_seats}
+                </Text>
+                <Text className="text-base font-CairoBold text-gray-600">
+                  عدد المقاعد
+                </Text>
+              </View>
+              <Image
+                source={{ uri: profile.driver.car_image_url }}
+                className="w-full h-40 rounded-xl mt-2"
+                resizeMode="cover"
+              />
             </View>
-            <View className="flex-row justify-between items-center">
-              <Text className="text-base font-CairoRegular text-gray-900">
-                {profile.driver.car_seats}
-              </Text>
-              <Text className="text-base font-CairoBold text-gray-600">
-                عدد المقاعد
-              </Text>
-            </View>
-            <Image
-              source={{ uri: profile.driver.car_image_url }}
-              className="w-full h-40 rounded-xl mt-2"
-              resizeMode="cover"
-            />
           </View>
-        </View>
-      )}
+        )}
 
-      {/* Driver's Rides */}
-      {profile.driver && rides.length > 0 && (
-        <View className="bg-white mx-4 p-4 rounded-xl shadow-sm mb-6">
-          <Text className="text-lg font-CairoBold text-gray-900 mb-4 text-right">
-            الرحلات النشطة
-          </Text>
-          <View className="space-y-4">
-            {rides.map((ride) => (
-              <TouchableOpacity
-                key={ride.id}
-                onPress={() => router.push(`/ride-details/${ride.id}`)}
-                className="bg-gray-50 p-4 rounded-xl"
-              >
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm font-CairoRegular text-gray-500">
-                    {ride.ride_datetime}
-                  </Text>
-                  <View className="flex-row items-center">
-                    <Text className="text-sm font-CairoBold text-gray-900 ml-1">
-                      {ride.available_seats}
+        {/* Driver's Rides */}
+        {profile.driver && rides.length > 0 && (
+          <View className="bg-white mx-4 p-4 rounded-xl shadow-sm mb-6">
+            <Text className="text-lg font-CairoBold text-gray-900 mb-4 text-right">
+              الرحلات النشطة
+            </Text>
+            <View className="space-y-4">
+              {rides.map((ride) => (
+                <TouchableOpacity
+                  key={ride.id}
+                  onPress={() => router.push(`/ride-details/${ride.id}`)}
+                  className="bg-gray-50 p-4 rounded-xl"
+                >
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-sm font-CairoRegular text-gray-500">
+                      {ride.ride_datetime}
                     </Text>
+                    <View className="flex-row items-center">
+                      <Text className="text-sm font-CairoBold text-gray-900 ml-1">
+                        {ride.available_seats}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                <View className="space-y-2">
-                  <View className="flex-row items-center">
-                    <Image source={icons.point} className="w-4 h-4 ml-2" />
-                    <Text className="text-sm font-CairoRegular text-gray-600 flex-1 text-right">
-                      {ride.origin_address}
-                    </Text>
+                  <View className="space-y-2">
+                    <View className="flex-row items-center">
+                      <Image source={icons.point} className="w-4 h-4 ml-2" />
+                      <Text className="text-sm font-CairoRegular text-gray-600 flex-1 text-right">
+                        {ride.origin_address}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <Image source={icons.map} className="w-4 h-4 ml-2" />
+                      <Text className="text-sm font-CairoRegular text-gray-600 flex-1 text-right">
+                        {ride.destination_address}
+                      </Text>
+                    </View>
                   </View>
-                  <View className="flex-row items-center">
-                    <Image source={icons.map} className="w-4 h-4 ml-2" />
-                    <Text className="text-sm font-CairoRegular text-gray-600 flex-1 text-right">
-                      {ride.destination_address}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
-      )}
-    </ScrollView>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }

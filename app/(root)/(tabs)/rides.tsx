@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Image, SectionList } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Image, SectionList, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
@@ -70,6 +70,8 @@ export default function Rides() {
   const [upcomingRides, setUpcomingRides] = useState<RideWithRequests[]>([]);
   const [pastDriverRides, setPastDriverRides] = useState<RideWithRequests[]>([]);
   const [pastPassengerRides, setPastPassengerRides] = useState<RideWithRequests[]>([]);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'pending' | 'completed' | 'cancelled'>('all');
+  const [rideTypeFilter, setRideTypeFilter] = useState<'all' | 'created' | 'registered'>('all');
 
   // Cache helper functions
   const cacheRidesData = async (data: CachedData) => {
@@ -469,7 +471,197 @@ export default function Rides() {
     return sections;
   }, [pastDriverRides, pastPassengerRides]);
 
-  const currentData = useMemo(() => (activeTab === 'upcoming' ? upcomingRides : []), [activeTab, upcomingRides]);
+  const currentData = useMemo(() => {
+    let filteredRides = activeTab === 'upcoming' ? upcomingRides : [];
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filteredRides = filteredRides.filter(ride => ride.status === statusFilter);
+    }
+
+    // Apply ride type filter
+    if (rideTypeFilter !== 'all') {
+      filteredRides = filteredRides.filter(ride => {
+        if (rideTypeFilter === 'created') {
+          return ride.driver_id === userId;
+        } else {
+          return ride.driver_id !== userId;
+        }
+      });
+    }
+
+    // Sort by date (most recent first)
+    return filteredRides.sort((a, b) => {
+      const dateA = parseRideDateTime(a.ride_datetime);
+      const dateB = parseRideDateTime(b.ride_datetime);
+      if (!dateA || !dateB) return 0;
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [activeTab, upcomingRides, statusFilter, rideTypeFilter, userId]);
+
+  const renderStatusFilter = () => (
+    <View className="bg-white py-3 border-b border-gray-100">
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+      >
+        <TouchableOpacity
+          onPress={() => setStatusFilter('all')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'all' ? 'bg-orange-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="filter-list" 
+            size={16} 
+            color={statusFilter === 'all' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm font-CairoMedium mr-1 ${
+            statusFilter === 'all' ? 'text-white' : 'text-gray-700'
+          }`}>
+            الكل
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setStatusFilter('available')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'available' ? 'bg-green-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="check-circle" 
+            size={16} 
+            color={statusFilter === 'available' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm font-CairoMedium mr-1 ${
+            statusFilter === 'available' ? 'text-white' : 'text-gray-700'
+          }`}>
+            متاح
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setStatusFilter('pending')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'pending' ? 'bg-orange-400' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="pending" 
+            size={16} 
+            color={statusFilter === 'pending' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm font-CairoMedium mr-1 ${
+            statusFilter === 'pending' ? 'text-white' : 'text-gray-700'
+          }`}>
+            قيد الانتظار
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setStatusFilter('completed')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'completed' ? 'bg-blue-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="done-all" 
+            size={16} 
+            color={statusFilter === 'completed' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm font-CairoMedium mr-1 ${
+            statusFilter === 'completed' ? 'text-white' : 'text-gray-700'
+          }`}>
+            مكتمل
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setStatusFilter('cancelled')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'cancelled' ? 'bg-red-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="cancel" 
+            size={16} 
+            color={statusFilter === 'cancelled' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm font-CairoMedium mr-1 ${
+            statusFilter === 'cancelled' ? 'text-white' : 'text-gray-700'
+          }`}>
+            ملغي
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+
+  const renderRideTypeFilter = () => (
+    <View className="bg-white py-2 border-b border-gray-100">
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+      >
+        <TouchableOpacity
+          onPress={() => setRideTypeFilter('all')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            rideTypeFilter === 'all' ? 'bg-orange-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="directions-car" 
+            size={16} 
+            color={rideTypeFilter === 'all' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm font-CairoMedium mr-1 ${
+            rideTypeFilter === 'all' ? 'text-white' : 'text-gray-700'
+          }`}>
+            كل الرحلات
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setRideTypeFilter('created')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            rideTypeFilter === 'created' ? 'bg-orange-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="person" 
+            size={16} 
+            color={rideTypeFilter === 'created' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm font-CairoMedium mr-1 ${
+            rideTypeFilter === 'created' ? 'text-white' : 'text-gray-700'
+          }`}>
+            رحلاتي
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setRideTypeFilter('registered')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            rideTypeFilter === 'registered' ? 'bg-orange-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="group" 
+            size={16} 
+            color={rideTypeFilter === 'registered' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm font-CairoMedium mr-1 ${
+            rideTypeFilter === 'registered' ? 'text-white' : 'text-gray-700'
+          }`}>
+            رحلات مسجلة
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
 
   useEffect(() => {
     checkIfUserIsDriver();
@@ -501,6 +693,13 @@ export default function Rides() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {activeTab === 'upcoming' && (
+        <>
+          {renderRideTypeFilter()}
+          {renderStatusFilter()}
+        </>
+      )}
 
       {loading ? (
         <View className="flex-1 justify-center items-center">

@@ -21,7 +21,7 @@ const RootLayout = () => {
                <Stack.Screen name="test-notification" options={{ headerShown: false }} />
                <Stack.Screen name="profile" options={{ headerShown: false }} />
                <Stack.Screen name="create-ride" options={{ headerShown: false }} />
-               <Stack.Screen name="admin/driverApplications" options={{ headerShown: false }} />
+               <Stack.Screen name="admin" options={{ headerShown: false }} />
                <Stack.Screen name="ride-requests" options={{ headerShown: false }} />
                <Stack.Screen name="cityCheckpoints" options={{ headerShown: false }} />
                <Stack.Screen name="checkpointDetails" options={{ headerShown: false }} />

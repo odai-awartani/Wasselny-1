@@ -4,14 +4,14 @@
     "slug": "Wasselny",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/adaptive-icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     
     "splash": {
       "image": "./assets/images/adaptive-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#fffbe7"
     },
     "jsEngine": "hermes",
     "ios": {
@@ -20,7 +20,7 @@
     "android": {
   "adaptiveIcon": {
     "foregroundImage": "./assets/images/adaptive-icon.png",
-    "backgroundColor": "#ffffff"
+    "backgroundColor": "#fffbe7"
   },
   "package": "com.anonymous.Wasselny",
   "softwareKeyboardLayoutMode": "pan",
@@ -62,7 +62,7 @@
           "image": "./assets/images/adaptive-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#fffbe7"
         }
       ],
       [
