@@ -50,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
       <View className="flex-row items-center justify-between px-5">
         <View className="flex-row items-center">
             <TouchableOpacity
-            onPress={()=> router.push("/profile")}
+            onPress={()=> router.push("/(root)/profilePage")}
             >
 
            

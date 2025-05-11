@@ -28,7 +28,7 @@ import {
   getDoc,
   DocumentData
 } from 'firebase/firestore';
-import { sendChatNotification } from '@/lib/notifications';
+import { sendRideStatusNotification } from '@/lib/notifications';
 import type { Message, Chat, LastMessage } from '@/types/type';
 
 interface Params {
@@ -50,6 +50,29 @@ export default function ConversationScreen() {
   const [newMessage, setNewMessage] = useState('');
   const [chatData, setChatData] = useState<Chat | null>(null);
   const [loading, setLoading] = useState(true);
+  const [otherUserAvatar, setOtherUserAvatar] = useState<string | null>(null);
+
+  // Get other user's avatar
+  useEffect(() => {
+    const getOtherUserAvatar = async () => {
+      if (!chatData?.participants || !user?.id) return;
+      
+      const otherUserId = chatData.participants.find(id => id !== user.id);
+      if (!otherUserId) return;
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', otherUserId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setOtherUserAvatar(userData.profile_image_url || null);
+        }
+      } catch (error) {
+        console.error('Error fetching user avatar:', error);
+      }
+    };
+
+    getOtherUserAvatar();
+  }, [chatData?.participants, user?.id]);
 
   // Listen to real-time message updates
   useEffect(() => {
@@ -147,7 +170,7 @@ export default function ConversationScreen() {
       };
 
       // Update chat metadata
-      const updates = {
+      const updates: any = {
         lastMessage,
         lastMessageTime: serverTimestamp(),
       };
@@ -157,10 +180,10 @@ export default function ConversationScreen() {
         updates[`unreadCount.${participantId}`] = (chatData.unreadCount?.[participantId] || 0) + 1;
         
         // Send notification to the participant
-        await sendChatNotification(
+        await sendRideStatusNotification(
           participantId,
-          user.fullName || 'User',
-          newMessage,
+          'New Message',
+          `${user.fullName || 'Someone'}: ${newMessage}`,
           chatId
         );
       }
@@ -189,14 +212,14 @@ export default function ConversationScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="black" />
           </TouchableOpacity>
-          {avatar ? (
+          {otherUserAvatar ? (
             <Image
-              source={{ uri: avatar }}
+              source={{ uri: otherUserAvatar }}
               className="w-10 h-10 rounded-full mx-3"
             />
           ) : (
             <View className="w-10 h-10 rounded-full bg-primary items-center justify-center mx-3">
-              <Text className="text-lg font-semibold text-white">{name[0]}</Text>
+              <Text className="text-lg font-semibold text-white">{name?.[0] || '?'}</Text>
             </View>
           )}
           <View>

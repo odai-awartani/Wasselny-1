@@ -33,6 +33,15 @@ export const translations = {
     selectIndustry: "اختر مجال العمل",
     agreeToTerms: "أوافق على الشروط والأحكام",
     cancel: "إلغاء",
+    signUpHint: "اضغط لإكمال التسجيل",
+    enterPhone: "أدخل رقم الهاتف",
+    enterEmail: "أدخل البريد الإلكتروني",
+    enterPassword: "أدخل كلمة المرور",
+    enterConfirmPassword: "أدخل تأكيد كلمة المرور",
+    enterVerificationCode: "أدخل رمز التحقق",
+    verifyEmailHint: "تحقق من بريدك الإلكتروني",
+    navigateToHomeHint: "انتقل إلى الصفحة الرئيسية",
+    loading: "جاري التحميل...",
     genders: ['ذكر', 'أنثى'],
     industries: [
       'طالب',
@@ -315,8 +324,8 @@ export const translations = {
     createRide: "Create Ride",
     currentLocation: "Current Location",
     becomeDriver: "Become a Driver",
-    earnMoney: "Earn money by giving rides",
-    register: "Register",
+    earnMoney: "Earn money by providing rides",
+        register: "Register",
     searchPlaceholder: "Search destination",
     searchError: "No results found",
     registerDriver: "Register as Driver",
@@ -325,9 +334,9 @@ export const translations = {
     carSeats: "Number of Seats",
     carSeatsPlaceholder: "Example: 4",
     uploadCarImage: "Car Image",
-    selectCarImage: "Tap to select car image",
+    selectCarImage: "Press to select car image",
     uploadProfileImage: "Profile Image",
-    selectProfileImage: "Tap to select profile image",
+    selectProfileImage: "Press to select profile image",
     registerDriverButton: "Register as Driver",
     registering: "Registering...",
     checkingData: "Checking your data...",
@@ -336,8 +345,8 @@ export const translations = {
     pendingDriverRequest: "You have a pending driver request. Please wait until it is reviewed by the administration.",
     rejectedDriverRequest: "Your previous driver request was rejected for the following reasons:",
     noReasonSpecified: "No reason specified",
-    editAndResubmit: "You can edit your details and resubmit.",
-    mediaPermissionRequired: "Media library access permission is required",
+    editAndResubmit: "You can edit your information and resubmit.",
+    mediaPermissionRequired: "Media access permission is required",
     driverStatusCheckError: "An error occurred while checking driver status",
     invalidImageFormat: "Please select an image in JPG or PNG format",
     imageSizeLimit: "Image size must be less than 5MB",
@@ -404,7 +413,97 @@ editProfile: "Edit Profile",
     delete: "Delete",
     deleteAccount: "Delete Account",
     deleteAccountDescription: "Confirm Delete Account",
+    Rides: 'Rides',
 
+    Chat: 'Chat',
+
+    Barrier: 'Barriers',
+
+    Profile: 'Profile',
+
+    Settings: 'Settings',
+
+    Help: 'Help',
+
+    Logout: 'Logout',
+
+    Notifications: 'Notifications',
+
+    Language: 'Language',
+
+    Theme: 'Theme',
+
+    About: 'About',
+
+    Terms: 'Terms',
+
+    Privacy: 'Privacy',
+
+    Contact: 'Contact',
+
+    Feedback: 'Feedback',
+
+    Rate: 'Rate App',
+
+    Share: 'Share App',
+
+    DriverInformation: "Driver Information",
+
+    CarType: "Car Type",
+
+    NumberOfSeats: "Number of Seats",
+
+    DriverStatus: "Driver Status",
+
+    RegistrationDate: "Registration Date",
+
+    CarImage: "Car Image",
+
+    AccountInformation: "Account Information",
+
+    PhoneNumber: "Phone Number",
+
+    MemberSince: "Member Since",
+
+    Active: "Active",
+
+    Inactive: "Inactive",
+
+    TotalRides: "Total Rides",
+
+    Rating: "Rating",
+
+    BecomeDriver: "Become a Driver",
+
+    EarnMoney: "Earn money by providing rides",
+
+    AdminDashboard: "Admin Dashboard",
+
+    DriverApplications: "Driver Applications",
+
+    ManageDriverRequests: "Manage Driver Registration Requests",
+
+    Nablus: "Nablus",
+
+    Hebron: "Hebron",
+
+    Ramallah: "Ramallah",
+
+    Jerusalem: "Jerusalem",
+
+    Bethlehem: "Bethlehem",
+
+    Jenin: "Jenin",
+
+    Tulkarm: "Tulkarm",
+
+    Qalqilya: "Qalqilya",
+
+    Salfit: "Salfit",
+
+    Tubas: "Tubas",
+
+    
 
 
 

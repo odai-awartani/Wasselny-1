@@ -13,6 +13,12 @@ import { setupNotifications, startRideNotificationService } from '@/lib/notifica
 import { useUser } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from "@/types/type";
+import { AuthProvider } from '@/context/AuthContext';
+import { useColorScheme } from 'react-native';
+import { useLanguage } from '@/context/LanguageContext';
+import SideMenu from '@/components/SideMenu';
+import { MenuProvider } from '@/context/MenuContext';
+import * as React from 'react';
 
 const BACKGROUND_NOTIFICATION_TASK = 'ride-notification-service';
 
@@ -62,11 +68,15 @@ export default function RootLayout() {
   });
 
   const [user, setUser] = useState<User | null>(null);
+  const colorScheme = useColorScheme();
+  const { language } = useLanguage();
+
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
     }
 
+    
     const initializeNotifications = async () => {
       if (user?.id) {
         // Store userId in AsyncStorage for background task
@@ -104,12 +114,14 @@ export default function RootLayout() {
     <LanguageProvider>
       <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
         <ClerkLoaded>
+        <MenuProvider>
           <Stack>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(root)" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
+        </MenuProvider>
         </ClerkLoaded>
       </ClerkProvider>
     </LanguageProvider>

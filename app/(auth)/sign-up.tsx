@@ -171,6 +171,7 @@ const industryMap = new Map([
           gender: englishGender,
           industry: englishIndustry,
           clerkId: completeSignUp.createdUserId,
+          password: form.password,
           createdAt: new Date().toISOString(),
         });
   
@@ -214,14 +215,17 @@ const industryMap = new Map([
         <View className="-pt-1 px-5 pb-10">
           {/* حقل رقم الهاتف */}
           <InputField
-            label={t.phoneNumber}
-            placeholder="599510287"
-            value={form.phoneNumber}
-            onChangeText={(text) => setForm({ ...form, phoneNumber: text })}
-            isPhoneNumber
-            labelStyle={language === 'ar' ? 'text-right font-CairoBold text-orange-500' : 'text-left font-JakartaBold text-orange-500'}
-            className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
-          />
+  label={t.phoneNumber}
+  placeholder=" +972599510287"
+  value={form.phoneNumber}
+  onChangeText={(text) => setForm({ ...form, phoneNumber: text })}
+  keyboardType="phone-pad"
+  isPhoneNumber
+  labelStyle={language === 'ar' ? 'text-right font-CairoBold text-orange-500' : 'text-left font-JakartaBold text-orange-500'}
+  className={`${language === 'ar' ? 'text-right placeholder:text-right font-CairoBold ' : 'text-left placeholder:text-left'}`}
+  style={{ textAlign: 'right', fontSize: 18 }}
+/>
+
 
           {/* حقل الاسم الكامل */}
           <InputField

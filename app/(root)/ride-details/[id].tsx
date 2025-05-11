@@ -44,7 +44,7 @@ interface Ride {
   created_at: any;
   ride_datetime: string;
   driver_id?: string;
-  status: 'available' | 'full' | 'in-progress' | 'completed' | 'on-hold' | 'cancelled';
+  status: 'available' | 'full' | 'in-progress' | 'completed' | 'cancelled';
   available_seats: number;
   is_recurring: boolean;
   no_children: boolean;
@@ -425,8 +425,8 @@ const RideDetails = () => {
       }
 
       // Check if ride has already started or completed
-      if (ride.status === 'in-progress' || ride.status === 'completed' || ride.status === 'cancelled' || ride.status === 'on-hold') {
-        Alert.alert('غير متاح', 'لا يمكن حجز هذه الرحلة لأنها قد بدأت أو انتهت أو تم إلغاؤها أو في وضع الانتظار.');
+      if (ride.status === 'in-progress' || ride.status === 'completed' || ride.status === 'cancelled') {
+        Alert.alert('غير متاح', 'لا يمكن حجز هذه الرحلة لأنها قد بدأت أو انتهت أو تم إلغاؤها .');
         return;
       }
 
@@ -1295,97 +1295,7 @@ const RideDetails = () => {
     }
   };
 
-  // Add this useEffect to check ride time and update status
-  useEffect(() => {
-    if (!ride || !ride.ride_datetime) return;
-
-    const checkRideTime = async () => {
-      const rideTime = parse(ride.ride_datetime, DATE_FORMAT, new Date());
-      const now = new Date();
-      
-      // Add 15 minutes to ride time for grace period
-      const gracePeriodEnd = new Date(rideTime.getTime() + 15 * 60000);
-      
-      // If current time is past grace period and ride is still available/full
-      if (now > gracePeriodEnd && (ride.status === 'available' || ride.status === 'full')) {
-        // Update ride status to on-hold
-        await updateDoc(doc(db, 'rides', ride.id), {
-          status: 'on-hold',
-          updated_at: serverTimestamp(),
-        });
-
-        // Notify driver that the ride is on hold
-        
-
-        // Notify all accepted passengers
-        const rideRequestsRef = collection(db, 'ride_requests');
-        const q = query(
-          rideRequestsRef,
-          where('ride_id', '==', ride.id),
-          where('status', '==', 'accepted')
-        );
-        const querySnapshot = await getDocs(q);
-        
-        for (const doc of querySnapshot.docs) {
-          const request = doc.data();
-          await sendRideStatusNotification(
-            request.user_id,
-            'الرحلة في وضع الانتظار',
-            `لم يتم بدء الرحلة بعد 15 دقيقة من وقتها المحدد. الرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
-            ride.id
-          );
-        }
-      }
-    };
-
-    // Check immediately
-    checkRideTime();
-
-    // Check every minute
-    const interval = setInterval(checkRideTime, 60000);
-    return () => clearInterval(interval);
-  }, [ride]);
-
-  // Add this useEffect to check ride time in real-time
-  useEffect(() => {
-    if (!ride?.ride_datetime) return;
-
-    const checkRideTime = () => {
-      const rideTime = parse(ride.ride_datetime, DATE_FORMAT, new Date());
-      const now = new Date();
-      const gracePeriodEnd = new Date(rideTime.getTime() + 15 * 60000);
-      setIsRideTime(now >= gracePeriodEnd);
-    };
-
-    // Check immediately
-    checkRideTime();
-
-    // Check every minute
-    const interval = setInterval(checkRideTime, 60000);
-    return () => clearInterval(interval);
-  }, [ride?.ride_datetime]);
-
-  // Add this useEffect to listen for ride status changes
-
-
-  // Update rating state when ride changes
-  useEffect(() => {
-    if (ride && userId) {
-      setRating(prev => ({
-        ...prev,
-        ride_id: ride.id,
-        driver_id: ride.driver_id || '',
-        passenger_id: userId,
-        ride_details: {
-          origin_address: ride.origin_address,
-          destination_address: ride.destination_address,
-          ride_datetime: ride.ride_datetime
-        }
-      }));
-    }
-  }, [ride, userId]);
-
-  // Modify the renderActionButtons function
+  // Modify the renderActionButtons function to remove on-hold status
   const renderActionButtons = useCallback(() => {
     if (isDriver) {
       // Check if ride is full
@@ -1436,16 +1346,6 @@ const RideDetails = () => {
           );
         case 'cancelled':
           return null;
-        case 'on-hold':
-          return (
-            <View className="p-4 m-3">
-              <CustomButton
-                title="بدء الرحلة"
-                onPress={handleStartRide}
-                className="bg-blue-500 py-3 rounded-xl"
-              />
-            </View>
-          );
         default:
           return null;
       }
@@ -1484,14 +1384,6 @@ const RideDetails = () => {
             <View className="p-4 m-3 bg-gray-100 rounded-xl">
               <Text className="text-gray-700 font-CairoBold text-center text-lg">
                 تم إلغاء الرحلة
-              </Text>
-            </View>
-          );
-        } else if (ride?.status === 'on-hold') {
-          return (
-            <View className="p-4 m-3 bg-yellow-100 rounded-xl">
-              <Text className="text-yellow-800 font-CairoBold text-center text-lg">
-                الرحلة في وضع الانتظار - لا يمكن حجز مقعد
               </Text>
             </View>
           );
@@ -1843,27 +1735,7 @@ const RideDetails = () => {
     return diffInMinutes >= 15;
   };
 
-  // Add this useEffect to handle ride time notifications
-  useEffect(() => {
-    const checkAndSendNotification = async () => {
-      if (!ride) return;
-      
-      if (ride.driver_id && ride.status === 'available' && checkRideTime(ride.ride_datetime)) {
-        try {
-          await sendRideStatusNotification(
-            ride.driver_id,
-            'الرحلة في وضع الانتظار',
-            `لم يتم بدء الرحلة بعد 15 دقيقة من وقتها المحدد. الرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
-            ride.id
-          );
-        } catch (error) {
-          console.error('Error sending notification:', error);
-        }
-      }
-    };
 
-    checkAndSendNotification();
-  }, [ride]);
 
   if (loading) {
     return (

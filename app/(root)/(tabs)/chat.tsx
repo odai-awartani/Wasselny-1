@@ -8,8 +8,6 @@ import { findOrCreateChat } from '@/lib/chat';
 import ConversationItem from '@/components/chat/ConversationItem';
 import { icons } from '@/constants';
 import type { Chat as ChatType, LastMessage } from '@/types/type';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Header from '@/components/Header';
 
 interface BaseChat {
   id: string;
@@ -44,16 +42,13 @@ export default function ChatListScreen() {
   useEffect(() => {
     if (user) {
       fetchChats();
-      const unsubscribe = setupChatListener();
-      return () => unsubscribe && unsubscribe();
-    } else {
-      setLoading(false);
+      setupChatListener();
     }
   }, [user]);
 
   // Set up real-time chat listener
   const setupChatListener = () => {
-    if (!user) return () => {};
+    if (!user) return;
 
     const chatsRef = collection(db, 'chats');
     const q = query(chatsRef, where('participants', 'array-contains', user.id));
@@ -229,102 +224,105 @@ export default function ChatListScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <SafeAreaView>
-        <Header pageTitle='Chats'/>
-        {/* Search Bar */}
-        <View className="px-4 py-3 bg-white border-b border-gray-100">
-          <View className="flex-row items-center bg-gray-50 rounded-full px-4 py-2">
-            <Image source={icons.search} className="w-5 h-5 ml-2" tintColor="#6B7280" />
-            <TextInput
-              placeholder="ابحث عن السائقين..."
-              value={searchQuery}
-              onChangeText={handleSearch}
-              className="flex-1 text-right font-CairoBold text-gray-700"
-              style={{ textAlign: 'right' }}
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
+      {/* Header */}
+      <View className="bg-primary px-4 pt-10 pb-4">
+        <Text className="text-xl font-bold text-black text-right">المحادثات</Text>
+      </View>
+
+      {/* Search Bar */}
+      <View className="px-4 py-3 bg-white border-b border-gray-100">
+        <View className="flex-row items-center bg-gray-50 rounded-full px-4 py-2">
+          <Image source={icons.search} className="w-5 h-5 ml-2" tintColor="#6B7280" />
+          <TextInput
+            placeholder="ابحث عن السائقين..."
+            value={searchQuery}
+            onChangeText={handleSearch}
+            className="flex-1 text-right font-CairoBold text-gray-700"
+            style={{ textAlign: 'right' }}
+            placeholderTextColor="#9CA3AF"
+          />
         </View>
+      </View>
 
-        {/* Loading State */}
-        {loading && (
-          <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#4F46E5" />
+      {/* Loading State */}
+      {loading && (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#4F46E5" />
+        </View>
+      )}
+
+      {/* Search Results - Drivers */}
+      {drivers.length > 0 && (
+        <View className="px-4 py-3 bg-white border-b border-gray-100">
+          <Text className="text-lg font-CairoBold mb-2 text-right text-gray-800">نتائج البحث</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {drivers.map((driver) => (
+              <TouchableOpacity
+                key={driver.id}
+                onPress={() => handleDriverPress(driver)}
+                className="ml-4 items-center"
+              >
+                <View className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden ">
+                  {driver.profile_image_url ? (
+                    <Image
+                      source={{ uri: driver.profile_image_url }}
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <View className="w-full h-full bg-primary items-center justify-center">
+                      <Text className="text-white text-xl">
+                        {driver.name?.[0]?.toUpperCase() || 'D'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text className="text-sm mt-2 font-CairoBold text-gray-700">{driver.name || 'سائق'}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Chats List */}
+      <ScrollView 
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#4F46E5']}
+            tintColor="#4F46E5"
+          />
+        }
+      >
+        {/* No results message */}
+        {chats.length === 0 && drivers.length === 0 && searchQuery.length > 0 && (
+          <View className="flex-1 items-center justify-center py-20">
+            <Image source={icons.search} className="w-16 h-16 mb-4" tintColor="#9CA3AF" />
+            <Text className="text-gray-500 text-lg font-CairoBold">لا توجد نتائج</Text>
+            <Text className="text-gray-400 text-base mt-2 font-CairoBold">جرب كلمة بحث مختلفة</Text>
           </View>
         )}
 
-        {/* Search Results - Drivers */}
-        {drivers.length > 0 && (
-          <View className="px-4 py-3 bg-white border-b border-gray-100">
-            <Text className="text-lg font-CairoBold mb-2 text-right text-gray-800">نتائج البحث</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {drivers.map((driver) => (
-                <TouchableOpacity
-                  key={driver.id}
-                  onPress={() => handleDriverPress(driver)}
-                  className="ml-4 items-center"
-                >
-                  <View className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden ">
-                    {driver.profile_image_url ? (
-                      <Image
-                        source={{ uri: driver.profile_image_url }}
-                        className="w-full h-full"
-                      />
-                    ) : (
-                      <View className="w-full h-full bg-primary items-center justify-center">
-                        <Text className="text-white text-xl">
-                          {driver.name?.[0]?.toUpperCase() || 'D'}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text className="text-sm mt-2 font-CairoBold text-gray-700">{driver.name || 'سائق'}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        {/* Empty state */}
+        {chats.length === 0 && drivers.length === 0 && searchQuery.length === 0 && (
+          <View className="flex-1 items-center justify-center py-20">
+            <Image source={icons.chat} className="w-16 h-16 mb-4" tintColor="#9CA3AF" />
+            <Text className="text-gray-500 text-lg font-CairoBold">لا توجد محادثات</Text>
+            <Text className="text-gray-400 text-base mt-2 font-CairoBold">ابحث عن السائقين للبدء في الدردشة</Text>
           </View>
         )}
 
-        {/* Chats List */}
-        <ScrollView 
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#4F46E5']}
-              tintColor="#4F46E5"
-            />
-          }
-        >
-          {/* No results message */}
-          {chats.length === 0 && drivers.length === 0 && searchQuery.length > 0 && (
-            <View className="flex-1 items-center justify-center py-20">
-              <Image source={icons.search} className="w-16 h-16 mb-4" tintColor="#9CA3AF" />
-              <Text className="text-gray-500 text-lg font-CairoBold">لا توجد نتائج</Text>
-              <Text className="text-gray-400 text-base mt-2 font-CairoBold">جرب كلمة بحث مختلفة</Text>
-            </View>
-          )}
-
-          {/* Empty state - No current messages */}
-          {chats.length === 0 && drivers.length === 0 && searchQuery.length === 0 && (
-            <View className="flex-1 items-center justify-center py-20">
-              <Image source={icons.chat} className="w-16 h-16 mb-4" tintColor="#9CA3AF" />
-              <Text className="text-gray-500 text-lg font-CairoBold">لا توجد رسائل حالية</Text>
-            </View>
-          )}
-
-          {/* Chats */}
-          {chats.map((chat) => (
-            <ConversationItem 
-              key={chat.id}
-              chat={chat}
-              onPress={handleChatPress}
-            />
-          ))}
-        </ScrollView>
-      </SafeAreaView>
+        {/* Chats */}
+        {chats.map((chat) => (
+          <ConversationItem 
+            key={chat.id}
+            chat={chat}
+            onPress={handleChatPress}
+          />
+        ))}
+      </ScrollView>
     </View>
   );
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import type { Chat } from '@/types/type';
 import { useUser } from '@clerk/clerk-expo';
@@ -11,10 +11,29 @@ interface Props {
 export default function ConversationItem({ chat, onPress }: Props) {
   const { user } = useUser();
 
+  useEffect(() => {
+    console.log('ConversationItem rendered with chat:', {
+      id: chat.id,
+      name: chat.name,
+      lastMessage: chat.lastMessage,
+      lastMessageTime: chat.lastMessageTime?.toDate(),
+      unreadCount: chat.unreadCount
+    });
+  }, [chat]);
+
+  const handlePress = () => {
+    console.log('ConversationItem pressed:', {
+      id: chat.id,
+      name: chat.name,
+      lastMessage: chat.lastMessage
+    });
+    onPress(chat);
+  };
+
   return (
     <TouchableOpacity 
       className="flex-row items-center py-3 border-b border-gray-100 w-[90%] mx-auto"
-      onPress={() => onPress(chat)}
+      onPress={handlePress}
     >
       {/* Avatar with unread indicator */}
       <View className="relative">
@@ -42,12 +61,14 @@ export default function ConversationItem({ chat, onPress }: Props) {
       <View className="flex-1 ml-3">
         <View className="flex-row justify-between items-center">
           <Text className="font-medium text-base">{chat.name || 'Chat'}</Text>
-          <Text className="text-xs text-gray-400">
-            {chat.lastMessageTime?.toDate().toLocaleTimeString([], { 
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </Text>
+          {chat.lastMessageTime && (
+            <Text className="text-xs text-gray-400">
+              {chat.lastMessageTime.toDate().toLocaleTimeString([], { 
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </Text>
+          )}
         </View>
         <Text className="text-sm text-gray-500 truncate">
           {chat.lastMessage?.text || 'No messages yet'}

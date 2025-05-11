@@ -7,7 +7,7 @@ const Home = () => {
   if (isSignedIn) {
     return <Redirect href="/home" />;
   }
-  return <Redirect href="/(auth)/language" />;
+  return <Redirect href="/(auth)/welcome" />;
 };
 
 export default Home;

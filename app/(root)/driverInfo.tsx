@@ -12,6 +12,8 @@ import InputField from "@/components/InputField";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, setDoc, getDoc, collection, addDoc } from "firebase/firestore";
 import { ActivityIndicator } from "react-native";
+import { useLanguage } from "@/context/LanguageContext";
+
 interface DriverFormData {
   carType: string;
   carSeats: string;
@@ -31,6 +33,7 @@ interface FirebaseDriverData {
 const driverInfo = () => {
   const { user } = useUser();
   const router = useRouter();
+  const { t, language } = useLanguage();
   const [driverFormData, setDriverFormData] = useState<DriverFormData>({
     carType: "",
     carSeats: "",
@@ -59,15 +62,15 @@ const driverInfo = () => {
         if (userData.driver) {
           if (userData.driver.status === 'pending') {
             Alert.alert(
-              "تنبيه",
-              "لديك طلب قيد المراجعة. يرجى الانتظار حتى يتم مراجعة طلبك من قبل الإدارة."
+              t.alert,
+              t.pendingDriverRequest
             );
             router.replace("/(root)/(tabs)/home");
             return;
           } else if (userData.driver.status === 'rejected') {
             Alert.alert(
-              "تنبيه",
-              `تم رفض طلبك السابق للأسباب التالية:\n${userData.driver.rejection_reason || 'لم يتم تحديد السبب'}\n\nيمكنك تعديل بياناتك وإعادة التقديم.`
+              t.alert,
+              `${t.rejectedDriverRequest}\n${userData.driver.rejection_reason || t.noReasonSpecified}\n\n${t.editAndResubmit}`
             );
             // Pre-fill the form with existing data
             setDriverFormData({
@@ -91,15 +94,15 @@ const driverInfo = () => {
       console.log("User is not a driver, requesting media permissions");
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("تحذير", "يجب منح صلاحيات الوصول إلى المعرض");
+        Alert.alert(t.alert, t.mediaPermissionRequired);
       }
     } catch (error: any) {
       console.error("Error checking driver status:", error);
-      Alert.alert("خطأ", "حدث خطأ أثناء التحقق من حالة السائق");
+      Alert.alert(t.error, t.driverStatusCheckError);
     } finally {
       setIsDriverChecked(true);
     }
-  }, [user, router]);
+  }, [user, router, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -131,12 +134,12 @@ const driverInfo = () => {
       // تحقق إضافي من نوع الملف
       const fileExtension = asset.uri.split('.').pop()?.toLowerCase();
       if (!['jpg', 'jpeg', 'png'].includes(fileExtension || '')) {
-        Alert.alert("خطأ", "يجب اختيار صورة بصيغة JPG أو PNG");
+        Alert.alert(t.error, t.invalidImageFormat);
         return;
       }
 
       if ((asset.fileSize || 0) > 5 * 1024 * 1024) {
-        Alert.alert("خطأ", "حجم الصورة يجب أن يكون أقل من 5MB");
+        Alert.alert(t.error, t.imageSizeLimit);
         return;
       }
 
@@ -146,9 +149,9 @@ const driverInfo = () => {
       }));
     } catch (error) {
       console.error("Image picker error:", error);
-      Alert.alert("خطأ", "حدث خطأ أثناء اختيار الصورة");
+      Alert.alert(t.error, t.imagePickError);
     }
-  }, []);
+  }, [t]);
 
   // تحسين تسجيل السائق مع إدارة أفضل للطلبات
   const handleRegister = useCallback(async () => {
@@ -159,11 +162,11 @@ const driverInfo = () => {
       
       // تحقق شامل من البيانات
       if (!carType.trim() || !carSeats || !carImage || !profileImage) {
-        throw new Error("يجب تعبئة جميع الحقول المطلوبة");
+        throw new Error(t.fillAllFields);
       }
 
       if (isNaN(Number(carSeats)) || Number(carSeats) < 1 || Number(carSeats) > 10) {
-        throw new Error("عدد المقاعد يجب أن يكون بين 1 و 10");
+        throw new Error(t.invalidCarSeats);
       }
 
       const [carImageUrl, profileImageUrl] = await Promise.all([
@@ -172,7 +175,7 @@ const driverInfo = () => {
       ]);
 
       if (!carImageUrl || !profileImageUrl) {
-        throw new Error("فشل في تحميل الصور، يرجى المحاولة لاحقًا");
+        throw new Error(t.imageUploadFailed);
       }
 
       // Create driver data object
@@ -203,11 +206,11 @@ const driverInfo = () => {
       const notificationsRef = collection(db, 'notifications');
       await addDoc(notificationsRef, {
         type: 'driver_request',
-        title: 'طلب جديد للتسجيل كسائق',
-        message: `طلب جديد من ${user?.fullName} للتسجيل كسائق`,
+        title: t.newDriverRequestTitle,
+        message: t.newDriverRequestMessage.replace('{userName}', user?.fullName || t.userName),
         created_at: new Date(),
         read: false,
-        user_id: 'admin', // This will be received by all admin users
+        user_id: 'admin',
         data: {
           driver_id: user?.id,
           driver_name: user?.fullName,
@@ -219,32 +222,30 @@ const driverInfo = () => {
       // Save to AsyncStorage for local access
       await AsyncStorage.setItem('driverData', JSON.stringify(driverData));
 
-      // Recheck driver status to update tabs
-
-      Alert.alert("نجاح", "تم تقديم طلب التسجيل كسائق بنجاح. سيتم مراجعة طلبك من قبل الإدارة", [
-        { text: "حسناً", onPress: () => router.push("/(root)/(tabs)/home")}
+      Alert.alert(t.success, t.driverRequestSuccess, [
+        { text: t.ok, onPress: () => router.push("/(root)/(tabs)/home")}
       ]);
     } catch (error: any) {
       console.error("Registration error:", error);
-      Alert.alert("خطأ", error.message || "حدث خطأ أثناء التسجيل");
+      Alert.alert(t.error, error.message || t.registrationError);
     } finally {
       setIsLoading(false);
     }
-  }, [driverFormData, user, router]);
+  }, [driverFormData, user, router, t]);
 
   if (!isDriverChecked) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white px-4">
         <Image
-          source={images.loadingCar} // تأكد إنك تضيف صورة gif مناسبة داخل مجلد الصور
+          source={images.loadingCar}
           className="w-40 h-40 mb-6"
           resizeMode="contain"
         />
-        <Text className="text-xl font-CairoBold text-orange-500 mb-2">
-          جاري التحقق من بياناتك...
+        <Text className={`text-xl ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'} text-orange-500 mb-2`}>
+          {t.checkingData}
         </Text>
-        <Text className="text-base text-gray-500 text-center">
-          برجاء الانتظار قليلاً أثناء التحقق من حالة حسابك كسائق
+        <Text className={`text-base text-gray-500 text-center ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
+          {t.pleaseWait}
         </Text>
         <ActivityIndicator size="large" color="#F97316" className="mt-6" />
       </SafeAreaView>
@@ -254,35 +255,39 @@ const driverInfo = () => {
   return (
     <SafeAreaView className="flex-1 p-6 bg-gray-50">
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Text className="text-3xl font-bold text-center text-black mb-6">تسجيل كسائق</Text>
+        <Text className={`text-3xl font-bold text-center text-black mb-6 ${language === 'ar' ? 'font-CairoBold text-right' : 'font-JakartaBold text-left'}`}>
+          {t.registerDriver}
+        </Text>
       
         <InputField 
-          label="نوع السيارة"
+          label={t.carType}
           value={driverFormData.carType}
           onChangeText={(text) => setDriverFormData(prev => ({ ...prev, carType: text }))}
-          placeholder="مثال: تويوتا كورولا"
-          className="border border-orange-500  placeholder:font-CairoBold"
-          labelStyle="text-lg text-right text-gray-700 mb-4 font-CairoBold"
+          placeholder={t.carTypePlaceholder}
+          className={`border border-orange-500 ${language === 'ar' ? 'text-right' : 'text-left'}`}
+          labelStyle={`text-lg ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'} text-gray-700 mb-4`}
           maxLength={30}
         />
         
         <InputField 
-          label="عدد المقاعد"
+          label={t.carSeats}
           value={driverFormData.carSeats}
           onChangeText={(text) => setDriverFormData(prev => ({ ...prev, carSeats: text }))}
-          placeholder="مثال: 4"
+          placeholder={t.carSeatsPlaceholder}
           keyboardType="number-pad"
-          className="border border-orange-500 placeholder:font-CairoBold"
-          labelStyle="text-lg text-right text-gray-700 mb-4 font-CairoBold"
+          className={`border border-orange-500 ${language === 'ar' ? 'text-right' : 'text-left'}`}
+          labelStyle={`text-lg ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'} text-gray-700 mb-4`}
           maxLength={2}
         />  
         
-        <Text className="text-lg text-right text-gray-700 mb-4 font-CairoBold">صورة السيارة</Text>
+        <Text className={`text-lg ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'} text-gray-700 mb-4`}>
+          {t.uploadCarImage}
+        </Text>
         <View className="mb-6 items-center">
           <TouchableOpacity
             onPress={() => pickImage("car")}
             className="w-full h-48 bg-gray-100 rounded-lg border-dashed border-2 border-gray-300 justify-center items-center"
-            >
+          >
             {driverFormData.carImage ? (
               <Image 
                 source={{ uri: driverFormData.carImage }} 
@@ -293,18 +298,22 @@ const driverInfo = () => {
             ) : (
               <>
                 <Image source={icons.upload} className="w-12 h-12 mb-2" />
-                <Text className="text-gray-500">اضغط لاختيار صورة للسيارة</Text>
+                <Text className={`text-gray-500 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
+                  {t.selectCarImage}
+                </Text>
               </>
             )}
           </TouchableOpacity>
         </View>
         
-        <Text className="text-lg text-right text-gray-700 mb-4 font-CairoBold">صورة البروفايل</Text>
+        <Text className={`text-lg ${language === 'ar' ? 'text-right font-CairoBold' : 'text-left font-JakartaBold'} text-gray-700 mb-4`}>
+          {t.uploadProfileImage}
+        </Text>
         <View className="mb-6 items-center">
           <TouchableOpacity
             onPress={() => pickImage("profile")}
             className="w-full h-48 bg-gray-100 rounded-lg border-dashed border-2 border-gray-300 justify-center items-center"
-            >
+          >
             {driverFormData.profileImage ? (
               <Image 
                 source={{ uri: driverFormData.profileImage }} 
@@ -315,7 +324,9 @@ const driverInfo = () => {
             ) : (
               <>
                 <Image source={icons.upload} className="w-12 h-12 mb-2" />
-                <Text className="text-gray-500">اضغط لاختيار صورة للبروفايل</Text>
+                <Text className={`text-gray-500 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
+                  {t.selectProfileImage}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -323,7 +334,7 @@ const driverInfo = () => {
 
         <View className="pb-20 items-center">
           <CustomButton 
-            title={isLoading ? "جاري التسجيل..." : "التسجيل كـ سائق"}
+            title={isLoading ? t.registering : t.registerDriverButton}
             onPress={handleRegister}
             disabled={isLoading}
             className="w-full"
