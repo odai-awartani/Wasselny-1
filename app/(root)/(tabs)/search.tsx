@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Image, FlatList, ActivityIndicator, Platform } from 'react-native'
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { collection, query, orderBy, limit, startAfter, doc, getDoc, Query, QuerySnapshot, DocumentData, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { icons } from '@/constants'
@@ -42,6 +42,12 @@ interface SearchResult {
   status?: string
   available_seats?: number
   gender_preference?: 'male' | 'female' | 'any'
+  waypoints?: Array<{
+    address: string
+    street: string
+    latitude: number
+    longitude: number
+  }>
 }
 
 interface FilterOptions {
@@ -87,9 +93,10 @@ function hasToDate(obj: any): obj is { toDate: () => Date } {
 
 const Search = () => {
   const router = useRouter()
+  const params = useLocalSearchParams()
   const { t, language } = useLanguage()
   const { user } = useUser()
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(params.searchQuery as string || '')
   const [allResults, setAllResults] = useState<SearchResult[]>([])
   const [displayedResults, setDisplayedResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -111,6 +118,13 @@ const Search = () => {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+
+  // Initialize search with query from home page
+  useEffect(() => {
+    if (params.searchQuery) {
+      handleSearch(params.searchQuery as string)
+    }
+  }, [params.searchQuery])
 
   // Fetch user location
   const fetchUserLocation = useCallback(async () => {
@@ -195,7 +209,8 @@ const Search = () => {
             status: ride.status,
             available_seats: ride.available_seats,
             gender_preference: ride.required_gender,
-            profile_image_url
+            profile_image_url,
+            waypoints: ride.waypoints
           })
         }
         lastDoc = ridesSnapshot.docs[ridesSnapshot.docs.length - 1]
@@ -657,7 +672,6 @@ const Search = () => {
       const statusColor = item.status === 'available' ? 'bg-green-50 text-green-600' : 
                          item.status === 'pending' ? 'bg-yellow-50 text-yellow-600' : 
                          item.status === 'ended' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-700'
-      const recurringInfo = item.is_recurring && item.recurring_days?.length ? `(${language === 'ar' ? 'متكرر' : 'Recurring'})` : ''
 
       return (
         <TouchableOpacity
@@ -704,8 +718,19 @@ const Search = () => {
                   {item.origin}
                 </Text>
               </View>
+              {item.waypoints && item.waypoints.length > 0 && item.waypoints.map((waypoint, index) => (
+                <View key={index} className={`flex-row items-center mb-1 ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <Image source={icons.map} resizeMode="contain" tintColor="#F79824" className={`w-5 h-5 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
+                  <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'ml-2' : 'mr-2'}`}>
+                    {language === 'ar' ? 'محطة' : 'Stop'} {index + 1}:
+                  </Text>
+                  <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                    {waypoint.address}
+                  </Text>
+                </View>
+              ))}
               <View className={`flex-row items-center ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
-                <Image source={icons.map} resizeMode="contain" className={`w-5 h-5 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
+                <Image source={icons.target} resizeMode="contain" className={`w-5 h-5 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
                 <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'ml-2' : 'mr-2'}`}>
                   {language === 'ar' ? 'إلى' : 'To'}:
                 </Text>
@@ -720,17 +745,15 @@ const Search = () => {
             <View className={`flex-row items-center mb-1 ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
               <Image source={icons.calendar} className={`w-4 h-4 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
               <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} text-gray-600 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
-                {dayOfWeek} {recurringInfo ? <Text className="text-primary">{recurringInfo}</Text> : ''}
+                {dayOfWeek}
               </Text>
             </View>
-            {!item.is_recurring && (
-              <View className={`flex-row items-center mb-1 ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
-                <Image source={icons.calendar} className={`w-4 h-4 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
-                <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} text-gray-600 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
-                  {dateDisplay}
-                </Text>
-              </View>
-            )}
+            <View className={`flex-row items-center mb-1 ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
+              <Image source={icons.calendar} className={`w-4 h-4 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
+              <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} text-gray-600 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+                {dateDisplay}
+              </Text>
+            </View>
             <View className={`flex-row items-center mb-1 ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
               <Image source={icons.clock} className={`w-4 h-4 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
               <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} text-gray-600 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
@@ -797,10 +820,8 @@ const Search = () => {
   // Helper to determine if a ride is valid
   const isValidRide = (ride: any) => {
     const rideDate = parseCustomDate(ride.ride_datetime)
-    const isRecurring = ride.is_recurring || false
     const currentDate = new Date()
-    currentDate.setHours(0, 0, 0, 0)
-    return isRecurring || rideDate >= currentDate
+    return rideDate > currentDate
   }
 
   // Initial fetch

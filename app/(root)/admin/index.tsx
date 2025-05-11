@@ -14,9 +14,10 @@ interface DashboardStats {
   pendingApplications: number;
   totalRides: number;
   totalUsers: number;
+  pendingSupport: number;
 }
 
-type IconName = 'account-group' | 'car' | 'clock-outline' | 'map-marker-path' | 'account-cog' | 'chart-bar';
+type IconName = 'account-group' | 'car' | 'clock-outline' | 'map-marker-path' | 'account-cog' | 'chart-bar' | 'message-text' | 'help-circle';
 
 const AdminDashboard = () => {
   const { user } = useUser();
@@ -27,7 +28,8 @@ const AdminDashboard = () => {
     activeDrivers: 0,
     pendingApplications: 0,
     totalRides: 0,
-    totalUsers: 0
+    totalUsers: 0,
+    pendingSupport: 0
   });
 
   useEffect(() => {
@@ -57,11 +59,23 @@ const AdminDashboard = () => {
           }));
         });
 
+        // Add support messages listener
+        const supportUnsubscribe = onSnapshot(
+          query(collection(db, 'support_messages'), where('status', '==', 'pending')),
+          (snapshot) => {
+            setStats(prev => ({
+              ...prev,
+              pendingSupport: snapshot.size
+            }));
+          }
+        );
+
         setLoading(false);
 
         return () => {
           usersUnsubscribe();
           ridesUnsubscribe();
+          supportUnsubscribe();
         };
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -86,12 +100,13 @@ const AdminDashboard = () => {
     </View>
   );
 
-  const QuickActionCard = ({ title, description, icon, onPress, color }: { 
+  const QuickActionCard = ({ title, description, icon, onPress, color, badge }: { 
     title: string; 
     description: string; 
     icon: IconName; 
     onPress: () => void;
     color: string;
+    badge?: number;
   }) => (
     <TouchableOpacity 
       onPress={onPress}
@@ -99,10 +114,27 @@ const AdminDashboard = () => {
     >
       <View className="flex-row items-center">
         <View className={`bg-${color}-100 p-3 rounded-full mr-4`}>
-          <MaterialCommunityIcons name={icon} size={24} color={`#${color === 'blue' ? '3B82F6' : color === 'green' ? '22C55E' : color === 'orange' ? 'F97316' : '8B5CF6'}`} />
+          <MaterialCommunityIcons 
+            name={icon} 
+            size={24} 
+            color={`#${
+              color === 'blue' ? '3B82F6' : 
+              color === 'green' ? '22C55E' : 
+              color === 'yellow' ? 'EAB308' : 
+              color === 'red' ? 'EF4444' : 
+              '8B5CF6'
+            }`} 
+          />
         </View>
         <View className="flex-1">
-          <Text className="text-lg font-bold">{title}</Text>
+          <View className="flex-row items-center">
+            <Text className="text-lg font-bold">{title}</Text>
+            {badge ? (
+              <View className="bg-red-500 rounded-full ml-2 px-2 py-0.5">
+                <Text className="text-white text-xs font-bold">{badge}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text className="text-gray-600 text-sm">{description}</Text>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={24} color="#6B7280" />
@@ -167,6 +199,14 @@ const AdminDashboard = () => {
           {/* Quick Actions Section */}
           <View className="mb-6">
             <Text className="text-lg font-semibold mb-4">Quick Actions</Text>
+            <QuickActionCard 
+              title="Support Messages" 
+              description="View and manage user support messages"
+              icon="message-text"
+              color="yellow"
+              badge={stats.pendingSupport}
+              onPress={() => router.push('/(root)/admin/support-messages' as any)}
+            />
             <QuickActionCard 
               title="Driver Applications" 
               description="Review and manage driver applications"

@@ -34,6 +34,12 @@ interface Ride {
   origin_latitude: number;
   origin_longitude: number;
   recurring: boolean;
+  ride_days?: string[];
+  waypoints?: {
+    address: string;
+    latitude: number;
+    longitude: number;
+  }[];
   driver?: {
     name: string;
     car_seats: number;
@@ -56,6 +62,12 @@ interface RideData {
   origin_latitude: number;
   origin_longitude: number;
   recurring: boolean;
+  ride_days?: string[];
+  waypoints?: {
+    address: string;
+    latitude: number;
+    longitude: number;
+  }[];
 }
 
 interface RecentRoute {
@@ -460,6 +472,8 @@ const SuggestedRides = () => {
         origin_latitude: ride.origin_latitude || 0,
         origin_longitude: ride.origin_longitude || 0,
         recurring: ride.recurring || false,
+        ride_days: ride.ride_days || [],
+        waypoints: ride.waypoints || [],
         driver_id: driverId,
         driver: {
           name: driverData?.name || DEFAULT_DRIVER_NAME,
@@ -516,16 +530,27 @@ const SuggestedRides = () => {
             <View className="flex-1">
               <View className={`flex-row items-center mb-1 ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
                 <Image source={icons.point} className={`w-5 h-5 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
-                <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'ml-2' : 'mr-2'}`}>
+                <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoBold ml-2' : 'mr-2'}`}>
                   {language === 'ar' ? 'من' : 'From'}:
                 </Text>
                 <Text className={`text-base font-CairoMedium flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
                   {item.origin_address}
                 </Text>
               </View>
+              {item.waypoints && item.waypoints.length > 0 && item.waypoints.map((waypoint, index) => (
+                <View key={index} className={`flex-row items-center mb-1 ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <Image source={icons.point} className={`w-5 h-5 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
+                  <Text className={`text-sm text-gray-500 ${language === 'ar' ? ' font-CairoBold ml-2' : 'mr-2'}`}>
+                    {language === 'ar' ? 'محطة' : 'Stop'} {index + 1}:
+                  </Text>
+                  <Text className={`text-base font-CairoMedium flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                    {waypoint.address}
+                  </Text>
+                </View>
+              ))}
               <View className={`flex-row items-center ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
                 <Image source={icons.target} className={`w-5 h-5 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
-                <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'ml-2' : 'mr-2'}`}>
+                <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoBold ml-2' : 'mr-2'}`}>
                   {language === 'ar' ? 'إلى' : 'To'}:
                 </Text>
                 <Text className={`text-base font-CairoMedium flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
@@ -537,10 +562,33 @@ const SuggestedRides = () => {
 
           <View className={`flex-row justify-between items-center ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
             <View className={`flex-row items-center ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <Image source={icons.calendar} className={`w-4 h-4 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
-              <Text className={`text-sm text-gray-600 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
-                {date}
-              </Text>
+              <Image source={icons.calendar} className={`w-4 h-4 mb-1 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
+              <View >
+                <Text className={`text-sm pt-5 text-gray-600 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+                  {date}
+                </Text>
+                <Text className={`text-sm mt-1 font-CairoBold text-red-500 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+                  {item.ride_days && item.ride_days.length > 0 ? 
+                    item.ride_days.map(day => {
+                      const dayTranslations: { [key: string]: string } = {
+                        'Monday': 'الإثنين',
+                        'Tuesday': 'الثلاثاء',
+                        'Wednesday': 'الأربعاء',
+                        'Thursday': 'الخميس',
+                        'Friday': 'الجمعة',
+                        'Saturday': 'السبت',
+                        'Sunday': 'الأحد'
+                      };
+                      return dayTranslations[day] || day;
+                    }).join('، ') :
+                    (() => {
+                      const rideDate = new Date(item.ride_datetime);
+                      const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                      return days[rideDate.getDay()];
+                    })()
+                  }
+                </Text>
+              </View>
             </View>
             <View className={`flex-row items-center ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
               <Image source={icons.clock} className={`w-4 h-4 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />

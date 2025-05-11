@@ -14,12 +14,15 @@ import { scheduleNotification, setupNotifications, cancelNotification, sendRideS
 import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import BottomSheet from '@gorhom/bottom-sheet';
+import { AirbnbRating } from 'react-native-ratings';
 
 interface DriverData {
   car_seats?: number;
   car_type?: string;
   profile_image_url?: string;
   car_image_url?: string;
+  origin_street?: string;
+  destination_street?: string;
 }
 
 interface UserData {
@@ -36,6 +39,8 @@ interface Ride {
   origin_longitude?: number;
   destination_latitude?: number;
   destination_longitude?: number;
+  origin_street?: string;
+  destination_street?: string;
   created_at: any;
   ride_datetime: string;
   driver_id?: string;
@@ -55,6 +60,7 @@ interface Ride {
     car_type: string;
     car_image_url?: string;
   };
+  waypoints?: { latitude: number; longitude: number; address: string; street?: string }[];
 }
 
 interface RideRequest {
@@ -67,9 +73,15 @@ interface RideRequest {
   notification_id?: string;
   passenger_name?: string;
   is_waitlist?: boolean;
+  selected_waypoint?: {
+    latitude: number;
+    longitude: number;
+    address: string;
+    street?: string;
+  } | null;
 }
 
-interface Rating {
+interface RatingData {
   overall: number;
   driving: number;
   behavior: number;
@@ -96,12 +108,11 @@ const DEFAULT_CAR_IMAGE = 'https://via.placeholder.com/120x80';
 const DATE_FORMAT = 'dd/MM/yyyy HH:mm';
 
 const RideDetails = () => {
-  const [pendingRequests, setPendingRequests] = useState<RideRequest[]>([]);
   const [allPassengers, setAllPassengers] = useState<RideRequest[]>([]);
   const [passengerNames, setPassengerNames] = useState<Record<string, string>>({});
   const [passengerGenders, setPassengerGenders] = useState<Record<string, string>>({});
   const router = useRouter();
-  const { id, notificationId, scrollToRequests } = useLocalSearchParams();
+  const { id, notificationId } = useLocalSearchParams();
   const scrollViewRef = useRef<ScrollView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [ride, setRide] = useState<Ride | null>(null);
@@ -111,7 +122,7 @@ const RideDetails = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
-  const [rating, setRating] = useState<Rating>({
+  const [rating, setRating] = useState<RatingData>({
     overall: 0,
     driving: 0,
     behavior: 0,
@@ -133,6 +144,13 @@ const RideDetails = () => {
   const isDriver = ride?.driver_id === userId;
   const isPassenger = rideRequest && rideRequest.status === 'accepted';
   const [isRideTime, setIsRideTime] = useState(false);
+
+  // Add new state for waypoint selection modal
+  const [showWaypointModal, setShowWaypointModal] = useState(false);
+  const [selectedWaypoint, setSelectedWaypoint] = useState<{ latitude: number; longitude: number; address: string; street?: string } | null>(null);
+
+  // Add new state for pending requests count
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // Cache helper functions
   const cacheRideDetails = async (rideId: string, rideData: Ride) => {
@@ -168,7 +186,7 @@ const RideDetails = () => {
         try {
           const notificationRef = doc(db, 'notifications', notificationId);
           await updateDoc(notificationRef, { read: true });
-          if (scrollViewRef.current && pendingRequests.length > 0) {
+          if (scrollViewRef.current && allPassengers.length > 0) {
             scrollViewRef.current.scrollTo({ y: 600, animated: true });
           }
         } catch (error) {
@@ -177,7 +195,7 @@ const RideDetails = () => {
       };
       markNotificationAsRead();
     }
-  }, [notificationId, pendingRequests]);
+  }, [notificationId, allPassengers]);
 
   // Fetch ride details
   const fetchRideDetails = useCallback(async () => {
@@ -238,6 +256,8 @@ const RideDetails = () => {
         origin_longitude: rideData.origin_longitude || 0,
         destination_latitude: rideData.destination_latitude || 0,
         destination_longitude: rideData.destination_longitude || 0,
+        origin_street: rideData.origin_street,
+        destination_street: rideData.destination_street,
         created_at: rideData.created_at,
         ride_datetime: formattedDateTime,
         status: rideData.status || 'available',
@@ -257,6 +277,12 @@ const RideDetails = () => {
           car_type: driverInfo.driver?.car_type || DEFAULT_CAR_TYPE,
           car_image_url: driverInfo.driver?.car_image_url || DEFAULT_CAR_IMAGE,
         },
+        waypoints: rideData.waypoints?.map((waypoint: any) => ({
+          latitude: waypoint.latitude,
+          longitude: waypoint.longitude,
+          address: waypoint.address,
+          street: waypoint.street
+        })) || [],
       };
 
       // Update local state with latest data
@@ -309,30 +335,6 @@ const RideDetails = () => {
 
     return () => unsubscribe();
   }, [id, userId]);
-
-  // Fetch pending ride requests for driver
-  useEffect(() => {
-    if (!ride?.id || !isDriver) return;
-
-    const rideRequestsRef = collection(db, 'ride_requests');
-    const q = query(rideRequestsRef, where('ride_id', '==', ride.id), where('status', '==', 'waiting'));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const requests: RideRequest[] = [];
-        snapshot.forEach((doc) => {
-          requests.push({ id: doc.id, ...doc.data() } as RideRequest);
-        });
-        setPendingRequests(requests);
-      },
-      (error) => {
-        console.error('Error fetching pending requests:', error);
-        setError('فشل تحميل طلبات الحجز المعلقة.');
-      }
-    );
-
-    return () => unsubscribe();
-  }, [ride?.id, isDriver]);
 
   // Fetch all passengers for the ride
   useEffect(() => {
@@ -389,12 +391,27 @@ const RideDetails = () => {
     }
   }, [allPassengers]);
 
-  // Handle scrolling to requests
+  // Update the useEffect for pending requests count to use onSnapshot
   useEffect(() => {
-    if (scrollToRequests === 'true' && scrollViewRef.current && pendingRequests.length > 0) {
-      scrollViewRef.current.scrollTo({ y: 600, animated: true });
-    }
-  }, [scrollToRequests, pendingRequests]);
+    if (!ride?.id) return;
+
+    const rideRequestsRef = collection(db, 'ride_requests');
+    const q = query(
+      rideRequestsRef,
+      where('ride_id', '==', ride.id),
+      where('status', '==', 'waiting')
+    );
+
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPendingRequestsCount(snapshot.size);
+    }, (error) => {
+      console.error('Error listening to pending requests:', error);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [ride?.id]);
 
   // Handle booking a ride
   const handleBookRide = async () => {
@@ -425,56 +442,11 @@ const RideDetails = () => {
             },
             {
               text: 'إرسال طلب',
-              onPress: async () => {
-                try {
-                  const userDoc = await getDoc(doc(db, 'users', userId));
-                  const userData = userDoc.data();
-                  const userName = userData?.name || 'الراكب';
-                  const userGender = userData?.gender || 'غير محدد';
-
-                  if (ride.required_gender !== 'كلاهما') {
-                    if (ride.required_gender === 'ذكر' && userGender !== 'Male') {
-                      Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الذكور فقط.');
-                      return;
-                    }
-                    if (ride.required_gender === 'أنثى' && userGender !== 'Female') {
-                      Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الإناث فقط.');
-                      return;
-                    }
-                  }
-
-                  const rideRequestRef = await addDoc(collection(db, 'ride_requests'), {
-                    ride_id: ride.id,
-                    user_id: userId,
-                    driver_id: ride.driver_id,
-                    status: 'waiting',
-                    created_at: serverTimestamp(),
-                    passenger_name: userName,
-                    is_waitlist: true, // Mark this request as waitlist
-                  });
-
-                  if (ride.driver_id) {
-                    const driverNotificationId = await scheduleDriverRideReminder(
-                      ride.id,
-                      ride.driver_id,
-                      ride.ride_datetime,
-                      ride.origin_address || '',
-                      ride.destination_address || ''
-                    );
-
-                    await sendRideRequestNotification(
-                      ride.driver_id,
-                      userName,
-                      ride.origin_address || '',
-                      ride.destination_address || '',
-                      ride.id
-                    );
-                  }
-
-                  Alert.alert('✅ تم إرسال طلب الحجز بنجاح', 'سيتم إخطارك إذا أصبح هناك مقعد متاح');
-                } catch (error) {
-                  console.error('Booking error:', error);
-                  Alert.alert('حدث خطأ أثناء إرسال طلب الحجز.');
+              onPress: () => {
+                if (ride.waypoints && ride.waypoints.length > 0) {
+                  setShowWaypointModal(true);
+                } else {
+                  handleBookRideWithWaypoint(null);
                 }
               }
             }
@@ -483,33 +455,53 @@ const RideDetails = () => {
         return;
       }
 
-      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (ride.waypoints && ride.waypoints.length > 0) {
+        setShowWaypointModal(true);
+      } else {
+        handleBookRideWithWaypoint(null);
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      Alert.alert('حدث خطأ أثناء إرسال طلب الحجز.');
+    }
+  };
+
+  // Add new function to handle booking with waypoint
+  const handleBookRideWithWaypoint = async (waypoint: { latitude: number; longitude: number; address: string; street?: string } | null) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId as string));
       const userData = userDoc.data();
       const userName = userData?.name || 'الراكب';
       const userGender = userData?.gender || 'غير محدد';
 
-      if (ride.required_gender !== 'كلاهما') {
-        if (ride.required_gender === 'ذكر' && userGender !== 'Male') {
+      if (ride?.required_gender !== 'كلاهما') {
+        if (ride?.required_gender === 'ذكر' && userGender !== 'Male') {
           Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الذكور فقط.');
           return;
         }
-        if (ride.required_gender === 'أنثى' && userGender !== 'Female') {
+        if (ride?.required_gender === 'أنثى' && userGender !== 'Female') {
           Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الإناث فقط.');
           return;
         }
       }
 
       const rideRequestRef = await addDoc(collection(db, 'ride_requests'), {
-        ride_id: ride.id,
+        ride_id: ride?.id,
         user_id: userId,
-        driver_id: ride.driver_id,
+        driver_id: ride?.driver_id,
         status: 'waiting',
         created_at: serverTimestamp(),
         passenger_name: userName,
-        is_waitlist: false,
+        is_waitlist: ride?.available_seats === 0,
+        selected_waypoint: waypoint ? {
+          latitude: waypoint.latitude,
+          longitude: waypoint.longitude,
+          address: waypoint.address,
+          street: waypoint.street
+        } : null
       });
 
-      if (ride.driver_id) {
+      if (ride?.driver_id) {
         const driverNotificationId = await scheduleDriverRideReminder(
           ride.id,
           ride.driver_id,
@@ -741,7 +733,7 @@ const RideDetails = () => {
       const passengerName = userDoc.data()?.name || 'الراكب';
 
       // Create rating document
-      const ratingData: Rating = {
+      const ratingData: RatingData = {
         ...rating,
         ride_id: ride.id,
         driver_id: ride.driver_id || '',
@@ -877,19 +869,49 @@ const RideDetails = () => {
           <View className="flex-1">
             <View className="flex-row-reverse items-center mb-3">
               <Image source={icons.point} className="w-6 h-6 ml-3" />
-              <Text className="text-lg font-CairoBold text-black text-right">
-                من: {formattedRide?.origin_address}
-              </Text>
+              <View className="flex-1">
+                <Text className="text-lg font-CairoBold text-black text-right">
+                  من: {formattedRide?.origin_address}
+                </Text>
+                {formattedRide?.origin_street && (
+                  <Text className="text-sm font-CairoRegular text-gray-600 text-right mt-1">
+                    {formattedRide.origin_street}
+                  </Text>
+                )}
+              </View>
             </View>
+            {formattedRide?.waypoints && formattedRide.waypoints.length > 0 && (
+              formattedRide.waypoints.map((waypoint, index) => (
+                <View key={index} className="flex-row-reverse items-center mb-3">
+                  <Image source={icons.map} className="w-6 h-6 ml-3" tintColor="#F79824" />
+                  <View className="flex-1">
+                    <Text className="text-lg font-CairoBold text-black text-right">
+                      نقطة توقف {index + 1}: {waypoint.address}
+                    </Text>
+                    {waypoint.street && (
+                      <Text className="text-sm font-CairoRegular text-gray-600 text-right mt-1">
+                        {waypoint.street}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ))
+            )}
             <View className="flex-row-reverse items-center">
               <Image source={icons.target} className="w-6 h-6 ml-3" />
-              <Text className="text-lg font-CairoBold text-black text-right">
-                إلى: {formattedRide?.destination_address}
-              </Text>
+              <View className="flex-1">
+                <Text className="text-lg font-CairoBold text-black text-right">
+                  إلى: {formattedRide?.destination_address}
+                </Text>
+                {formattedRide?.destination_street && (
+                  <Text className="text-sm font-CairoRegular text-gray-600 text-right mt-1">
+                    {formattedRide.destination_street}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         </View>
-
 
         <View className="flex-row-reverse justify-between mb-4">
           <View className="flex-row-reverse items-center">
@@ -906,7 +928,7 @@ const RideDetails = () => {
           <View className="flex-row-reverse items-center">
             <MaterialIcons name="repeat" size={20} color="#000" className="mr-3" />
             <Text className="text-black ml-1 font-CairoMedium">
-              {formattedRide?.is_recurring ? `رحلة متكررة (${formattedRide.ride_days?.join(', ')})` : 'رحلة لمرة واحدة'}
+              {formattedRide?.is_recurring ? 'رحلة متكررة' : 'رحلة لمرة واحدة'}
             </Text>
           </View>
           <View className="flex-row-reverse items-center">
@@ -914,6 +936,28 @@ const RideDetails = () => {
             <Text className="text-black ml-1 font-CairoMedium">
               {`${formattedRide?.available_seats}/${allPassengers.length} مقاعد`}
             </Text>
+          </View>
+        </View>
+
+        <View className="mb-4">
+          <View className="flex-row-reverse flex-wrap">
+            {formattedRide?.is_recurring ? (
+              formattedRide.ride_days?.map((day, index) => (
+                <View key={index} className="bg-orange-100 px-3 py-1 rounded-full mr-2 mb-2">
+                  <Text className="text-orange-800 font-CairoMedium text-sm">{day}</Text>
+                </View>
+              ))
+            ) : (
+              <View className="bg-orange-100 px-3 py-1 rounded-full mr-2 mb-2">
+                <Text className="text-orange-800 font-CairoMedium text-sm">
+                  {(() => {
+                    const date = parse(formattedRide?.formattedDateTime?.date || '', 'dd/MM/yyyy', new Date());
+                    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                    return days[date.getDay()];
+                  })()}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -970,35 +1014,86 @@ const RideDetails = () => {
   const renderCurrentPassengers = useCallback(
     () => (
       <View
-        className="bg-white w-[98%]  mx-1 mt-3 p-4 rounded-xl"
+        className="bg-white w-[98%] mx-1 mt-3 p-4 rounded-xl"
         style={Platform.OS === 'android' ? styles.androidShadow : styles.iosShadow}
       >
-        <Text className="text-lg font-CairoBold text-right mb-3 text-black">الركاب الحاليين</Text>
+        <View className="flex-row-reverse justify-between items-center mb-3">
+          <Text className="text-lg font-CairoBold text-right text-black">الركاب الحاليين</Text>
+          {isDriver && (
+            <TouchableOpacity
+              onPress={() => router.push({
+                pathname: '/ride-requests',
+                params: {
+                  rideId: ride?.id,
+                  driverId: ride?.driver_id,
+                  origin: ride?.origin_address,
+                  destination: ride?.destination_address,
+                  rideTime: ride?.ride_datetime,
+                  availableSeats: ride?.available_seats?.toString(),
+                  requiredGender: ride?.required_gender,
+                  noSmoking: ride?.no_smoking?.toString(),
+                  noMusic: ride?.no_music?.toString(),
+                  noChildren: ride?.no_children?.toString()
+                }
+              })}
+              className="flex-row-reverse items-center"
+            >
+              <View className="flex-row-reverse items-center">
+                <Text className="text-orange-500 font-CairoBold ml-1">طلبات الحجز</Text>
+                {pendingRequestsCount > 0 && (
+                  <View className="bg-orange-500 rounded-full w-6 h-6 pt-1 items-center justify-center mr-2">
+                    <Text className="text-white font-CairoBold text-sm">{pendingRequestsCount}</Text>
+                  </View>
+                )}
+              </View>
+              <MaterialIcons name="chevron-left" size={20} color="#f97316" />
+            </TouchableOpacity>
+          )}
+        </View>
         {allPassengers.length > 0 ? (
           <View className="border border-gray-200 rounded-lg overflow-hidden">
             <View className="flex-row-reverse bg-gray-50 p-3 border-b border-gray-200">
               <View className="flex-1">
                 <Text className="text-sm font-CairoBold text-gray-700 text-right">الاسم</Text>
               </View>
-              <View className="w-24">
-                <Text className="text-sm font-CairoBold text-gray-700 text-right">الجنس</Text>
+              <View className="w-49 mr-8">
+                <Text className="text-sm font-CairoBold text-gray-700 text-right">نقطة التوقف</Text>
               </View>
             </View>
             {allPassengers.map((passenger) => (
               <View key={passenger.id} className="flex-row-reverse p-3 border-b border-gray-100">
                 <View className="flex-1 flex-row-reverse items-center">
                   <Image
-                    source={passengerGenders[passenger.user_id] === 'Female' ? icons.person : icons.person}
+                    source={icons.person}
                     className="w-5 h-5 ml-2"
-                    tintColor={passengerGenders[passenger.user_id] === 'Female' ? '#FF69B4' : '#10B981'}
+                    tintColor="#10B981"
                   />
                   <Text className="text-sm pt-1.5 text-gray-700 text-right font-CairoRegular">
                     {passengerNames[passenger.user_id] || 'الراكب'}
                   </Text>
                 </View>
-                <View className="w-24 justify-center">
+                <View className="w-49 pl-14  justify-center">
                   <Text className="text-sm pt-1.5 text-gray-700 text-right font-CairoRegular">
-                    {passengerGenders[passenger.user_id] || 'غير محدد'}
+                    {passenger.selected_waypoint ? (
+                      <>
+                        {passenger.selected_waypoint.address === ride?.origin_address ? (
+                          'نقطة البداية'
+                        ) : ride?.waypoints?.findIndex(
+                          wp => wp.address === passenger.selected_waypoint?.address
+                        ) !== -1 ? (
+                          <>
+                            
+                            <Text className="text-gray-500 text-lg  mt-1">
+                              {passenger.selected_waypoint.address}
+                            </Text>
+                          </>
+                        ) : (
+                          'نقطة البداية'
+                        )}
+                      </>
+                    ) : (
+                      'نقطة البداية'
+                    )}
                   </Text>
                 </View>
               </View>
@@ -1011,38 +1106,8 @@ const RideDetails = () => {
         )}
       </View>
     ),
-    [allPassengers, passengerNames, passengerGenders]
+    [allPassengers, passengerNames, ride, isDriver, pendingRequestsCount]
   );
-
-  // Render pending requests for driver
-  const renderPendingRequests = useCallback(() => {
-    if (isDriver && pendingRequests.length > 0) {
-      return (
-        <View className="p-4 m-3">
-          <CustomButton
-            title={`طلبات الحجز المعلقة (${pendingRequests.length})`}
-            onPress={() => router.push({
-              pathname: '/ride-requests',
-              params: {
-                rideId: ride?.id,
-                driverId: ride?.driver_id,
-                origin: ride?.origin_address,
-                destination: ride?.destination_address,
-                rideTime: ride?.ride_datetime,
-                availableSeats: ride?.available_seats?.toString(),
-                requiredGender: ride?.required_gender,
-                noSmoking: ride?.no_smoking?.toString(),
-                noMusic: ride?.no_music?.toString(),
-                noChildren: ride?.no_children?.toString()
-              }
-            })}
-            className="bg-blue-500 py-3 rounded-xl"
-          />
-        </View>
-      );
-    }
-    return null;
-  }, [isDriver, pendingRequests.length, ride]);
 
   // Add these new functions after the existing handle functions
   const handleStartRide = async () => {
@@ -1250,14 +1315,7 @@ const RideDetails = () => {
         });
 
         // Notify driver that the ride is on hold
-        if (ride.driver_id) {
-          await sendRideStatusNotification(
-            ride.driver_id,
-            'الرحلة في وضع الانتظار',
-            `لم يتم بدء الرحلة بعد 15 دقيقة من وقتها المحدد. الرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
-            ride.id
-          );
-        }
+        
 
         // Notify all accepted passengers
         const rideRequestsRef = collection(db, 'ride_requests');
@@ -1308,32 +1366,7 @@ const RideDetails = () => {
   }, [ride?.ride_datetime]);
 
   // Add this useEffect to listen for ride status changes
-  useEffect(() => {
-    if (!ride?.id) return;
 
-    const rideDocRef = doc(db, 'rides', ride.id);
-    const unsubscribe = onSnapshot(rideDocRef, async (doc) => {
-      if (doc.exists()) {
-        const updatedData = doc.data();
-        const oldStatus = ride.status;
-        const newStatus = updatedData.status;
-        
-        setRide(prevRide => prevRide ? { ...prevRide, status: newStatus } : null);
-
-        // If status changed to on-hold, notify driver
-        if (oldStatus !== 'on-hold' && newStatus === 'on-hold' && ride.driver_id) {
-          await sendRideStatusNotification(
-            ride.driver_id,
-            'الرحلة في وضع الانتظار',
-            `لم يتم بدء الرحلة بعد 15 دقيقة من وقتها المحدد. الرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
-            ride.id
-          );
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [ride?.id]);
 
   // Update rating state when ride changes
   useEffect(() => {
@@ -1564,16 +1597,15 @@ const RideDetails = () => {
               {/* Overall Rating */}
               <View className="bg-gray-50 p-4 rounded-xl">
                 <Text className="text-lg font-CairoBold mb-3 text-right text-gray-800">التقييم العام</Text>
-                <View className="flex-row justify-center space-x-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity 
-                      key={star} 
-                      onPress={() => setRating(prev => ({ ...prev, overall: star }))}
-                      className="p-2"
-                    >
-                      <Text style={{ fontSize: 32 }}>{star <= rating.overall ? '⭐' : '☆'}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View className="py-2">
+                  <AirbnbRating
+                    reviewColor='#F79824'
+                    showRating
+                    onFinishRating={(value: number) => setRating(prev => ({ ...prev, overall: value }))}
+                    size={35}
+                    defaultRating={rating.overall}
+                    selectedColor="#F79824"
+                  />
                 </View>
               </View>
 
@@ -1583,16 +1615,15 @@ const RideDetails = () => {
                   <Text className="text-lg font-CairoBold text-gray-800">قيادة السيارة</Text>
                   <MaterialIcons name="directions-car" size={24} color="#f97316" />
                 </View>
-                <View className="flex-row justify-center space-x-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity 
-                      key={star} 
-                      onPress={() => setRating(prev => ({ ...prev, driving: star }))}
-                      className="p-2"
-                    >
-                      <Text style={{ fontSize: 32 }}>{star <= rating.driving ? '⭐' : '☆'}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View className="py-2">
+                  <AirbnbRating
+                    reviewColor='#F79824'
+                    showRating
+                    onFinishRating={(value: number) => setRating(prev => ({ ...prev, driving: value }))}
+                    size={35}
+                    defaultRating={rating.driving}
+                    selectedColor="#F79824"
+                  />
                 </View>
               </View>
 
@@ -1602,16 +1633,15 @@ const RideDetails = () => {
                   <Text className="text-lg font-CairoBold text-gray-800">الأخلاق والسلوك</Text>
                   <MaterialIcons name="people" size={24} color="#f97316" />
                 </View>
-                <View className="flex-row justify-center space-x-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity 
-                      key={star} 
-                      onPress={() => setRating(prev => ({ ...prev, behavior: star }))}
-                      className="p-2"
-                    >
-                      <Text style={{ fontSize: 32 }}>{star <= rating.behavior ? '⭐' : '☆'}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View className="py-2">
+                  <AirbnbRating
+                    reviewColor='#F79824'
+                    showRating
+                    onFinishRating={(value: number) => setRating(prev => ({ ...prev, behavior: value }))}
+                    size={35}
+                    defaultRating={rating.behavior}
+                    selectedColor="#F79824"
+                  />
                 </View>
               </View>
 
@@ -1621,16 +1651,15 @@ const RideDetails = () => {
                   <Text className="text-lg font-CairoBold text-gray-800">الالتزام بالمواعيد</Text>
                   <MaterialIcons name="access-time" size={24} color="#f97316" />
                 </View>
-                <View className="flex-row justify-center space-x-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity 
-                      key={star} 
-                      onPress={() => setRating(prev => ({ ...prev, punctuality: star }))}
-                      className="p-2"
-                    >
-                      <Text style={{ fontSize: 32 }}>{star <= rating.punctuality ? '⭐' : '☆'}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View className="py-2">
+                  <AirbnbRating
+                    reviewColor='#F79824'
+                    showRating
+                    onFinishRating={(value: number) => setRating(prev => ({ ...prev, punctuality: value }))}
+                    size={35}
+                    defaultRating={rating.punctuality}
+                    selectedColor="#F79824"
+                  />
                 </View>
               </View>
 
@@ -1640,16 +1669,15 @@ const RideDetails = () => {
                   <Text className="text-lg font-CairoBold text-gray-800">نظافة السيارة</Text>
                   <MaterialIcons name="cleaning-services" size={24} color="#f97316" />
                 </View>
-                <View className="flex-row justify-center space-x-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity 
-                      key={star} 
-                      onPress={() => setRating(prev => ({ ...prev, cleanliness: star }))}
-                      className="p-2"
-                    >
-                      <Text style={{ fontSize: 32 }}>{star <= rating.cleanliness ? '⭐' : '☆'}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View className="py-2">
+                  <AirbnbRating
+                    reviewColor='#F79824'
+                    showRating
+                    onFinishRating={(value: number) => setRating(prev => ({ ...prev, cleanliness: value }))}
+                    size={35}
+                    defaultRating={rating.cleanliness}
+                    selectedColor="#F79824"
+                  />
                 </View>
               </View>
 
@@ -1693,6 +1721,150 @@ const RideDetails = () => {
     </Modal>
   );
 
+  // Add the waypoint selection modal component
+  const renderWaypointModal = () => (
+    <Modal
+      visible={showWaypointModal}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowWaypointModal(false)}
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' }}>
+        <View className="bg-white w-[90%] rounded-2xl p-6">
+          <Text className="text-2xl font-CairoBold mb-4 text-center text-gray-800">اختر نقطة التوقف</Text>
+          <Text className="text-base font-CairoRegular mb-6 text-center text-gray-600">
+            اختر أقرب نقطة توقف لك
+          </Text>
+
+          <ScrollView className="max-h-[60%]">
+            <View className="space-y-3">
+              {/* Origin point */}
+              <TouchableOpacity
+                onPress={() => {
+                  const originWaypoint = {
+                    latitude: ride?.origin_latitude || 0,
+                    longitude: ride?.origin_longitude || 0,
+                    address: ride?.origin_address || '',
+                    street: ride?.origin_street || ''
+                  };
+                  setSelectedWaypoint(originWaypoint);
+                  setShowWaypointModal(false);
+                  handleBookRideWithWaypoint(originWaypoint);
+                }}
+                className={`p-4 rounded-xl border ${
+                  selectedWaypoint?.address === ride?.origin_address
+                    ? 'border-orange-500 bg-orange-50'
+                    : 'border-gray-200 bg-white'
+                }`}
+              >
+                <View className="flex-row-reverse items-center">
+                  <MaterialIcons
+                    name="location-on"
+                    size={24}
+                    color={selectedWaypoint?.address === ride?.origin_address ? '#f97316' : '#6B7280'}
+                  />
+                  <View className="mr-2 flex-1">
+                    <Text className={`text-base font-CairoMedium ${
+                      selectedWaypoint?.address === ride?.origin_address ? 'text-orange-600' : 'text-gray-700'
+                    }`}>
+                      {ride?.origin_address}
+                    </Text>
+                    {ride?.origin_street && (
+                      <Text className={`text-sm font-CairoRegular mt-1 ${
+                        selectedWaypoint?.address === ride?.origin_address ? 'text-orange-500' : 'text-gray-500'
+                      }`}>
+                        {ride.origin_street}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+
+              {/* Waypoints */}
+              {ride?.waypoints?.map((waypoint, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => {
+                    setSelectedWaypoint(waypoint);
+                    setShowWaypointModal(false);
+                    handleBookRideWithWaypoint(waypoint);
+                  }}
+                  className={`p-4 rounded-xl border ${
+                    selectedWaypoint?.address === waypoint.address
+                      ? 'border-orange-500 bg-orange-50'
+                      : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <View className="flex-row-reverse items-center">
+                    <MaterialIcons
+                      name="location-on"
+                      size={24}
+                      color={selectedWaypoint?.address === waypoint.address ? '#f97316' : '#6B7280'}
+                    />
+                    <View className="mr-2 flex-1">
+                      <Text className={`text-base font-CairoMedium ${
+                        selectedWaypoint?.address === waypoint.address ? 'text-orange-600' : 'text-gray-700'
+                      }`}>
+                        {waypoint.address}
+                      </Text>
+                      {waypoint.street && (
+                        <Text className={`text-sm font-CairoRegular mt-1 ${
+                          selectedWaypoint?.address === waypoint.address ? 'text-orange-500' : 'text-gray-500'
+                        }`}>
+                          {waypoint.street}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          <TouchableOpacity
+            onPress={() => setShowWaypointModal(false)}
+            className="mt-4 bg-gray-200 py-3 rounded-xl"
+          >
+            <Text className="text-center text-gray-700 font-CairoBold">إلغاء</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Add this function to check if 15 minutes have passed
+  const checkRideTime = (rideDateTime: string) => {
+    const [datePart, timePart] = rideDateTime.split(' ');
+    const [day, month, year] = datePart.split('/').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
+    const rideDate = new Date(year, month - 1, day, hour, minute);
+    const currentDate = new Date();
+    const diffInMinutes = (currentDate.getTime() - rideDate.getTime()) / (1000 * 60);
+    return diffInMinutes >= 15;
+  };
+
+  // Add this useEffect to handle ride time notifications
+  useEffect(() => {
+    const checkAndSendNotification = async () => {
+      if (!ride) return;
+      
+      if (ride.driver_id && ride.status === 'available' && checkRideTime(ride.ride_datetime)) {
+        try {
+          await sendRideStatusNotification(
+            ride.driver_id,
+            'الرحلة في وضع الانتظار',
+            `لم يتم بدء الرحلة بعد 15 دقيقة من وقتها المحدد. الرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
+            ride.id
+          );
+        } catch (error) {
+          console.error('Error sending notification:', error);
+        }
+      }
+    };
+
+    checkAndSendNotification();
+  }, [ride]);
+
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
@@ -1726,33 +1898,25 @@ const RideDetails = () => {
 
   return (
     <RideLayout
-      title=" "
+      title="تفاصيل الرحلة"
+      origin={ride ? { latitude: ride.origin_latitude, longitude: ride.origin_longitude } : undefined}
+      destination={ride ? { latitude: ride.destination_latitude, longitude: ride.destination_longitude } : undefined}
+      waypoints={ride?.waypoints}
       bottomSheetRef={bottomSheetRef}
-      origin={{
-        latitude: formattedRide.origin_latitude || 0,
-        longitude: formattedRide.origin_longitude || 0,
-      }}
-      destination={{
-        latitude: formattedRide.destination_latitude || 0,
-        longitude: formattedRide.destination_longitude || 0,
-      }}
-      MapComponent={RideMap}
     >
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }}
+        contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={true}
-        keyboardShouldPersistTaps="handled"
-        className="flex-1 w-full"
       >
         {renderDriverInfo()}
         {renderRideDetails()}
-        {renderCurrentPassengers()}
-        {renderPendingRequests()}
+        {isDriver && renderCurrentPassengers()}
         {renderActionButtons()}
       </ScrollView>
 
       {renderRatingModal()}
+      {renderWaypointModal()}
 
       {/* Image Modal */}
       <Modal

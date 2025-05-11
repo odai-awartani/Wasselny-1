@@ -12,22 +12,32 @@ interface Location {
   longitude?: number;
 }
 
+interface Waypoint {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
 const RideLayout = ({
   title,
   snapPoints,
   children,
   origin,
   destination,
+  waypoints = [],
   MapComponent = Map,
   bottomSheetRef,
+  useScrollView = true,
 }: {
   title: string;
   snapPoints?: string[];
   children: React.ReactNode;
   origin?: Location;
   destination?: Location;
+  waypoints?: Waypoint[];
   MapComponent?: React.ComponentType<any>;
   bottomSheetRef?: React.RefObject<BottomSheet>;
+  useScrollView?: boolean;
 }) => {
   const pathname = usePathname();
 
@@ -50,6 +60,29 @@ const RideLayout = ({
     console.log('BottomSheet index changed to:', index);
   }, []);
 
+  const renderContent = () => {
+    if (useScrollView) {
+      return (
+        <BottomSheetScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            padding: 10,
+            paddingBottom: 80,
+          }}
+          showsVerticalScrollIndicator={true}
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </BottomSheetScrollView>
+      );
+    }
+    return (
+      <View style={{ flex: 1, padding: 10, paddingBottom: 80 }}>
+        {children}
+      </View>
+    );
+  };
+
   return (
     <GestureHandlerRootView className="flex-1">
       <View className="flex-1 bg-white">
@@ -67,7 +100,7 @@ const RideLayout = ({
             </TouchableOpacity>
             <Text className="text-xl font-CairoBold mt-1.5 ml-5">{title || 'Go back'}</Text>
           </View>
-          <MapComponent origin={origin} destination={destination} />
+          <MapComponent origin={origin} destination={destination} waypoints={waypoints} />
         </View>
         <BottomSheet
           ref={bottomSheetRef}
@@ -95,17 +128,7 @@ const RideLayout = ({
           }}
           onChange={handleSheetChanges}
         >
-          <BottomSheetScrollView
-            contentContainerStyle={{
-              flexGrow: 1,
-              padding: 10,
-              paddingBottom: 80,
-            }}
-            showsVerticalScrollIndicator={true}
-            keyboardShouldPersistTaps="handled"
-          >
-            {children}
-          </BottomSheetScrollView>
+          {renderContent()}
         </BottomSheet>
       </View>
     </GestureHandlerRootView>

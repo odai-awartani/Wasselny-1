@@ -377,39 +377,71 @@ export default function Rides() {
                 </Text>
               </View>
 
+              {/* Add waypoints display */}
+              {item.waypoints && item.waypoints.length > 0 && (
+                item.waypoints.map((waypoint, index) => (
+                  <View key={index} className="flex-row items-center mb-4">
+                    <View className="w-8 h-8 rounded-full items-center justify-center mr-3">
+                      <Image source={icons.map} className="w-5 h-5" tintColor="#F79824" />
+                    </View>
+                    <View className="flex-1">
+                     
+                      {waypoint.street && (
+                        <Text className="text-sm text-gray-500 font-CairoBold mt-1" numberOfLines={1}>
+                          {waypoint.street}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                ))
+              )}
+
               <View className="flex-row items-center mb-4">
                 <View className="w-8 h-8 rounded-full items-center justify-center mr-3">
-                  <Image source={icons.map} className="w-5 h-5" />
+                  <Image source={icons.target} className="w-5 h-5" />
                 </View>
                 <Text className="flex-1 text-base font-CairoMedium" numberOfLines={1}>
                   {item.destination_address}
                 </Text>
               </View>
 
-              <View className="flex-row justify-between items-center mb-3">
+              <View className="flex-row justify-between ml-2 items-center mb-3">
                 <View className="flex-row items-center">
                   <Image source={icons.clock} className="w-4 h-4 mr-2" />
                   <Text className="text-sm text-gray-500 font-CairoMedium">{formatTime(item.ride_datetime)}</Text>
                 </View>
                 <View className="flex-row items-center">
-                  <Image source={icons.calendar} className="w-4 h-4 mr-2" />
-                  <Text className="text-sm text-gray-500 font-CairoMedium">{formatDate(item.ride_datetime)}</Text>
+                  <Image source={icons.calendar} className="w-4 mb-5 h-4 mr-2" />
+                  <View className="items-end">
+                    <Text className="text-sm text-gray-700 font-CairoBold">{formatDate(item.ride_datetime)}</Text>
+                    <View className="flex-row items-center mt-0.5">
+                      <Text className="text-xs text-gray-500 font-CairoMedium">
+                        {item.is_recurring ? formattedRideDays : (() => {
+                          const date = parseRideDateTime(item.ride_datetime);
+                          if (!date) return '';
+                          const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                          return days[date.getDay()];
+                        })()}
+                      </Text>
+                    </View>
+                   
+                  </View>
+                   
                 </View>
+                
               </View>
-
-              <View className="flex-row items-center mb-3">
+               
+              <View className="flex-row items-center ml-2 justify-between mb-3">
+                <View className="flex-row items-center">
                 <Image source={icons.person} className="w-4 h-4 mr-2" />
                 <Text className="text-sm text-gray-500 font-CairoMedium">{item.available_seats} مقاعد متاحة</Text>
-              </View>
-
-              {item.is_recurring && (
-                <View className="flex-row items-center mb-3">
-                  <Image source={icons.repeat} tintColor="#333333" className="w-4 h-4 mr-2" />
-                  <Text className="text-sm text-gray-500 font-CairoMedium">
-                    متكرر: أسبوعي يوم {formattedRideDays}
-                  </Text>
                 </View>
-              )}
+                {item.is_recurring && (
+                      <View className="flex-row items-center mt-1">
+                        <Text className="text-xs text-orange-500 font-CairoBold">رحلة متكررة</Text>
+                      </View>
+                    )}
+              </View>
 
               {item.driver && (
                 <View className="mt-4 flex-row items-center border-t border-gray-100 pt-4">

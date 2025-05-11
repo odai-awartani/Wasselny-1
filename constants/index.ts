@@ -50,6 +50,11 @@ import barrier from "@/assets/icons/barrier.png";
 import car from "@/assets/icons/car.png";
 import filter from "@/assets/icons/filter.png";
 import repeat from "@/assets/icons/repeat.png";
+import smoking from "@/assets/icons/smoking.png";
+import music from "@/assets/icons/music.png";
+import children from "@/assets/icons/children.png";
+
+
 export const images = {
     onboarding1,
     onboarding2,
@@ -105,7 +110,10 @@ export const icons = {
     emptystar,
     ar,
     en,
-    location
+    location,
+    smoking,
+    music,
+    children,
 };
 
 

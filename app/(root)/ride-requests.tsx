@@ -1,5 +1,5 @@
-import { View, Text, FlatList, Alert, ActivityIndicator, Image } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { View, Text, Alert, ActivityIndicator, Image, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
 import RideLayout from '@/components/RideLayout';
 import CustomButton from '@/components/CustomButton';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -10,6 +10,7 @@ import { sendRideStatusNotification, schedulePassengerRideReminder } from '@/lib
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
+import BottomSheet from '@gorhom/bottom-sheet';
 
 interface UserData {
   name?: string;
@@ -24,6 +25,12 @@ interface RideRequest {
   created_at: any;
   passenger_name?: string;
   profile_image_url?: string;
+  selected_waypoint?: {
+    latitude: number;
+    longitude: number;
+    address: string;
+    street?: string;
+  } | null;
 }
 
 const DEFAULT_DRIVER_NAME = 'Unknown Driver';
@@ -34,6 +41,8 @@ const RideRequests = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Fetch pending requests for this ride
   useEffect(() => {
@@ -64,7 +73,8 @@ const RideRequests = () => {
             status: requestData.status,
             created_at: requestData.created_at,
             passenger_name: userName,
-            profile_image_url: userImage
+            profile_image_url: userImage,
+            selected_waypoint: requestData.selected_waypoint || null
           });
         }
         
@@ -179,8 +189,15 @@ const RideRequests = () => {
   }
 
   return (
-    <RideLayout title="طلبات الحجز">
-      <View className="flex-1 bg-white">
+    <RideLayout 
+      title="طلبات الحجز" 
+      bottomSheetRef={bottomSheetRef}
+    >
+      <ScrollView 
+        ref={scrollViewRef}
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={true}
+      >
         {requests.length === 0 ? (
           <View className="flex-1 justify-center items-center p-4">
             <MaterialIcons name="event-busy" size={48} color="#9CA3AF" />
@@ -189,48 +206,88 @@ const RideRequests = () => {
             </Text>
           </View>
         ) : (
-          <FlatList
-            data={requests}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View className="bg-white p-4 m-3 rounded-xl border border-gray-200">
-                <View className="flex-row-reverse items-center mb-3">
-                  <View className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center mr-3 overflow-hidden">
-                    {item.profile_image_url ? (
-                      <Image
-                        source={{ uri: item.profile_image_url }}
-                        className="w-full h-full"
-                      />
-                    ) : (
-                      <MaterialIcons name="person" size={24} color="#666" />
-                    )}
+          <View className="flex-1 p-3">
+            {requests.map((item) => (
+              <View 
+                key={item.id} 
+                className="bg-white mb-4 rounded-2xl overflow-hidden"
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 3,
+                }}
+              >
+                <View className="p-4">
+                  <TouchableOpacity 
+                    onPress={() => router.push({
+                      pathname: '/profile/[id]',
+                      params: { id: item.user_id }
+                    })}
+                    className="flex-row-reverse items-center mb-4"
+                  >
+                    <View className="w-14 h-14 rounded-full bg-gray-100 items-center justify-center mr-3 overflow-hidden border-2 border-orange-100">
+                      {item.profile_image_url ? (
+                        <Image
+                          source={{ uri: item.profile_image_url }}
+                          className="w-full h-full"
+                        />
+                      ) : (
+                        <MaterialIcons name="person" size={28} color="#f97316" />
+                      )}
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-xl font-CairoBold text-gray-800 mb-1">
+                        {item.passenger_name}
+                      </Text>
+                      <View className="flex-row-reverse items-center">
+                        <MaterialIcons name="access-time" style={{marginBottom: 4}} size={16} color="#6B7280" />
+                        <Text className="text-sm text-gray-500 font-CairoRegular mr-1">
+                          {item.created_at ? new Date(item.created_at.toDate()).toLocaleTimeString() : 'غير محدد'}
+                        </Text>
+                      </View>
+                    </View>
+                    <MaterialIcons name="chevron-left" size={24} color="#6B7280" />
+                  </TouchableOpacity>
+
+                  {item.selected_waypoint && (
+                    <View className="bg-orange-50 rounded-xl p-3 mb-4">
+                      <View className="flex-row-reverse justify-start items-center">
+                        <MaterialIcons name="location-on" size={20} color="#f97316" />
+                        <Text className="text-base text-gray-700 font-CairoBold mr-2">
+                          نقطة التوقف:
+                        </Text>
+                      
+                      <Text className="text-sm text-gray-600 font-CairoRegular mr-2">
+                        {item.selected_waypoint.address === params.origin ? (
+                          'نقطة البداية'
+                        ) : (
+                          item.selected_waypoint.address
+                        )}
+                      </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <View className="flex-row justify-between mt-2">
+                    <CustomButton
+                      title="قبول"
+                      onPress={() => handleAcceptRequest(item.id, item.user_id)}
+                      className="bg-green-500 w-28 px-6 rounded-xl"
+                    />
+                    <CustomButton
+                      title="رفض"
+                      onPress={() => handleRejectRequest(item.id, item.user_id)}
+                      className="bg-red-500 w-28 px-6 rounded-xl"
+                    />
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-lg font-CairoBold text-black">
-                      {item.passenger_name}
-                    </Text>
-                    <Text className="text-sm text-gray-500 font-CairoRegular">
-                      {item.created_at ? new Date(item.created_at.toDate()).toLocaleTimeString() : 'غير محدد'}
-                    </Text>
-                  </View>
-                </View>
-                <View className="flex-row justify-between">
-                  <CustomButton
-                    title="قبول"
-                    onPress={() => handleAcceptRequest(item.id, item.user_id)}
-                    className="bg-green-500 w-24 px-6"
-                  />
-                  <CustomButton
-                    title="رفض"
-                    onPress={() => handleRejectRequest(item.id, item.user_id)}
-                    className="bg-red-500 w-24 px-6"
-                  />
                 </View>
               </View>
-            )}
-          />
+            ))}
+          </View>
         )}
-      </View>
+      </ScrollView>
     </RideLayout>
   );
 };

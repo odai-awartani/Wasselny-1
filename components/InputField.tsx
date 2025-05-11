@@ -31,7 +31,7 @@ const InputField = ({
   return (
     <View className="my-2 w-full">
       {/* Label */}
-      <Text className={`text-lg font-JakartaSemiBold mb-3 ${labelStyle}`}>
+      <Text className={`text-lg ${language === 'ar' ? 'font-CairoBold text-right' : 'font-JakartaBold text-left'} font-JakartaSemiBold mb-3 ${labelStyle}`}>
         {label}
       </Text>
 

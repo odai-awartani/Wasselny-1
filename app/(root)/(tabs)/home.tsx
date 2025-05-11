@@ -25,6 +25,12 @@ import Header from "@/components/Header";
 import { useLanguage } from "@/context/LanguageContext";
 import GoogleTextInput from "@/components/GoogleTextInput";
 
+interface Location {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
 export default function Home() {
   const { t, language } = useLanguage();
   const { setUserLocation, setDestinationLocation } = useLocationStore();
@@ -91,13 +97,19 @@ export default function Home() {
     }, [user?.id])
   );
 
-  const handleDestinationPress = (location: {
-    latitude: number;
-    longitude: number;
-    address: string;
-  }) => {
-    setDestinationLocation(location);
-    router.push("/(root)/find-ride");
+  const handleDestinationPress = (location: Location) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push({
+      pathname: "/(root)/(tabs)/search",
+      params: { 
+        searchQuery: location.address,
+        origin: JSON.stringify({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          address: location.address
+        })
+      }
+    });
   };
 
   useEffect(() => {

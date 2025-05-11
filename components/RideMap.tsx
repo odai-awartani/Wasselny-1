@@ -17,15 +17,22 @@ interface Location {
   longitude?: number;
 }
 
+interface Waypoint {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
 interface RideMapProps {
   origin?: Location;
   destination?: Location;
+  waypoints?: Waypoint[];
   onTargetPress?: () => void;
 }
 
 const directionsAPI = process.env.EXPO_PUBLIC_DIRECTIONS_API_KEY;
 
-const RideMap = ({ origin, destination, onTargetPress }: RideMapProps) => {
+const RideMap = ({ origin, destination, waypoints = [], onTargetPress }: RideMapProps) => {
   const [userLocation, setUserLocation] = useState<LocationCoords | null>(null);
   const mapRef = useRef<MapView | null>(null);
 
@@ -82,11 +89,12 @@ const RideMap = ({ origin, destination, onTargetPress }: RideMapProps) => {
       <MapView
         ref={(ref) => (mapRef.current = ref)}
         provider={PROVIDER_DEFAULT}
-        className="w-full h-full rounded-2xl"
+        className="w-full h-full"
+        style={{ flex: 1 }}
         mapType={Platform.OS === "android" ? "standard" : "mutedStandard"}
         initialRegion={region}
         showsUserLocation={true}
-        showsMyLocationButton={false} // نستخدم زر مخصص بدل الزر الافتراضي
+        showsMyLocationButton={false}
         userInterfaceStyle="light"
       >
         {/* نقطة الانطلاق */}
@@ -99,6 +107,20 @@ const RideMap = ({ origin, destination, onTargetPress }: RideMapProps) => {
           description="مكان بداية الرحلة"
           image={icons.pin}
         />
+
+        {/* نقاط المرور */}
+        {waypoints.map((waypoint, index) => (
+          <Marker
+            key={`waypoint-${index}`}
+            coordinate={{
+              latitude: waypoint.latitude,
+              longitude: waypoint.longitude,
+            }}
+            title={`نقطة مرور ${index + 1}`}
+            description={waypoint.address}
+            image={icons.pin}
+          />
+        ))}
 
         {/* نقطة الوصول */}
         <Marker
@@ -122,15 +144,35 @@ const RideMap = ({ origin, destination, onTargetPress }: RideMapProps) => {
               latitude: destination.latitude!,
               longitude: destination.longitude!,
             }}
+            waypoints={waypoints.length > 0 ? waypoints.map(waypoint => ({
+              latitude: waypoint.latitude,
+              longitude: waypoint.longitude,
+            })) : undefined}
             apikey={directionsAPI!}
             strokeColor="#0286FF"
-            strokeWidth={2}
-            optimizeWaypoints={true}
+            strokeWidth={3}
+            optimizeWaypoints={false}
             onError={(errorMessage) => {
               console.warn("حدث خطأ في رسم المسار:", errorMessage);
             }}
             onReady={(result) => {
               console.log("Route calculated successfully:", result);
+              // Adjust the map region to show the entire route
+              if (result.coordinates && result.coordinates.length > 0) {
+                const coordinates = result.coordinates;
+                const minLat = Math.min(...coordinates.map(coord => coord.latitude));
+                const maxLat = Math.max(...coordinates.map(coord => coord.latitude));
+                const minLng = Math.min(...coordinates.map(coord => coord.longitude));
+                const maxLng = Math.max(...coordinates.map(coord => coord.longitude));
+                
+                const padding = 0.01; // Add some padding around the route
+                mapRef.current?.animateToRegion({
+                  latitude: (minLat + maxLat) / 2,
+                  longitude: (minLng + maxLng) / 2,
+                  latitudeDelta: (maxLat - minLat) + padding,
+                  longitudeDelta: (maxLng - minLng) + padding,
+                });
+              }
             }}
           />
         )}
@@ -140,9 +182,7 @@ const RideMap = ({ origin, destination, onTargetPress }: RideMapProps) => {
       {userLocation && (
         <TouchableOpacity
           onPress={() => {
-            // First, collapse the bottom sheet
             onTargetPress?.();
-            // Then, zoom to user's location after a short delay
             setTimeout(() => {
               mapRef.current?.animateToRegion({
                 latitude: userLocation.latitude,
@@ -150,10 +190,9 @@ const RideMap = ({ origin, destination, onTargetPress }: RideMapProps) => {
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01,
               });
-            }, 300); // 300ms delay to let the bottom sheet animation start
+            }, 300);
           }}
-          className="absolute right-3 top-1/4 -translate-y-1/2 bg-amber-300 p-3 rounded-full shadow-md "
-
+          className="absolute right-3 top-1/4 -translate-y-1/2 bg-amber-300 p-3 rounded-full shadow-md"
         >
           <Image
             source={icons.target}

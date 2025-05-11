@@ -25,6 +25,9 @@ const RootLayout = () => {
                <Stack.Screen name="ride-requests" options={{ headerShown: false }} />
                <Stack.Screen name="cityCheckpoints" options={{ headerShown: false }} />
                <Stack.Screen name="checkpointDetails" options={{ headerShown: false }} />
+               <Stack.Screen name="add" options={{ headerShown: false }} />
+               <Stack.Screen name="addBarrier1" options={{ headerShown: false }} />
+               <Stack.Screen name="barrierDetails" options={{ headerShown: false }} />
 
                
 
