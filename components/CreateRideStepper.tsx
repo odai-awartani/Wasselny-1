@@ -28,7 +28,7 @@ import { db } from "@/lib/firebase";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-
+dsadasdas
 interface Location {
   latitude: number;
   longitude: number;
