@@ -436,6 +436,27 @@ const Profile = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
+      {/* Track feature test buttons */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: 16 }}>
+        <TouchableOpacity
+          style={{ backgroundColor: '#f97316', padding: 12, borderRadius: 8 }}
+          onPress={() => router.push('/track-requests')}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>Track Requests</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ backgroundColor: '#38A169', padding: 12, borderRadius: 8 }}
+          onPress={() => router.push('/my-shares')}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>My Shares</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ backgroundColor: '#2563eb', padding: 12, borderRadius: 8 }}
+          onPress={() => router.push('/track')}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>Start Track</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={["#F97316"]}  

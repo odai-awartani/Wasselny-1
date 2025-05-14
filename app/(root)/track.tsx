@@ -250,7 +250,32 @@ export default function Track() {
       await updateSharedLocation(userCurrentLocation.latitude, userCurrentLocation.longitude);
       
       // Set up interval to update location every 30 seconds
-      const interval = setInterval(fetchUserLocation, 30000);
+      const interval = setInterval(async () => {
+        // Get current position directly in the interval
+        try {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced // Use balanced for better battery life during continuous tracking
+          });
+          
+          console.log('Updating shared location in interval:', new Date().toISOString());
+          
+          // Update shared location directly
+          if (user?.id && selectedUser?.id) {
+            const locationSharingRef = doc(db, 'location_sharing', `${user.id}_${selectedUser.id}`);
+            await setDoc(locationSharingRef, {
+              sharer_id: user.id,
+              recipient_id: selectedUser.id,
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+              last_updated: new Date().toISOString(),
+              is_active: true
+            }, { merge: true });
+          }
+        } catch (error) {
+          console.error('Error updating location in interval:', error);
+        }
+      }, 30000);
+      
       setTrackingInterval(interval);
       setIsLocationSharing(true);
       
