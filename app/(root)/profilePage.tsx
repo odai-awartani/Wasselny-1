@@ -481,17 +481,14 @@ const Profile = () => {
           {/* Action Icons */}
           <View className={`flex-row justify-center ${language === 'ar' ? 'space-x-reverse' : 'space-x-8'} space-x-8`}>
             <TouchableOpacity 
-              onPress={() => router.push({
-                pathname: '/(root)/settings',
-                params: { isAdmin: userData.isAdmin ? 'true' : 'false' }
-              } as any)}
+              onPress={() => router.push('/(root)/profilePageEdit')}
               className="items-center"
             >
               <View className="bg-gray-100 p-3 rounded-full">
-                <Ionicons name="settings-outline" size={20} color="#374151" />
+                <MaterialIcons name="edit" size={20} color="#374151" />
               </View>
               <Text className={`text-xs text-gray-600 mt-1 ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
-                {language === 'ar' ? 'الإعدادات' : 'Settings'}
+                {language === 'ar' ? 'تعديل الملف' : 'Edit Profile'}
               </Text>
             </TouchableOpacity>
             

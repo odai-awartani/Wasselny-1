@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, RefreshControl, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { collection, query, where, getDocs, Timestamp, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useUser } from '@clerk/clerk-expo';
 import { findOrCreateChat } from '@/lib/chat';
 import ConversationItem from '@/components/chat/ConversationItem';
 import { icons } from '@/constants';
 import type { Chat as ChatType, LastMessage } from '@/types/type';
+import { useLanguage } from '@/context/LanguageContext';
+import Header from '@/components/Header';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface BaseChat {
   id: string;
@@ -32,11 +35,31 @@ interface Driver {
 export default function ChatListScreen() {
   const router = useRouter();
   const { user } = useUser();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [chats, setChats] = useState<ChatType[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+
+  // Fetch user profile image
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.id) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.id));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setProfileImageUrl(userData.profile_image_url || userData.driver?.profile_image_url || null);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+    fetchUserProfile();
+  }, [user?.id]);
 
   // Fetch chats on mount and when user changes
   useEffect(() => {
@@ -223,18 +246,15 @@ export default function ChatListScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white">
-      {/* Header */}
-      <View className="bg-primary px-4 pt-10 pb-4">
-        <Text className="text-xl font-bold text-black text-right">المحادثات</Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-white">
+      <Header profileImageUrl={profileImageUrl} title={t.Chat} />
 
       {/* Search Bar */}
       <View className="px-4 py-3 bg-white border-b border-gray-100">
         <View className="flex-row items-center bg-gray-50 rounded-full px-4 py-2">
           <Image source={icons.search} className="w-5 h-5 ml-2" tintColor="#6B7280" />
           <TextInput
-            placeholder="ابحث عن السائقين..."
+            placeholder={t.searchDrivers}
             value={searchQuery}
             onChangeText={handleSearch}
             className="flex-1 text-right font-CairoBold text-gray-700"
@@ -323,6 +343,6 @@ export default function ChatListScreen() {
           />
         ))}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

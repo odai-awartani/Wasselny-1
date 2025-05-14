@@ -10,7 +10,7 @@ import { icons } from '@/constants';
 import RideMap from '@/components/RideMap';
 import CustomButton from '@/components/CustomButton';
 import { useAuth } from '@clerk/clerk-expo';
-import { scheduleNotification, setupNotifications, cancelNotification, sendRideStatusNotification, sendRideRequestNotification, startRideNotificationService, schedulePassengerRideReminder, sendCheckOutNotificationForDriver, scheduleDriverRideReminder } from '@/lib/notifications';
+import { scheduleNotification, setupNotifications, cancelNotification, sendRideStatusNotification, sendRideRequestNotification, startRideNotificationService, schedulePassengerRideReminder, sendCheckOutNotificationForDriver, scheduleDriverRideReminder, scheduleRideNotification } from '@/lib/notifications';
 import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -145,6 +145,7 @@ const RideDetails = () => {
   const isPassenger = rideRequest && rideRequest.status === 'accepted';
   const [isRideTime, setIsRideTime] = useState(false);
 
+  console.log('isRideTime', isRideTime);
   // Add new state for waypoint selection modal
   const [showWaypointModal, setShowWaypointModal] = useState(false);
   const [selectedWaypoint, setSelectedWaypoint] = useState<{ latitude: number; longitude: number; address: string; street?: string } | null>(null);
@@ -424,6 +425,24 @@ const RideDetails = () => {
         return;
       }
 
+      //       // Get user's data (name and gender)
+      //       const userDoc = await getDoc(doc(db, 'users', userId));
+      //       const userData = userDoc.data();
+      //       const userName = userData?.name || 'الراكب';
+      //       const userGender = userData?.gender || 'غير محدد';
+
+
+      //             // Check if the user's gender matches the ride's required gender
+      // if (ride.required_gender !== 'كلاهما') {
+      //   if (ride.required_gender === 'ذكر' && userGender !== 'Male') {
+      //     Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الذكور فقط.');
+      //     return;
+      //   }
+      //   if (ride.required_gender === 'أنثى' && userGender !== 'Female') {
+      //     Alert.alert('غير مسموح', 'هذه الرحلة مخصصة للركاب الإناث فقط.');
+      //     return;
+      //   }
+      // }
       // Check if ride has already started or completed
       if (ride.status === 'in-progress' || ride.status === 'completed' || ride.status === 'cancelled') {
         Alert.alert('غير متاح', 'لا يمكن حجز هذه الرحلة لأنها قد بدأت أو انتهت أو تم إلغاؤها .');
@@ -502,14 +521,6 @@ const RideDetails = () => {
       });
 
       if (ride?.driver_id) {
-        const driverNotificationId = await scheduleDriverRideReminder(
-          ride.id,
-          ride.driver_id,
-          ride.ride_datetime,
-          ride.origin_address || '',
-          ride.destination_address || ''
-        );
-
         await sendRideRequestNotification(
           ride.driver_id,
           userName,
@@ -527,77 +538,80 @@ const RideDetails = () => {
   };
 
   // Handle driver accepting ride request
-  const handleAcceptRequest = async (requestId: string, userId: string) => {
-    try {
-      if (Platform.OS === 'android') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      const passengerName = userDoc.data()?.name || 'الراكب';
+  // const handleAcceptRequest = async (requestId: string, userId: string) => {
+  //   try {
+  //     // Get passenger's name
+  //     const userDoc = await getDoc(doc(db, 'users', userId));
+  //     const passengerName = userDoc.data()?.name || 'الراكب';
+  
+  //     // افترض أن ride هو كائن تم تعريفه مسبقًا (يحتوي على id, driver_id, origin_address, destination_address)
+  //     if (!ride) {
+  //       throw new Error('بيانات الرحلة غير متوفرة');
+  //     }
+  
+  //     if (!ride.driver_id) {
+  //       throw new Error('معرف السائق غير موجود');
+  //     }
 
-      if (!ride || !ride.driver_id) {
-        throw new Error('بيانات الرحلة أو السائق غير متوفرة');
-      }
+  //     // Check if ride is full
+  //     if (ride.available_seats <= 0) {
+  //       Alert.alert(
+  //         'الرحلة ممتلئة',
+  //         'لا يمكن قبول المزيد من الطلبات لأن الرحلة ممتلئة. سيتم إخطار الراكب عندما يصبح هناك مقعد متاح.'
+  //       );
+  //       return;
+  //     }
+  //         // جدولة إشعار للراكب
+  //   const passengerNotificationId = await scheduleRideNotification(ride.id, userId, false); // false لأنه راكب
 
-      // Check if ride is full
-      if (ride.available_seats <= 0) {
-        Alert.alert(
-          'الرحلة ممتلئة',
-          'لا يمكن قبول المزيد من الطلبات لأن الرحلة ممتلئة. سيتم إخطار الراكب عندما يصبح هناك مقعد متاح.'
-        );
-        return;
-      }
+  //   // جدولة إشعار للسائق
+  //   const driverNotificationId = await scheduleRideNotification(ride.id, ride.driver_id, true); // true لأنه سائق
 
-      const passengerNotificationId = await schedulePassengerRideReminder(
-        ride.id,
-        ride.ride_datetime,
-        ride.origin_address,
-        ride.destination_address,
-        ride.driver?.name || DEFAULT_DRIVER_NAME
-      );
 
-      await updateDoc(doc(db, 'ride_requests', requestId), {
-        status: 'accepted',
-        updated_at: serverTimestamp(),
-        passenger_name: passengerName,
-        passenger_id: userId,
-        notification_id: passengerNotificationId || null,
-      });
 
-      await sendRideStatusNotification(
-        userId,
-        'تم قبول طلب الحجز!',
-        `تم قبول طلب حجزك للرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
-        ride.id
-      );
+  //     await updateDoc(doc(db, 'ride_requests', requestId), {
+  //       status: 'accepted',
+  //       updated_at: serverTimestamp(),
+  //       passenger_name: passengerName,
+  //       passenger_id: userId,
+  //       notification_id: passengerNotificationId || null,
+  //     });
 
-      const notificationsRef = collection(db, 'notifications');
-      const q = query(
-        notificationsRef,
-        where('user_id', '==', userId),
-        where('data.rideId', '==', ride.id),
-        where('type', '==', 'ride_request')
-      );
+  //      // إرسال إشعار فوري للراكب
+  //      await sendRideStatusNotification(
+  //       userId,
+  //       'تم قبول طلب الحجز!',
+  //       `تم قبول طلب حجزك للرحلة من ${ride.origin_address} إلى ${ride.destination_address}`,
+  //       ride.id
+  //     );
 
-      const querySnapshot = await getDocs(q);
-      for (const doc of querySnapshot.docs) {
-        await updateDoc(doc.ref, {
-          read: true,
-          data: {
-            status: 'accepted',
-            rideId: ride.id,
-            type: 'ride_status',
-            passenger_name: passengerName,
-          },
-        });
-      }
+  //     const notificationsRef = collection(db, 'notifications');
+  //     const q = query(
+  //       notificationsRef,
+  //       where('user_id', '==', userId),
+  //       where('data.rideId', '==', ride.id),
+  //       where('type', '==', 'ride_request')
+  //     );
 
-      Alert.alert('✅ تم قبول طلب الحجز بنجاح', `تم قبول طلب ${passengerName}`);
-    } catch (error) {
-      console.error('Error accepting request:', error);
-      Alert.alert('حدث خطأ أثناء قبول الطلب.');
-    }
-  };
+  //     const querySnapshot = await getDocs(q);
+  //     for (const doc of querySnapshot.docs) {
+  //       await updateDoc(doc.ref, {
+  //         read: true,
+  //         data: {
+  //           status: 'accepted',
+  //           rideId: ride.id,
+  //           type: 'ride_status',
+  //           passenger_name: passengerName,
+  //         },
+  //       });
+  //     }
+
+  //     Alert.alert('✅ تم قبول طلب الحجز بنجاح', `تم قبول طلب ${passengerName}`);
+  //   } catch (error) {
+  //     console.error('Error accepting request:', error);
+  //     Alert.alert('حدث خطأ أثناء قبول الطلب.');
+  //   }
+  // };
 
   // Handle check-in
   const handleCheckIn = async () => {
@@ -651,11 +665,17 @@ const RideDetails = () => {
         updated_at: serverTimestamp(),
       });
 
-      await sendCheckOutNotificationForDriver(
-        ride.driver_id || '',
-        passengerNames[userId] || 'الراكب',
-        ride.id
-      );
+     // إرسال إشعار للسائق
+     const notificationSent = await sendCheckOutNotificationForDriver(
+      ride.driver_id || '',
+      passengerNames[userId] || 'الراكب', // تمرير اسم الراكب
+      ride.id
+    );
+
+    if (!notificationSent) {
+      console.warn('Failed to send check-out notification to driver');
+    }
+
 
       setShowRatingModal(true);
     } catch (error) {
@@ -775,12 +795,12 @@ const RideDetails = () => {
   };
 
   // Handle target press for bottom sheet
-  const handleTargetPress = () => {
-    if (Platform.OS === 'android') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    bottomSheetRef.current?.snapToIndex(2);
-  };
+  // const handleTargetPress = () => {
+  //   if (Platform.OS === 'android') {
+  //     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  //   }
+  //   bottomSheetRef.current?.snapToIndex(2);
+  // };
 
   // Format time to 12-hour format
   const formatTimeTo12Hour = (timeStr: string) => {
@@ -1242,9 +1262,41 @@ const RideDetails = () => {
                     newRideId
                   );
 
+                  // Notify all current passengers about the next week's ride
+                  for (const passenger of allPassengers) {
+                    // Schedule reminder notification for the next ride
+                    const notificationId = await schedulePassengerRideReminder(
+                      newRideId,
+                      nextWeekDateTime,
+                      ride.origin_address,
+                      ride.destination_address,
+                      ride.driver?.name || DEFAULT_DRIVER_NAME
+                    );
+
+                    // Send immediate notification about the next ride
+                    await sendRideStatusNotification(
+                      passenger.user_id,
+                      'رحلة جديدة للأسبوع القادم!',
+                      `تم إنشاء رحلة جديدة للأسبوع القادم من ${ride.origin_address} إلى ${ride.destination_address}. سيتم تذكيرك قبل الرحلة.`,
+                      newRideId
+                    );
+
+                    // Create a new ride request for the next week's ride
+                    await addDoc(collection(db, 'ride_requests'), {
+                      ride_id: newRideId,
+                      user_id: passenger.user_id,
+                      driver_id: ride.driver_id,
+                      status: 'waiting',
+                      created_at: serverTimestamp(),
+                      passenger_name: passengerNames[passenger.user_id] || 'الراكب',
+                      notification_id: notificationId,
+                      selected_waypoint: passenger.selected_waypoint
+                    });
+                  }
+
                   Alert.alert(
                     '✅ تم إنشاء الرحلة الجديدة',
-                    'تم إنشاء رحلة جديدة للأسبوع القادم بنفس التفاصيل'
+                    'تم إنشاء رحلة جديدة للأسبوع القادم بنفس التفاصيل وتم إخطار جميع الركاب'
                   );
                 } catch (error) {
                   console.error('Error creating next week ride:', error);
@@ -1308,7 +1360,7 @@ const RideDetails = () => {
 
       switch (ride?.status) {
         case 'available':
-        case 'full':
+          case 'full':
           return (
             <View className="p-4 m-3">
               {isRideTime && (
@@ -1491,8 +1543,8 @@ const RideDetails = () => {
                 <Text className="text-lg font-CairoBold mb-3 text-right text-gray-800">التقييم العام</Text>
                 <View className="py-2">
                   <AirbnbRating
-                    reviewColor='#F79824'
-                    showRating
+                    reviewColor="#F79824"
+                    showRating={true}
                     onFinishRating={(value: number) => setRating(prev => ({ ...prev, overall: value }))}
                     size={35}
                     defaultRating={rating.overall}
@@ -1509,8 +1561,8 @@ const RideDetails = () => {
                 </View>
                 <View className="py-2">
                   <AirbnbRating
-                    reviewColor='#F79824'
-                    showRating
+                    reviewColor="#F79824"
+                    showRating={true}
                     onFinishRating={(value: number) => setRating(prev => ({ ...prev, driving: value }))}
                     size={35}
                     defaultRating={rating.driving}
@@ -1527,8 +1579,8 @@ const RideDetails = () => {
                 </View>
                 <View className="py-2">
                   <AirbnbRating
-                    reviewColor='#F79824'
-                    showRating
+                    reviewColor="#F79824"
+                    showRating={true}
                     onFinishRating={(value: number) => setRating(prev => ({ ...prev, behavior: value }))}
                     size={35}
                     defaultRating={rating.behavior}
@@ -1545,8 +1597,8 @@ const RideDetails = () => {
                 </View>
                 <View className="py-2">
                   <AirbnbRating
-                    reviewColor='#F79824'
-                    showRating
+                    reviewColor="#F79824"
+                    showRating={true}
                     onFinishRating={(value: number) => setRating(prev => ({ ...prev, punctuality: value }))}
                     size={35}
                     defaultRating={rating.punctuality}
@@ -1563,8 +1615,8 @@ const RideDetails = () => {
                 </View>
                 <View className="py-2">
                   <AirbnbRating
-                    reviewColor='#F79824'
-                    showRating
+                    reviewColor="#F79824"
+                    showRating={true}
                     onFinishRating={(value: number) => setRating(prev => ({ ...prev, cleanliness: value }))}
                     size={35}
                     defaultRating={rating.cleanliness}
@@ -1724,18 +1776,30 @@ const RideDetails = () => {
     </Modal>
   );
 
-  // Add this function to check if 15 minutes have passed
+  // Add this function to check if current time is within 15 minutes of ride time
   const checkRideTime = (rideDateTime: string) => {
+    console.log('Checking ride time for:', rideDateTime);
     const [datePart, timePart] = rideDateTime.split(' ');
     const [day, month, year] = datePart.split('/').map(Number);
     const [hour, minute] = timePart.split(':').map(Number);
     const rideDate = new Date(year, month - 1, day, hour, minute);
     const currentDate = new Date();
-    const diffInMinutes = (currentDate.getTime() - rideDate.getTime()) / (1000 * 60);
-    return diffInMinutes >= 15;
+    const diffInMinutes = Math.abs((rideDate.getTime() - currentDate.getTime()) / (1000 * 60));
+    console.log('Ride date:', rideDate);
+    console.log('Current date:', currentDate);
+    console.log('Difference in minutes:', diffInMinutes);
+    return diffInMinutes <= 15; // Return true if within 15 minutes of ride time
   };
 
-
+  // Add useEffect to update isRideTime when ride data changes
+  useEffect(() => {
+    if (ride?.ride_datetime) {
+      const isTime = checkRideTime(ride.ride_datetime);
+      console.log('Ride datetime:', ride.ride_datetime);
+      console.log('Is ride time:', isTime);
+      setIsRideTime(isTime);
+    }
+  }, [ride?.ride_datetime]);
 
   if (loading) {
     return (

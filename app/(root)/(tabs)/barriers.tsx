@@ -132,6 +132,7 @@ export default function BarriersScreen() {
   const [isDriver, setIsDriver] = useState(false);
   const [unsubscribeRef, setUnsubscribeRef] = useState<(() => void) | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const checkDriverStatus = async () => {
@@ -152,6 +153,24 @@ export default function BarriersScreen() {
 
     checkDriverStatus();
   }, [user]);
+
+  // Fetch user profile image
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.id) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.id));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setProfileImageUrl(userData.profile_image_url || userData.driver?.profile_image_url || null);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+    fetchUserProfile();
+  }, [user?.id]);
 
   const fetchBarriers = async () => {
     try {
@@ -298,7 +317,7 @@ export default function BarriersScreen() {
             >
               <View className="flex-row justify-between items-center">
                 <Text className={`text-xl ${language === 'ar' ? 'font-CairoBold text-right' : 'font-JakartaBold text-left'} text-gray-800`}>
-                  {data.ar}
+                  {language === 'ar' ? data.ar : city}
                 </Text>
                 <Text className={`text-gray-500 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
                   {data.barriers.length} {language === 'ar' ? 'حاجز' : 'Barriers'}
@@ -371,10 +390,10 @@ export default function BarriersScreen() {
               <View className="flex-row-reverse justify-between items-center mb-2">
                 <View className="flex-1">
                   <Text className={`text-lg ${language === 'ar' ? 'font-CairoBold text-right' : 'font-JakartaBold text-left'} text-gray-800`}>
-                    {barrierData.ar}
+                    {language === 'ar' ? barrierData.ar : barrierData.en}
                   </Text>
                   <Text className={`text-sm ${language === 'ar' ? 'font-CairoBold text-right' : 'font-JakartaBold text-left'} text-gray-500`}>
-                    {cityData.ar}
+                    {language === 'ar' ? cityData.ar : selectedCity}
                   </Text>
                 </View>
                 {barrier ? (
@@ -490,8 +509,8 @@ export default function BarriersScreen() {
   };
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#f4f4f4" }}>
-      <Header pageTitle={language === 'ar' ? 'الحواجز' : 'Barriers'} />
+    <SafeAreaView className="flex-1 bg-white">
+      <Header profileImageUrl={profileImageUrl} title={t.barriers} />
       {renderTabs()}
       {renderContent()}
 

@@ -13,11 +13,14 @@ import { Platform } from 'react-native';
 import Header from '@/components/Header';
 import { LinearGradient } from 'expo-linear-gradient';
 import { icons } from '@/constants';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Ride {
   id: string;
   origin_address: string;
   destination_address: string;
+  origin_street?: string;
+  destination_street?: string;
   ride_datetime: string;
   status: string;
   driver_id: string;
@@ -41,6 +44,12 @@ interface Ride {
     name: string;
     profile_image_url: string;
   };
+  waypoints?: Array<{
+    address: string;
+    street?: string;
+    latitude: number;
+    longitude: number;
+  }>;
 }
 
 interface RideWithRequests extends Ride {
@@ -72,6 +81,8 @@ export default function Rides() {
   const [pastPassengerRides, setPastPassengerRides] = useState<RideWithRequests[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'pending' | 'completed' | 'cancelled'>('all');
   const [rideTypeFilter, setRideTypeFilter] = useState<'all' | 'created' | 'registered'>('all');
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const { t, language } = useLanguage();
 
   // Cache helper functions
   const cacheRidesData = async (data: CachedData) => {
@@ -144,6 +155,56 @@ export default function Rides() {
     } catch (error) {
       console.error(`Error parsing ride_datetime: ${ride_datetime}`, error);
       return null;
+    }
+  };
+
+  // Format time with AM/PM
+  const formatTimeWithPeriod = (dateTimeString: string): string => {
+    const date = parseRideDateTime(dateTimeString);
+    if (!date) return '';
+    
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+    
+    // Standard format: 9:30
+    let timeStr = `${hours === 0 ? 12 : hours > 12 ? hours - 12 : hours}:${formattedMinutes}`;
+    
+    // Add period indicator based on language
+    if (language === 'ar') {
+      timeStr += hours >= 12 ? ' م' : ' ص'; // Arabic: ص for AM, م for PM
+    } else {
+      timeStr += hours >= 12 ? ' PM' : ' AM'; // English: AM/PM
+    }
+    
+    return timeStr;
+  };
+  
+  // Format date with month name
+  const formatDateWithMonth = (dateTimeString: string): string => {
+    const date = parseRideDateTime(dateTimeString);
+    if (!date) return '';
+    
+    const day = date.getDate();
+    const month = date.getMonth();
+    const year = date.getFullYear();
+    
+    // Month names in Arabic and English
+    const arabicMonths = [
+      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    
+    const englishMonths = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    // Format based on language
+    if (language === 'ar') {
+      return `${day} ${arabicMonths[month]} ${year}`;
+    } else {
+      return `${day} ${englishMonths[month]} ${year}`;
     }
   };
 
@@ -227,7 +288,8 @@ export default function Rides() {
       const passengerRideIds = passengerRequestsSnapshot.docs.map((doc) => doc.data().ride_id);
       const uniqueRideIds = [...new Set(passengerRideIds)];
 
-      const passengerRides: RideWithRequests[] = await Promise.all(
+      // Fetch passenger rides and filter out null values
+      const passengerRidesWithNulls = await Promise.all(
         uniqueRideIds.map(async (rideId) => {
           const rideDoc = await getDoc(doc(db, 'rides', rideId));
           if (!rideDoc.exists()) return null;
@@ -247,14 +309,17 @@ export default function Rides() {
             created_at: rideData.created_at instanceof Date ? rideData.created_at : new Date(rideData.created_at),
             updated_at: rideData.updated_at instanceof Date ? rideData.updated_at : new Date(rideData.updated_at),
             is_recurring: rideData.is_recurring || false,
+            waypoints: rideData.waypoints || [],
           };
         })
       );
 
-      const validPassengerRides = passengerRides.filter((ride): ride is RideWithRequests => ride !== null);
-      console.log('Processed passenger rides:', validPassengerRides.length, 'Data:', JSON.stringify(validPassengerRides, null, 2));
+      // Filter out null values to satisfy TypeScript
+      const passengerRides: RideWithRequests[] = passengerRidesWithNulls.filter((ride): ride is RideWithRequests => ride !== null);
 
-      const allRides = [...driverRides, ...validPassengerRides];
+      console.log('Processed passenger rides:', passengerRides.length, 'Data:', JSON.stringify(passengerRides, null, 2));
+
+      const allRides = [...driverRides, ...passengerRides];
 
       const upcoming = allRides.filter((ride) => {
         if (ride.is_recurring) {
@@ -320,10 +385,37 @@ export default function Rides() {
         Sunday: 'الأحد',
       };
 
+      // English day names
+      const englishDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      
+      // Arabic day names
+      const arabicDays = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
       // Format ride_days for display
       const formattedRideDays = item.ride_days?.length
-        ? item.ride_days.map(day => dayTranslations[day] || day).join('، ')
-        : 'الأيام غير محددة';
+        ? language === 'ar' 
+          ? item.ride_days.map(day => dayTranslations[day] || day).join('، ')
+          : item.ride_days.join(', ')
+        : t.daysNotSpecified;
+
+      // Get status text based on language
+      const getStatusText = (status: string) => {
+        if (language === 'ar') {
+          switch(status) {
+            case 'available': return 'متاح';
+            case 'pending': return 'قيد الانتظار';
+            case 'completed': return 'مكتمل';
+            default: return 'منتهي';
+          }
+        } else {
+          switch(status) {
+            case 'available': return 'Available';
+            case 'pending': return 'Pending';
+            case 'completed': return 'Completed';
+            default: return 'Ended';
+          }
+        }
+      };
 
       return (
         <TouchableOpacity
@@ -353,17 +445,14 @@ export default function Rides() {
               }`}
             >
               <Text
-                className={`text-xs font-CairoMedium ${
+                className={`text-xs ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${
                   item.status === 'available' ? 'text-[#1E8E3E]' :
                   item.status === 'pending' ? 'text-[#E65100]' :
                   item.status === 'completed' ? 'text-[#1A73E8]' :
                   'text-[#D93025]'
                 }`}
               >
-                {item.status === 'available' ? 'متاح' :
-                 item.status === 'pending' ? 'قيد الانتظار' :
-                 item.status === 'completed' ? 'مكتمل' :
-                 'منتهي'}
+                {getStatusText(item.status)}
               </Text>
             </View>
 
@@ -372,9 +461,16 @@ export default function Rides() {
                 <View className="w-8 h-8 rounded-full items-center justify-center mr-3">
                   <Image source={icons.pin} className="w-5 h-5" resizeMode="contain" />
                 </View>
-                <Text className="flex-1 text-base font-CairoMedium" numberOfLines={1}>
-                  {item.origin_address}
-                </Text>
+                <View className="flex-1">
+                  <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                    {item.origin_address}
+                  </Text>
+                  {item.origin_street && (
+                    <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoRegular' : 'font-JakartaRegular'} mt-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                      {item.origin_street}
+                    </Text>
+                  )}
+                </View>
               </View>
 
               {/* Add waypoints display */}
@@ -385,9 +481,11 @@ export default function Rides() {
                       <Image source={icons.map} className="w-5 h-5" tintColor="#F79824" />
                     </View>
                     <View className="flex-1">
-                     
+                      <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                        {`${t.stop} ${index + 1}: ${waypoint.address}`}
+                      </Text>
                       {waypoint.street && (
-                        <Text className="text-sm text-gray-500 font-CairoBold mt-1" numberOfLines={1}>
+                        <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoRegular' : 'font-JakartaRegular'} mt-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
                           {waypoint.street}
                         </Text>
                       )}
@@ -400,56 +498,67 @@ export default function Rides() {
                 <View className="w-8 h-8 rounded-full items-center justify-center mr-3">
                   <Image source={icons.target} className="w-5 h-5" />
                 </View>
-                <Text className="flex-1 text-base font-CairoMedium" numberOfLines={1}>
-                  {item.destination_address}
-                </Text>
+                <View className="flex-1">
+                  <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                    {item.destination_address}
+                  </Text>
+                  {item.destination_street && (
+                    <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoRegular' : 'font-JakartaRegular'} mt-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                      {item.destination_street}
+                    </Text>
+                  )}
+                </View>
               </View>
 
               <View className="flex-row justify-between ml-2 items-center mb-3">
                 <View className="flex-row items-center">
                   <Image source={icons.clock} className="w-4 h-4 mr-2" />
-                  <Text className="text-sm text-gray-500 font-CairoMedium">{formatTime(item.ride_datetime)}</Text>
+                  <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'}`}>
+                    {formatTimeWithPeriod(item.ride_datetime)}
+                  </Text>
                 </View>
                 <View className="flex-row items-center">
                   <Image source={icons.calendar} className="w-4 mb-5 h-4 mr-2" />
-                  <View className="items-end">
-                    <Text className="text-sm text-gray-700 font-CairoBold">{formatDate(item.ride_datetime)}</Text>
+                  <View className={`items-${language === 'ar' ? 'end' : 'start'}`}>
+                    <Text className={`text-sm text-gray-700 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
+                      {formatDateWithMonth(item.ride_datetime)}
+                    </Text>
                     <View className="flex-row items-center mt-0.5">
-                      <Text className="text-xs text-gray-500 font-CairoMedium">
+                      <Text className={`text-xs text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'}`}>
                         {item.is_recurring ? formattedRideDays : (() => {
                           const date = parseRideDateTime(item.ride_datetime);
                           if (!date) return '';
-                          const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-                          return days[date.getDay()];
+                          return language === 'ar' ? arabicDays[date.getDay()] : englishDays[date.getDay()];
                         })()}
                       </Text>
                     </View>
-                   
                   </View>
-                   
                 </View>
-                
               </View>
                
               <View className="flex-row items-center ml-2 justify-between mb-3">
                 <View className="flex-row items-center">
-                <Image source={icons.person} className="w-4 h-4 mr-2" />
-                <Text className="text-sm text-gray-500 font-CairoMedium">{item.available_seats} مقاعد متاحة</Text>
+                  <Image source={icons.person} className="w-4 h-4 mr-2" />
+                  <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'}`}>
+                    {`${item.available_seats} ${t.availableSeats}`}
+                  </Text>
                 </View>
                 {item.is_recurring && (
-                      <View className="flex-row items-center mt-1">
-                        <Text className="text-xs text-orange-500 font-CairoBold">رحلة متكررة</Text>
-                      </View>
-                    )}
+                  <View className="flex-row items-center mt-1">
+                    <Text className={`text-xs text-orange-500 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
+                      {t.recurringTrip}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               {item.driver && (
                 <View className="mt-4 flex-row items-center border-t border-gray-100 pt-4">
                   <Image source={{ uri: item.driver.profile_image_url }} className="w-10 h-10 rounded-full mr-3" />
                   <View>
-                    <Text className="text-sm font-CairoBold">{item.driver.name}</Text>
-                    <Text className="text-xs text-gray-500 font-CairoMedium">
-                      {item.driver_id === userId ? 'أنت السائق' : 'السائق'}
+                    <Text className={`text-sm ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>{item.driver.name}</Text>
+                    <Text className={`text-xs text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'}`}>
+                      {item.driver_id === userId ? t.youAreTheDriver : t.theDriver}
                     </Text>
                   </View>
                 </View>
@@ -459,49 +568,51 @@ export default function Rides() {
         </TouchableOpacity>
       );
     },
-    [router, userId]
+    [router, userId, language]
   );
 
   const renderEmptyState = useCallback(
     () => (
       <View className="flex-1 justify-center items-center p-8">
         <MaterialIcons name="directions-car" size={64} color="#EA580C" />
-        <Text className="text-xl font-CairoBold text-gray-900 mt-4">
-          {activeTab === 'upcoming' ? 'لا توجد رحلات قادمة' : 'لا توجد رحلات سابقة'}
+        <Text className={`text-xl ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'} text-gray-900 mt-4 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+          {activeTab === 'upcoming' ? t.noUpcomingRides : t.noPastRides}
         </Text>
-        <Text className="text-gray-600 text-center mt-2">
-          {activeTab === 'upcoming' ? 'ستظهر رحلاتك القادمة هنا' : 'ستظهر رحلاتك السابقة هنا'}
+        <Text className={`text-gray-600 text-center mt-2 ${language === 'ar' ? 'font-CairoRegular' : 'font-JakartaRegular'}`}>
+          {activeTab === 'upcoming' ? t.upcomingRidesWillAppearHere : t.pastRidesWillAppearHere}
         </Text>
       </View>
     ),
-    [activeTab]
+    [activeTab, language, t]
   );
 
   const renderSectionHeader = useCallback(
     ({ section: { title } }: { section: { title: string } }) => (
       <View className="bg-gray-100 px-4 py-2">
-        <Text className="text-lg font-CairoBold text-gray-900">{title}</Text>
+        <Text className={`text-lg ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'} text-gray-900 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+          {title === 'الرحلات التي قمت بقيادتها' ? t.ridesYouDrove : t.ridesYouJoined}
+        </Text>
       </View>
     ),
-    []
+    [language, t]
   );
 
   const pastRidesSections = useMemo(() => {
     const sections = [];
     if (pastDriverRides.length > 0) {
       sections.push({
-        title: 'الرحلات التي قمت بقيادتها',
+        title: t.ridesYouDrove,
         data: pastDriverRides,
       });
     }
     if (pastPassengerRides.length > 0) {
       sections.push({
-        title: 'الرحلات التي انضممت إليها',
+        title: t.ridesYouJoined,
         data: pastPassengerRides,
       });
     }
     return sections;
-  }, [pastDriverRides, pastPassengerRides]);
+  }, [pastDriverRides, pastPassengerRides, t]);
 
   const currentData = useMemo(() => {
     let filteredRides = activeTab === 'upcoming' ? upcomingRides : [];
@@ -531,106 +642,6 @@ export default function Rides() {
     });
   }, [activeTab, upcomingRides, statusFilter, rideTypeFilter, userId]);
 
-  const renderStatusFilter = () => (
-    <View className="bg-white py-3 border-b border-gray-100">
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-      >
-        <TouchableOpacity
-          onPress={() => setStatusFilter('all')}
-          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
-            statusFilter === 'all' ? 'bg-orange-500' : 'bg-gray-100'
-          }`}
-        >
-          <MaterialIcons 
-            name="filter-list" 
-            size={16} 
-            color={statusFilter === 'all' ? 'white' : '#374151'} 
-          />
-          <Text className={`text-sm font-CairoMedium mr-1 ${
-            statusFilter === 'all' ? 'text-white' : 'text-gray-700'
-          }`}>
-            الكل
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setStatusFilter('available')}
-          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
-            statusFilter === 'available' ? 'bg-green-500' : 'bg-gray-100'
-          }`}
-        >
-          <MaterialIcons 
-            name="check-circle" 
-            size={16} 
-            color={statusFilter === 'available' ? 'white' : '#374151'} 
-          />
-          <Text className={`text-sm font-CairoMedium mr-1 ${
-            statusFilter === 'available' ? 'text-white' : 'text-gray-700'
-          }`}>
-            متاح
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setStatusFilter('pending')}
-          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
-            statusFilter === 'pending' ? 'bg-orange-400' : 'bg-gray-100'
-          }`}
-        >
-          <MaterialIcons 
-            name="pending" 
-            size={16} 
-            color={statusFilter === 'pending' ? 'white' : '#374151'} 
-          />
-          <Text className={`text-sm font-CairoMedium mr-1 ${
-            statusFilter === 'pending' ? 'text-white' : 'text-gray-700'
-          }`}>
-            قيد الانتظار
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setStatusFilter('completed')}
-          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
-            statusFilter === 'completed' ? 'bg-blue-500' : 'bg-gray-100'
-          }`}
-        >
-          <MaterialIcons 
-            name="done-all" 
-            size={16} 
-            color={statusFilter === 'completed' ? 'white' : '#374151'} 
-          />
-          <Text className={`text-sm font-CairoMedium mr-1 ${
-            statusFilter === 'completed' ? 'text-white' : 'text-gray-700'
-          }`}>
-            مكتمل
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setStatusFilter('cancelled')}
-          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
-            statusFilter === 'cancelled' ? 'bg-red-500' : 'bg-gray-100'
-          }`}
-        >
-          <MaterialIcons 
-            name="cancel" 
-            size={16} 
-            color={statusFilter === 'cancelled' ? 'white' : '#374151'} 
-          />
-          <Text className={`text-sm font-CairoMedium mr-1 ${
-            statusFilter === 'cancelled' ? 'text-white' : 'text-gray-700'
-          }`}>
-            ملغي
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
-
   const renderRideTypeFilter = () => (
     <View className="bg-white py-2 border-b border-gray-100">
       <ScrollView 
@@ -649,10 +660,10 @@ export default function Rides() {
             size={16} 
             color={rideTypeFilter === 'all' ? 'white' : '#374151'} 
           />
-          <Text className={`text-sm font-CairoMedium mr-1 ${
+          <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} mr-1 ${
             rideTypeFilter === 'all' ? 'text-white' : 'text-gray-700'
           }`}>
-            كل الرحلات
+            {t.allRides}
           </Text>
         </TouchableOpacity>
 
@@ -667,10 +678,10 @@ export default function Rides() {
             size={16} 
             color={rideTypeFilter === 'created' ? 'white' : '#374151'} 
           />
-          <Text className={`text-sm font-CairoMedium mr-1 ${
+          <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} mr-1 ${
             rideTypeFilter === 'created' ? 'text-white' : 'text-gray-700'
           }`}>
-            رحلاتي
+            {t.myRides}
           </Text>
         </TouchableOpacity>
 
@@ -685,10 +696,110 @@ export default function Rides() {
             size={16} 
             color={rideTypeFilter === 'registered' ? 'white' : '#374151'} 
           />
-          <Text className={`text-sm font-CairoMedium mr-1 ${
+          <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} mr-1 ${
             rideTypeFilter === 'registered' ? 'text-white' : 'text-gray-700'
           }`}>
-            رحلات مسجلة
+            {t.registeredRides}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+
+  const renderStatusFilter = () => (
+    <View className="bg-white py-3 border-b border-gray-100">
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+      >
+        <TouchableOpacity
+          onPress={() => setStatusFilter('all')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'all' ? 'bg-orange-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="filter-list" 
+            size={16} 
+            color={statusFilter === 'all' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} mr-1 ${
+            statusFilter === 'all' ? 'text-white' : 'text-gray-700'
+          }`}>
+            {t.all}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setStatusFilter('available')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'available' ? 'bg-green-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="check-circle" 
+            size={16} 
+            color={statusFilter === 'available' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} mr-1 ${
+            statusFilter === 'available' ? 'text-white' : 'text-gray-700'
+          }`}>
+            {t.available}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setStatusFilter('pending')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'pending' ? 'bg-orange-400' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="pending" 
+            size={16} 
+            color={statusFilter === 'pending' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} mr-1 ${
+            statusFilter === 'pending' ? 'text-white' : 'text-gray-700'
+          }`}>
+            {t.pending}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setStatusFilter('completed')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'completed' ? 'bg-blue-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="done-all" 
+            size={16} 
+            color={statusFilter === 'completed' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} mr-1 ${
+            statusFilter === 'completed' ? 'text-white' : 'text-gray-700'
+          }`}>
+            {t.completed}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setStatusFilter('cancelled')}
+          className={`flex-row items-center px-4 py-2 rounded-full mr-3 ${
+            statusFilter === 'cancelled' ? 'bg-red-500' : 'bg-gray-100'
+          }`}
+        >
+          <MaterialIcons 
+            name="cancel" 
+            size={16} 
+            color={statusFilter === 'cancelled' ? 'white' : '#374151'} 
+          />
+          <Text className={`text-sm ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} mr-1 ${
+            statusFilter === 'cancelled' ? 'text-white' : 'text-gray-700'
+          }`}>
+            {t.cancelled}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -703,25 +814,42 @@ export default function Rides() {
     fetchRides();
   }, [fetchRides]);
 
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (userId) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', userId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setProfileImageUrl(userData.profile_image_url || userData.driver?.profile_image_url || null);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+    fetchUserProfile();
+  }, [userId]);
+
   return (
-    <SafeAreaView className="bg-general-500 flex-1">
-      <Header pageTitle="رحلاتي" />
+    <SafeAreaView className="flex-1 bg-white">
+      <Header profileImageUrl={profileImageUrl} title={t.Rides} />
 
       <View className="flex-row justify-around items-center px-4 py-2 border-b border-gray-200">
         <TouchableOpacity
           onPress={() => setActiveTab('upcoming')}
           className={`flex-1 items-center py-3 ${activeTab === 'upcoming' ? 'border-b-2 border-orange-500' : ''}`}
         >
-          <Text className={`font-CairoBold ${activeTab === 'upcoming' ? 'text-orange-500' : 'text-gray-500'}`}>
-            القادمة
+          <Text className={`${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'} ${activeTab === 'upcoming' ? 'text-orange-500' : 'text-gray-500'}`}>
+            {t.upcoming}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setActiveTab('past')}
           className={`flex-1 items-center py-3 ${activeTab === 'past' ? 'border-b-2 border-orange-500' : ''}`}
         >
-          <Text className={`font-CairoBold ${activeTab === 'past' ? 'text-orange-500' : 'text-gray-500'}`}>
-            السابقة
+          <Text className={`${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'} ${activeTab === 'past' ? 'text-orange-500' : 'text-gray-500'}`}>
+            {t.past}
           </Text>
         </TouchableOpacity>
       </View>

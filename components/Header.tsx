@@ -1,97 +1,138 @@
 import React from 'react';
-import { Image, TouchableOpacity, Text, View } from "react-native";
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { icons } from '@/constants';
+import { router } from 'expo-router';
+import { useLanguage } from '@/context/LanguageContext';
 import { useNotifications } from '@/context/NotificationContext';
-import { useUser, useAuth } from "@clerk/clerk-expo";
-import { router } from "expo-router";
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useNavigation, DrawerActions } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
 
-type HeaderProps = {
-  pageTitle: string;
-};
-
-const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
-  const { unreadCount } = useNotifications();
-  const { user } = useUser();
-  const { signOut } = useAuth();
-  const [profileImageUrl, setProfileImageUrl] = React.useState<string | null>(null);
-
-  const checkUserData = async () => {
-    if (!user?.id) return;
-    
-    try {
-      const userRef = doc(db, 'users', user.id);
-      const userDoc = await getDoc(userRef);
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const imageUrl = userData.profile_image_url || userData.driver?.profile_image_url || null;
-        setProfileImageUrl(imageUrl);
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    }
-  };
-
-  React.useEffect(() => {
-    checkUserData();
-  }, [user?.id]);
-
-  const handleSignOut = () => {
-    signOut();
-    router.replace("/(auth)/sign-in");
-  };
-
+function CustomMenuIcon({ isRTL }: { isRTL: boolean }) {
   return (
-    <View className="py-3 w-full bg-white ">
-      <View className="flex-row items-center justify-between px-5">
-        <View className="flex-row items-center">
-            <TouchableOpacity
-            onPress={()=> router.push("/(root)/profilePage")}
-            >
-
-           
-          {profileImageUrl ? (
-            <Image
-              source={{ uri: profileImageUrl }}
-              className="w-12 h-12 rounded-full border border-2 mr-2"
-              resizeMode="contain"
-              onError={(e) => {
-                console.log('Image load error:', e.nativeEvent.error);
-                setProfileImageUrl(null);
-              }}
-            />
-          ) : (
-            <MaterialIcons name="person" size={24} color="#333333" className="mr-2" />
-          )}
-           </TouchableOpacity>
-        </View>
-        <Text className="text-lg font-CairoBold text-gray-700">
-          {pageTitle}
-        </Text>
-        <View className="flex-row items-center">
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push('/(root)/notifications');
-            }}
-            className="justify-center items-center w-10 h-10"
-            activeOpacity={0.8}
-          >
-            <Image source={icons.ring1} className="w-6 h-6" tintColor="#333333" />
-            {unreadCount > 0 && (
-              <View className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full items-center justify-center">
-                <Text className="text-[12px] text-white font-JakartaBold">{unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
+    <View style={{ width: 24, height: 24, justifyContent: 'center' }}>
+      <View style={{ 
+        width: 24, 
+        height: 2.5, 
+        backgroundColor: '#f97316', 
+        borderRadius: 2, 
+        marginBottom: 5,
+        alignSelf: isRTL ? 'flex-end' : 'flex-start'
+      }} />
+      <View style={{ 
+        width: 16, 
+        height: 2.5, 
+        backgroundColor: '#f97316', 
+        borderRadius: 2, 
+        marginBottom: 5,
+        alignSelf: isRTL ? 'flex-end' : 'flex-start'
+      }} />
+      <View style={{ 
+        width: 20, 
+        height: 2.5, 
+        backgroundColor: '#f97316', 
+        borderRadius: 2,
+        alignSelf: isRTL ? 'flex-end' : 'flex-start'
+      }} />
     </View>
   );
-};
+}
 
-export default Header;
+interface HeaderProps {
+  profileImageUrl?: string | null;
+  title?: string;
+  showProfileImage?: boolean;
+}
+
+export default function Header({ profileImageUrl, title, showProfileImage = true }: HeaderProps) {
+  const { t, isRTL } = useLanguage();
+  const { unreadCount } = useNotifications();
+  const navigation = useNavigation<DrawerNavigationProp<any>>();
+
+  return (
+    <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+      {isRTL ? (
+        <>
+          <View className="flex-row items-center space-x-2">
+            {showProfileImage && (
+              <TouchableOpacity
+                onPress={() => router.push('/(root)/profilePage')}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100 overflow-hidden"
+              >
+                {profileImageUrl ? (
+                  <Image
+                    source={{ uri: profileImageUrl }}
+                    style={{ width: 40, height: 40, borderRadius: 20 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <MaterialIcons name="person" size={24} color="#f97316" />
+                )}
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => router.push('/(root)/notifications')}
+              className="w-10 h-10 items-center justify-center"
+            >
+              <MaterialIcons name="notifications" size={24} color="#f97316" />
+              {unreadCount > 0 && (
+                <View className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full items-center justify-center">
+                  <Text className="text-[10px] text-white font-bold">{unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+          <View className="absolute left-0 right-0 items-center">
+            <Text className={`text-xl font-CairoBold text-gray-900`}>{title}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => navigation.openDrawer()}
+            className="w-10 h-10 items-center justify-center"
+          >
+            <CustomMenuIcon isRTL={isRTL} />
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <TouchableOpacity
+            onPress={() => navigation.openDrawer()}
+            className="w-10 h-10 items-center justify-center"
+          >
+            <CustomMenuIcon isRTL={isRTL} />
+          </TouchableOpacity>
+          <View className="absolute left-0 right-0 items-center">
+            <Text className="text-xl font-bold text-gray-900">{title || t.Home}</Text>
+          </View>
+          <View className="flex-row items-center space-x-2">
+            {showProfileImage && (
+              <TouchableOpacity
+                onPress={() => router.push('/(root)/profilePage')}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100 overflow-hidden"
+              >
+                {profileImageUrl ? (
+                  <Image
+                    source={{ uri: profileImageUrl }}
+                    style={{ width: 40, height: 40, borderRadius: 20 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <MaterialIcons name="person" size={24} color="#f97316" />
+                )}
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => router.push('/(root)/notifications')}
+              className="w-10 h-10 items-center justify-center"
+            >
+              <MaterialIcons name="notifications" size={24} color="#f97316" />
+              {unreadCount > 0 && (
+                <View className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full items-center justify-center">
+                  <Text className="text-[10px] text-white font-bold">{unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    </View>
+  );
+}

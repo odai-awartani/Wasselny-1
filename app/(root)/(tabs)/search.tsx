@@ -118,6 +118,25 @@ const Search = () => {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
+
+  // Fetch user profile image
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.id) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.id));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setProfileImageUrl(userData.profile_image_url || userData.driver?.profile_image_url || null);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+    fetchUserProfile();
+  }, [user?.id]);
 
   // Initialize search with query from home page
   useEffect(() => {
@@ -836,8 +855,8 @@ const Search = () => {
   }, [allResults, filters, debouncedApplyFilters])
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <Header pageTitle={language === 'ar' ? 'بحث' : 'Search'} />
+    <SafeAreaView className="flex-1 bg-white">
+      <Header profileImageUrl={profileImageUrl} title={t.Search} />
       <View className="px-4 py-3 bg-white border-b border-gray-100">
         <View className="flex-row items-center">
           <View className="flex-1 flex-row items-center bg-gray-50 rounded-full px-4 py-2 mr-2">

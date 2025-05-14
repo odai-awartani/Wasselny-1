@@ -6,7 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@clerk/clerk-expo';
-import { sendRideStatusNotification, schedulePassengerRideReminder } from '@/lib/notifications';
+import { sendRideStatusNotification, schedulePassengerRideReminder, scheduleRideNotification } from '@/lib/notifications';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
@@ -102,28 +102,29 @@ const RideRequests = () => {
         throw new Error('بيانات الرحلة أو السائق غير متوفرة');
       }
 
-      const passengerNotificationId = await schedulePassengerRideReminder(
-        params.rideId as string,
-        params.rideTime as string,
-        params.origin as string,
-        params.destination as string,
-        params.driverId as string
-      );
 
-      await updateDoc(doc(db, 'ride_requests', requestId), {
-        status: 'accepted',
-        updated_at: serverTimestamp(),
-        passenger_name: passengerName,
-        passenger_id: userId,
-        notification_id: passengerNotificationId || null,
-      });
+      
+    // جدولة إشعار للراكب
+    const passengerNotificationId = await scheduleRideNotification(params.rideId as string, userId, false); // false لأنه راكب
+  // جدولة إشعار للسائق
+  const driverNotificationId = await scheduleRideNotification(params.rideId as string, params.driverId as string, true); // true لأنه سائق
 
-      await sendRideStatusNotification(
-        userId,
-        'تم قبول طلب الحجز!',
-        `تم قبول طلب حجزك للرحلة من ${params.origin} إلى ${params.destination}`,
-        params.rideId as string
-      );
+    // تحديث حالة طلب الرحلة إلى "مقبول"
+    await updateDoc(doc(db, 'ride_requests', requestId), {
+      status: 'accepted',
+      updated_at: serverTimestamp(),
+      passenger_name: passengerName,
+      passenger_id: userId,
+      notification_id: passengerNotificationId || null, // تخزين معرف الإشعار للراكب
+    });
+
+     // إرسال إشعار فوري للراكب
+     await sendRideStatusNotification(
+      userId,
+      'تم قبول طلب الحجز!',
+      `تم قبول طلب حجزك للرحلة من ${params.origin} إلى ${params.destination}`,
+      params.rideId as string
+    );
 
       // Remove the request from the local state
       setRequests(prevRequests => prevRequests.filter(request => request.id !== requestId));

@@ -28,7 +28,7 @@ import { db } from "@/lib/firebase";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-dsadasdas
+import { useLanguage } from '@/context/LanguageContext';
 interface Location {
   latitude: number;
   longitude: number;
@@ -111,6 +111,8 @@ const RideCreationScreen = () => {
   const router = useRouter();
   const { user } = useUser();
   const { userId } = useAuth();
+  const { language } = useLanguage();
+  const isRTL = language === 'ar';
   const {
     userAddress,
     destinationAddress,
@@ -125,6 +127,60 @@ const RideCreationScreen = () => {
   // Screen dimensions and insets
   const { width } = Dimensions.get("window");
   const insets = useSafeAreaInsets();
+
+  // Translations for alert messages
+  const translations = {
+    ar: {
+      error: "خطأ",
+      timeConflict: "تعارض زمني",
+      bookingFailed: "فشل الحجز",
+      endDateError: "تاريخ النهاية يجب أن يكون بعد تاريخ البداية",
+      locationError: "يرجى إدخال موقع البداية والوجهة",
+      dayError: "يرجى اختيار يوم الرحلة",
+      dateError: "يرجى اختيار تاريخ الرحلة",
+      timeError: "يرجى اختيار وقت الرحلة",
+      dateFormatError: "تنسيق التاريخ غير صحيح، يجب أن يكون DD/MM/YYYY",
+      timeFormatError: "تنسيق الوقت غير صحيح، يجب أن يكون HH:MM",
+      invalidDateError: "تاريخ غير صالح",
+      invalidTimeError: "وقت غير صالح",
+      invalidDateTimeError: "تاريخ أو وقت غير صالح",
+      futureDateTimeError: "يجب اختيار تاريخ ووقت في المستقبل",
+      minimumTimeError: "يجب اختيار وقت بعد 30 دقيقة على الأقل من الآن",
+      carInfoError: "لم يتم العثور على معلومات السيارة",
+      seatsRequiredError: "يرجى إدخال عدد المقاعد",
+      minSeatsError: "يجب أن يكون عدد المقاعد 1 على الأقل",
+      maxSeatsError: (seats: number) => `لا يمكن تجاوز عدد مقاعد سيارتك (${seats} مقعد)`,
+      genderError: "يرجى اختيار الجنس المطلوب",
+      conflictError: "لديك رحلة مجدولة في نفس الوقت تقريبًا",
+      bookingFailedError: "تعذر إتمام الحجز. حاول مرة أخرى.",
+    },
+    en: {
+      error: "Error",
+      timeConflict: "Time Conflict",
+      bookingFailed: "Booking Failed",
+      endDateError: "End date must be after start date",
+      locationError: "Please enter start location and destination",
+      dayError: "Please select a trip day",
+      dateError: "Please select a trip date",
+      timeError: "Please select a trip time",
+      dateFormatError: "Invalid date format, must be DD/MM/YYYY",
+      timeFormatError: "Invalid time format, must be HH:MM",
+      invalidDateError: "Invalid date",
+      invalidTimeError: "Invalid time",
+      invalidDateTimeError: "Invalid date or time",
+      futureDateTimeError: "Date and time must be in the future",
+      minimumTimeError: "Time must be at least 30 minutes from now",
+      carInfoError: "Car information not found",
+      seatsRequiredError: "Please enter number of seats",
+      minSeatsError: "Number of seats must be at least 1",
+      maxSeatsError: (seats: number) => `Cannot exceed your car's seat capacity (${seats} seats)`,
+      genderError: "Please select required gender",
+      conflictError: "You have a ride scheduled at approximately the same time",
+      bookingFailedError: "Unable to complete booking. Please try again.",
+    }
+  };
+  
+  const t = translations[language === 'ar' ? 'ar' : 'en'];
 
   // States
   const [currentStep, setCurrentStep] = useState(0);
@@ -164,9 +220,20 @@ const RideCreationScreen = () => {
   const [nextButtonScale] = useState(new Animated.Value(1));
   const [backButtonScale] = useState(new Animated.Value(1));
 
-  const days = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
-  const genders = ["ذكر", "أنثى", "كلاهما"];
-  const steps = ["المواقع", "تفاصيل الرحلة", "قوانين السيارة"];
+  // Translations for days, genders, and steps based on language
+  const arabicDays = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+  const englishDays = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  
+  const arabicGenders = ["ذكر", "أنثى", "كلاهما"];
+  const englishGenders = ["Male", "Female", "Both"];
+  
+  const arabicSteps = ["المواقع", "تفاصيل الرحلة", "قوانين السيارة"];
+  const englishSteps = ["Locations", "Trip Details", "Car Rules"];
+  
+  // Use the appropriate arrays based on language
+  const days = language === 'ar' ? arabicDays : englishDays;
+  const genders = language === 'ar' ? arabicGenders : englishGenders;
+  const steps = language === 'ar' ? arabicSteps : englishSteps;
 
   // Animation handlers
   const animateButton = (scale: Animated.Value, callback: () => void) => {
@@ -296,7 +363,7 @@ const RideCreationScreen = () => {
           setTripDate(formatDate(date));
         } else {
           if (date < selectedDateRange.startDate) {
-            Alert.alert("خطأ", "تاريخ النهاية يجب أن يكون بعد تاريخ البداية");
+            Alert.alert(t.error, t.endDateError);
             return;
           }
           setSelectedDateRange(prev => ({ ...prev, endDate: date }));
@@ -328,7 +395,7 @@ const RideCreationScreen = () => {
       
       setDatePickerVisible(false);
     },
-    [isRecurring, calculateUpcomingDates, selectedDateRange]
+    [isRecurring, calculateUpcomingDates, selectedDateRange, t]
   );
 
   const handleTimeConfirm = useCallback((time: Date) => {
@@ -341,7 +408,7 @@ const RideCreationScreen = () => {
 
   const handleSeatsChange = useCallback((text: string) => {
     const numericValue = text.replace(/[^0-9]/g, "");
-    const maxSeats = carInfo?.seats || 50;
+    const maxSeats = carInfo?.seats || 25;
     
     // If the input is empty, allow it (for backspace functionality)
     if (numericValue === "") {
@@ -354,15 +421,15 @@ const RideCreationScreen = () => {
     // Strict validation
     if (seatsNumber > maxSeats) {
       Alert.alert(
-        "تنبيه",
-        `لا يمكن تجاوز عدد مقاعد سيارتك (${maxSeats} مقعد)`
+        language === 'ar' ? "تنبيه" : "Alert",
+        t.maxSeatsError(maxSeats)
       );
       setAvailableSeats(maxSeats.toString());
       return;
     }
     
     setAvailableSeats(numericValue);
-  }, [carInfo]);
+  }, [carInfo, t]);
 
   const toggleRule = useCallback((rule: keyof typeof rules) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -413,7 +480,7 @@ const RideCreationScreen = () => {
       const dates = calculateUpcomingDates(nextDate, [day]);
       setUpcomingDates(dates);
     }
-  }, [selectedDateRange, calculateUpcomingDates, isRecurring, selectedDay]);
+  }, [selectedDateRange, calculateUpcomingDates, isRecurring, selectedDay, t]);
 
   const toggleRecurring = useCallback((value: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -425,44 +492,44 @@ const RideCreationScreen = () => {
       const dayOfWeek = getDayOfWeek(selectedDateRange.startDate);
       setSelectedDay(dayOfWeek);
     }
-  }, [selectedDateRange]);
+  }, [selectedDateRange, t]);
 
   const validateForm = useCallback(() => {
     if (currentStep === 0) {
       if (!userAddress || !destinationAddress) {
-        Alert.alert("خطأ", "يرجى إدخال موقع البداية والوجهة");
+        Alert.alert(t.error, t.locationError);
         return false;
       }
     } else if (currentStep === 1) {
       // Validate day selection
       if (!selectedDay) {
-        Alert.alert("خطأ", "يرجى اختيار يوم الرحلة");
+        Alert.alert(t.error, t.dayError);
         return false;
       }
 
       // Validate date
       if (!isRecurring && !tripDate) {
-        Alert.alert("خطأ", "يرجى اختيار تاريخ الرحلة");
+        Alert.alert(t.error, t.dateError);
         return false;
       }
 
       // Validate time
       if (!tripTime) {
-        Alert.alert("خطأ", "يرجى اختيار وقت الرحلة");
+        Alert.alert(t.error, t.timeError);
         return false;
       }
 
       // Validate date format
       const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
       if (!dateRegex.test(tripDate)) {
-        Alert.alert("خطأ", "تنسيق التاريخ غير صحيح، يجب أن يكون DD/MM/YYYY");
+        Alert.alert(t.error, t.dateFormatError);
         return false;
       }
 
       // Validate time format
       const timeRegex = /^\d{2}:\d{2}$/;
       if (!timeRegex.test(tripTime)) {
-        Alert.alert("خطأ", "تنسيق الوقت غير صحيح، يجب أن يكون HH:MM");
+        Alert.alert(t.error, t.timeFormatError);
         return false;
       }
 
@@ -474,14 +541,14 @@ const RideCreationScreen = () => {
         // Validate date components
         if (isNaN(day) || isNaN(month) || isNaN(year) || 
             day < 1 || day > 31 || month < 1 || month > 12) {
-          Alert.alert("خطأ", "تاريخ غير صالح");
+          Alert.alert(t.error, t.invalidDateError);
           return false;
         }
 
         // Validate time components
         if (isNaN(hours) || isNaN(minutes) || 
             hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-          Alert.alert("خطأ", "وقت غير صالح");
+          Alert.alert(t.error, t.invalidTimeError);
           return false;
         }
 
@@ -489,14 +556,14 @@ const RideCreationScreen = () => {
         
         // Check if date is valid
         if (isNaN(selectedDateTime.getTime())) {
-          Alert.alert("خطأ", "تاريخ أو وقت غير صالح");
+          Alert.alert(t.error, t.invalidDateTimeError);
           return false;
         }
 
         // Check if date is in the future
         const now = new Date();
         if (selectedDateTime <= now) {
-          Alert.alert("خطأ", "يجب اختيار تاريخ ووقت في المستقبل");
+          Alert.alert(t.error, t.futureDateTimeError);
           return false;
         }
 
@@ -509,41 +576,41 @@ const RideCreationScreen = () => {
         if (isSameDay) {
           const oneHourFromNow = new Date(now.getTime() + 29 * 60 * 1000);
           if (selectedDateTime <= oneHourFromNow) {
-            Alert.alert("خطأ", "يجب اختيار وقت بعد 30 دقيقة على الأقل من الآن");
+            Alert.alert(t.error, t.minimumTimeError);
             return false;
           }
         }
       } catch (error) {
         console.error("Date validation error:", error);
-        Alert.alert("خطأ", "تاريخ أو وقت غير صالح");
+        Alert.alert(t.error, t.invalidDateTimeError);
         return false;
       }
 
       // Validate seats
       if (!carInfo) {
-        Alert.alert("خطأ", "لم يتم العثور على معلومات السيارة");
+        Alert.alert(t.error, t.carInfoError);
         return false;
       }
 
       if (!availableSeats || isNaN(parseInt(availableSeats))) {
-        Alert.alert("خطأ", "يرجى إدخال عدد المقاعد");
+        Alert.alert(t.error, t.seatsRequiredError);
         return false;
       }
 
       const seatsNumber = parseInt(availableSeats);
       if (seatsNumber < 1) {
-        Alert.alert("خطأ", "يجب أن يكون عدد المقاعد 1 على الأقل");
+        Alert.alert(t.error, t.minSeatsError);
         return false;
       }
 
-      if (seatsNumber > carInfo.seats) {
-        Alert.alert("خطأ", `لا يمكن تجاوز عدد مقاعد سيارتك (${carInfo.seats} مقعد)`);
+      if (seatsNumber > (carInfo?.seats || 25)) {
+        Alert.alert(t.error, t.maxSeatsError(carInfo?.seats || 25));
         return false;
       }
 
       // Validate gender
       if (!selectedGender) {
-        Alert.alert("خطأ", "يرجى اختيار الجنس المطلوب");
+        Alert.alert(t.error, t.genderError);
         return false;
       }
     }
@@ -559,6 +626,7 @@ const RideCreationScreen = () => {
     selectedGender,
     isRecurring,
     carInfo,
+    t
   ]);
 
   const resetForm = useCallback(() => {
@@ -606,20 +674,22 @@ const RideCreationScreen = () => {
       }
 
       if (!userAddress || !destinationAddress || !user?.id) {
-        throw new Error("بيانات الموقع غير مكتملة");
+        throw new Error(language === 'ar' ? "بيانات الموقع غير مكتملة" : "Location data is incomplete");
       }
 
       if (!userLatitude || !userLongitude || !destinationLatitude || !destinationLongitude) {
-        throw new Error("إحداثيات الموقع غير صالحة");
+        throw new Error(language === 'ar' ? "إحداثيات الموقع غير صالحة" : "Location coordinates are invalid");
       }
 
       if (!tripDate || !tripTime) {
-        throw new Error("تاريخ أو وقت الرحلة غير محدد");
+        throw new Error(language === 'ar' ? "تاريخ أو وقت الرحلة غير محدد" : "Trip date or time is not specified");
       }
 
       // Additional seat validation
       if (!carInfo || parseInt(availableSeats) > carInfo.seats) {
-        throw new Error(`لا يمكن تجاوز عدد مقاعد سيارتك (${carInfo?.seats || 0} مقعد)`);
+        throw new Error(language === 'ar' 
+          ? `لا يمكن تجاوز عدد مقاعد سيارتك (${carInfo?.seats || 25} مقعد)`
+          : `Cannot exceed your car's seat capacity (${carInfo?.seats || 25} seats)`);
       }
 
       // Parse date and time
@@ -628,19 +698,19 @@ const RideCreationScreen = () => {
 
       // Validate date and time components
       if (isNaN(day) || isNaN(month) || isNaN(year) || isNaN(hours) || isNaN(minutes)) {
-        throw new Error("تنسيق التاريخ أو الوقت غير صالح");
+        throw new Error(language === 'ar' ? "تنسيق التاريخ أو الوقت غير صالح" : "Invalid date or time format");
       }
 
       // Create date object
       const selectedDate = new Date(year, month - 1, day, hours, minutes);
       if (isNaN(selectedDate.getTime())) {
-        throw new Error("تاريخ أو وقت غير صالح");
+        throw new Error(language === 'ar' ? "تاريخ أو وقت غير صالح" : "Invalid date or time");
       }
 
       // Validate future date
       const now = new Date();
       if (selectedDate <= now) {
-        throw new Error("يجب اختيار تاريخ ووقت في المستقبل");
+        throw new Error(language === 'ar' ? "يجب اختيار تاريخ ووقت في المستقبل" : "Date and time must be in the future");
       }
 
       const rideDateTimeStr = `${tripDate} ${tripTime}`;
@@ -675,7 +745,10 @@ const RideCreationScreen = () => {
       });
 
       if (hasConflict) {
-        Alert.alert("تعارض زمني", "لديك رحلة مجدولة في نفس الوقت تقريبًا");
+        Alert.alert(
+          language === 'ar' ? "تعارض زمني" : "Time Conflict", 
+          language === 'ar' ? "لديك رحلة مجدولة في نفس الوقت تقريبًا" : "You have a ride scheduled at approximately the same time"
+        );
         setIsLoading(false);
         return;
       }
@@ -691,10 +764,14 @@ const RideCreationScreen = () => {
       // Validate waypoints
       const validatedWaypoints = waypoints.map((waypoint, index) => {
         if (!waypoint.address) {
-          throw new Error(`نقطة المرور ${index + 1}: العنوان غير مكتمل`);
+          throw new Error(language === 'ar' 
+            ? `نقطة المرور ${index + 1}: العنوان غير مكتمل`
+            : `Waypoint ${index + 1}: Address is incomplete`);
         }
         if (!waypoint.latitude || !waypoint.longitude) {
-          throw new Error(`نقطة المرور ${index + 1}: إحداثيات الموقع غير صالحة`);
+          throw new Error(language === 'ar'
+            ? `نقطة المرور ${index + 1}: إحداثيات الموقع غير صالحة`
+            : `Waypoint ${index + 1}: Location coordinates are invalid`);
         }
         return {
           address: waypoint.address,
@@ -763,6 +840,7 @@ const RideCreationScreen = () => {
     carInfo,
     resetForm,
     waypoints,
+    t
   ]);
 
   const handleNext = () => {
@@ -794,259 +872,6 @@ const RideCreationScreen = () => {
         : [...prev, index]
     );
   }, []);
-
-  const renderStep0Item = ({ item }: { item: Step0Item }) => {
-    switch (item.type) {
-      case 'start':
-        return (
-          <View className="my-4">
-            <View className="flex-row items-center mb-3">
-              <View className="w-8 h-8 bg-green-100 rounded-full justify-center items-center mr-2">
-                <Image source={icons.target} className="w-4 h-4 tint-green-500" />
-              </View>
-              <Text className="text-lg font-CairoBold text-right text-gray-800">نقطة البداية</Text>
-            </View>
-            <View
-              className="shadow-sm mb-3"
-              style={{
-                elevation: Platform.OS === "android" ? 4 : 0,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 3,
-                overflow: "visible",
-              }}
-            >
-              <GoogleTextInput
-                icon={icons.target}
-                initialLocation={userAddress || ""}
-                containerStyle="bg-white rounded-xl border border-gray-100"
-                textInputBackgroundColor="#fff"
-                handlePress={handleFromLocation}
-                placeholder="أدخل موقع البداية"
-              />
-            </View>
-            <View className="mt-2">
-              <Text className="text-base font-CairoBold mb-2 text-right text-gray-800">الشارع</Text>
-              <View
-                className="flex-row items-center rounded-xl p-3 bg-white border border-gray-100 shadow-sm"
-                style={{
-                  elevation: Platform.OS === "android" ? 4 : 0,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 3,
-                  overflow: "visible",
-                }}
-              >
-                <Image source={icons.street} className="w-7 h-7 ml-2" />
-                <TextInput
-                  value={startStreet}
-                  onChangeText={setStartStreet}
-                  placeholder="أدخل اسم الشارع"
-                  className="flex-1 text-right ml-2.5 mr-5 bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold"
-                  placeholderTextColor="#9CA3AF"
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-          </View>
-        );
-
-      case 'waypoint':
-        const isCollapsed = collapsedWaypoints.includes(item.index!);
-        return (
-          <View className="my-4">
-            <View className="flex-row justify-between items-center mb-3">
-              <View className="flex-row items-center">
-                <TouchableOpacity
-                  onPress={() => handleRemoveWaypoint(item.index!)}
-                  className="p-2 bg-red-50 rounded-lg mr-2"
-                  activeOpacity={0.7}
-                >
-                  <Image 
-                    source={icons.close} 
-                    className="w-5 h-5 tint-red-500"
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleToggleWaypointCollapse(item.index!)}
-                  className="p-2 bg-gray-50 rounded-lg"
-                  activeOpacity={0.7}
-                >
-                  <Image 
-                    source={icons.arrowDown} 
-                    className={`w-5 h-5 tint-gray-500 ${isCollapsed ? 'rotate-180' : ''}`}
-                    style={{ transform: [{ rotate: isCollapsed ? '180deg' : '0deg' }] }}
-                  />
-                </TouchableOpacity>
-              </View>
-              <View className="flex-row items-center">
-                <View className="w-8 h-8 bg-orange-100 rounded-full justify-center items-center mr-2">
-                  <Text className="text-orange-500 font-CairoBold">{item.index! + 1}</Text>
-                </View>
-                <Text className="text-lg font-CairoBold text-right text-gray-800">
-                  نقطة مرور
-                </Text>
-              </View>
-            </View>
-            {!isCollapsed && (
-              <Animated.View>
-                <View
-                  className="shadow-sm mb-3"
-                  style={{
-                    elevation: Platform.OS === "android" ? 4 : 0,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 3,
-                    overflow: "visible",
-                  }}
-                >
-                  <GoogleTextInput
-                    icon={icons.map}
-                    initialLocation={item.waypoint?.address || ""}
-                    containerStyle="bg-white rounded-xl border border-gray-100"
-                    textInputBackgroundColor="#fff"
-                    handlePress={(location) => {
-                      if (item.waypoint) {
-                        const updatedWaypoint: Waypoint = {
-                          ...item.waypoint,
-                          address: location.address,
-                          latitude: location.latitude,
-                          longitude: location.longitude
-                        };
-                        setWaypoints(prev => prev.map((wp, i) => 
-                          i === item.index ? updatedWaypoint : wp
-                        ));
-                      }
-                    }}
-                    placeholder="أدخل نقطة المرور"
-                  />
-                </View>
-                <View className="mt-2">
-                  <Text className="text-base font-CairoBold mb-2 text-right text-gray-800">الشارع</Text>
-                  <View
-                    className="flex-row items-center rounded-xl p-3 bg-white border border-gray-100 shadow-sm"
-                    style={{
-                      elevation: Platform.OS === "android" ? 4 : 0,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 3,
-                      overflow: "visible",
-                    }}
-                  >
-                    <Image source={icons.street} className="w-7 h-7 ml-2" />
-                    <TextInput
-                      value={item.waypoint?.street}
-                      onChangeText={(text) => {
-                        if (item.waypoint) {
-                          const updatedWaypoint: Waypoint = {
-                            ...item.waypoint,
-                            street: text
-                          };
-                          setWaypoints(prev => prev.map((wp, i) => 
-                            i === item.index ? updatedWaypoint : wp
-                          ));
-                        }
-                      }}
-                      placeholder="أدخل اسم الشارع"
-                      className="flex-1 text-right ml-2.5 mr-5 bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold"
-                      placeholderTextColor="#9CA3AF"
-                      autoCorrect={false}
-                      autoCapitalize="none"
-                    />
-                  </View>
-                </View>
-              </Animated.View>
-            )}
-          </View>
-        );
-
-      case 'addButton':
-        return (
-          <TouchableOpacity
-            onPress={handleAddWaypointPress}
-            className="flex-row items-center justify-center bg-orange-50 p-4 rounded-xl mt-4 mb-6 border-2 border-orange-100"
-            activeOpacity={0.7}
-            style={{
-              elevation: Platform.OS === "android" ? 2 : 0,
-              shadowColor: "#f97316",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 3,
-            }}
-          >
-            <View className="w-8 h-8 bg-orange-100 rounded-full justify-center items-center mr-2">
-              <Image source={icons.add} className="w-4 h-4 tint-orange-500" />
-            </View>
-            <Text className="text-orange-500 font-CairoBold text-base">إضافة نقطة مرور</Text>
-          </TouchableOpacity>
-        );
-
-      case 'destination':
-        return (
-          <View className="my-4">
-            <View className="flex-row items-center mb-3">
-              <View className="w-8 h-8 bg-red-100 rounded-full justify-center items-center mr-2">
-                <Image source={icons.map} className="w-4 h-4 tint-red-500" />
-              </View>
-              <Text className="text-lg font-CairoBold text-right text-gray-800">الوجهة</Text>
-            </View>
-            <View
-              className="shadow-sm mb-3"
-              style={{
-                elevation: Platform.OS === "android" ? 4 : 0,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 3,
-                overflow: "visible",
-              }}
-            >
-              <GoogleTextInput
-                icon={icons.map}
-                initialLocation={destinationAddress || ""}
-                containerStyle="bg-white rounded-xl border border-gray-100"
-                textInputBackgroundColor="#fff"
-                handlePress={handleToLocation}
-                placeholder="أدخل الوجهة"
-              />
-            </View>
-            <View className="mt-2">
-              <Text className="text-base font-CairoBold mb-2 text-right text-gray-800">الشارع</Text>
-              <View
-                className="flex-row items-center rounded-xl p-3 bg-white border border-gray-100 shadow-sm"
-                style={{
-                  elevation: Platform.OS === "android" ? 4 : 0,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 3,
-                  overflow: "visible",
-                }}
-              >
-                <Image source={icons.street} className="w-7 h-7 ml-2" />
-                <TextInput
-                  value={destinationStreet}
-                  onChangeText={setDestinationStreet}
-                  placeholder="أدخل اسم الشارع"
-                  className="flex-1 text-right ml-2.5 mr-5 bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold"
-                  placeholderTextColor="#9CA3AF"
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-          </View>
-        );
-
-      default:
-        return null;
-    }
-  };
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -1104,25 +929,6 @@ const RideCreationScreen = () => {
                 </TouchableOpacity>
               </Animated.View>
             </View>
-
-            {/* Waypoint Location Picker Modal */}
-            <ReactNativeModal
-              isVisible={isAddingWaypoint}
-              onBackdropPress={() => setIsAddingWaypoint(false)}
-              backdropOpacity={0.7}
-              animationIn="slideInUp"
-              animationOut="slideOutDown"
-              style={{ margin: 0 }}
-            >
-              <View className="flex-1 bg-white rounded-t-3xl overflow-hidden">
-                <WaypointLocationPicker 
-                  onLocationSelect={(location) => {
-                    handleAddWaypoint(location);
-                    setIsAddingWaypoint(false);
-                  }} 
-                />
-              </View>
-            </ReactNativeModal>
           </View>
         );
       case 1:
@@ -1138,8 +944,10 @@ const RideCreationScreen = () => {
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
               <View className="px-4 w-full">
                 <View className="mb-3">
-                  <Text className="text-lg font-CairoBold text-right pt-5 mb-2 text-gray-800">
-                    {isRecurring ? "تاريخ بداية الرحلة" : "تاريخ الرحلة"}
+                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} pt-5 mb-2 text-gray-800`}>
+                    {isRecurring 
+                      ? (language === 'ar' ? "تاريخ بداية الرحلة" : "Trip Start Date") 
+                      : (language === 'ar' ? "تاريخ الرحلة" : "Trip Date")}
                   </Text>
                   <TouchableOpacity
                     onPress={() => {
@@ -1148,78 +956,30 @@ const RideCreationScreen = () => {
                     }}
                     activeOpacity={0.7}
                   >
-                    <View className="bg-white rounded-xl border border-gray-100 p-3 flex-row items-center justify-between shadow-sm"
+                    <View 
+                      className="bg-white rounded-xl border border-gray-100 p-3 flex-row items-center justify-between shadow-sm"
                       style={{
-                        elevation: Platform.OS === "android" ? 4 : 0,
+                        elevation: Platform.OS === "android" ? 6 : 0,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
+                        shadowOpacity: 0.15,
                         shadowRadius: 3,
+                        overflow: "visible",
                       }}
                     >
-                      <Text className="flex-1 text-right text-gray-700 font-CairoRegular">
-                        {selectedDateRange.startDate ? formatDate(selectedDateRange.startDate) : "اختر التاريخ"}
+                      <Text className={`flex-1 ${isRTL ? 'text-right' : 'text-left'} text-gray-700 font-CairoRegular`}>
+                        {selectedDateRange.startDate 
+                          ? formatDate(selectedDateRange.startDate) 
+                          : (language === 'ar' ? "اختر التاريخ" : "Choose date")}
                       </Text>
                       <Image source={icons.calendar} className="w-5 h-5" />
                     </View>
                   </TouchableOpacity>
-                  
-                  {isRecurring && selectedDateRange.startDate && (
-                    <>
-                      <Text className="text-lg font-CairoBold text-right pt-5 mb-2 text-gray-800">
-                        تاريخ نهاية الرحلة
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setDatePickerVisible(true);
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View className="bg-white rounded-xl border border-gray-100 p-3 flex-row items-center justify-between shadow-sm"
-                          style={{
-                            elevation: Platform.OS === "android" ? 4 : 0,
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.1,
-                            shadowRadius: 3,
-                          }}
-                        >
-                          <Text className="flex-1 text-right text-gray-700 font-CairoRegular">
-                            {selectedDateRange.endDate ? formatDate(selectedDateRange.endDate) : "اختر تاريخ النهاية"}
-                          </Text>
-                          <Image source={icons.calendar} className="w-5 h-5" />
-                        </View>
-                      </TouchableOpacity>
-                      
-                      {selectedDates.length > 0 && (
-                        <View className="mt-3">
-                          <Text className="text-sm font-CairoRegular text-right text-gray-600 mb-2">
-                            عدد الرحلات المحددة: {selectedDates.length}
-                          </Text>
-                          <ScrollView 
-                            horizontal 
-                            showsHorizontalScrollIndicator={false}
-                            className="flex-row"
-                          >
-                            {selectedDates.map((date, index) => (
-                              <View 
-                                key={index}
-                                className="bg-orange-100 rounded-lg px-3 py-2 mr-2"
-                              >
-                                <Text className="text-orange-600 font-CairoRegular text-sm">
-                                  {formatDate(date)}
-                                </Text>
-                              </View>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-                    </>
-                  )}
                 </View>
                 <View className="mb-3">
-                  <Text className="text-lg font-CairoBold text-right mb-2 text-gray-800">وقت الرحلة</Text>
+                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                    {language === 'ar' ? "وقت الرحلة" : "Trip Time"}
+                  </Text>
                   <TouchableOpacity
                     onPress={() => {
                       setTimePickerVisible(true);
@@ -1227,57 +987,75 @@ const RideCreationScreen = () => {
                     }}
                     activeOpacity={0.7}
                   >
-                    <View className="bg-white rounded-xl border border-gray-100 p-3 flex-row items-center justify-between shadow-sm"
+                    <View 
+                      className="bg-white rounded-xl border border-gray-100 p-3 flex-row items-center justify-between shadow-sm"
                       style={{
-                        elevation: Platform.OS === "android" ? 4 : 0,
+                        elevation: Platform.OS === "android" ? 6 : 0,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
+                        shadowOpacity: 0.15,
                         shadowRadius: 3,
+                        overflow: "visible",
                       }}
                     >
-                      <Text className="flex-1 text-right text-gray-700 font-CairoRegular">{tripTime || "اختر الوقت"}</Text>
+                      <Text className={`flex-1 ${isRTL ? 'text-right' : 'text-left'} text-gray-700 font-CairoRegular`}>
+                        {tripTime || (language === 'ar' ? "اختر الوقت" : "Choose time")}
+                      </Text>
                       <Image source={icons.clock} className="w-5 h-5" />
                     </View>
                   </TouchableOpacity>
                 </View>
                 <View className="mb-3">
-                  <Text className="text-lg font-CairoBold text-right mb-2 text-gray-800">حدد أيام الرحلة</Text>
+                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                    {language === 'ar' ? "حدد أيام الرحلة" : "Select Trip Days"}
+                  </Text>
                   <View className="flex-row flex-wrap justify-between">
                     {days.map(renderDayButton)}
                   </View>
                 </View>
                 <View className="mb-3">
-                  <Text className="text-lg font-CairoBold text-right mb-2 text-gray-800">عدد المقاعد المتاحة</Text>
+                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                    {language === 'ar' ? "عدد المقاعد المتاحة" : "Available Seats"}
+                  </Text>
                   <View className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm"
                     style={{
-                      elevation: Platform.OS === "android" ? 4 : 0,
+                      elevation: Platform.OS === "android" ? 6 : 0,
                       shadowColor: "#000",
                       shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.1,
+                      shadowOpacity: 0.15,
                       shadowRadius: 3,
+                      overflow: "visible",
                     }}
                   >
                     <TextInput
-                      className="text-right font-CairoRegular text-gray-700"
+                      className={`${isRTL ? 'text-right' : 'text-left'} font-CairoRegular text-gray-700`}
                       value={availableSeats}
                       onChangeText={handleSeatsChange}
-                      placeholder={`حدد عدد المقاعد (1-${carInfo?.seats || 50})`}
+                      placeholder={language === 'ar' 
+                        ? `حدد عدد المقاعد (1-${carInfo?.seats || 25})` 
+                        : `Specify number of seats (1-${carInfo?.seats || 25})`
+                      }
                       placeholderTextColor="#9CA3AF"
                       keyboardType="numeric"
                       autoCorrect={false}
                       autoCapitalize="none"
                       maxLength={2}
+                      textAlign={isRTL ? 'right' : 'left'}
                     />
                   </View>
                   {carInfo && (
-                    <Text className="text-sm text-gray-500 text-right mt-1 font-CairoRegular">
-                      عدد مقاعد سيارتك: {carInfo.seats} مقعد
+                    <Text className={`text-sm text-gray-500 ${isRTL ? 'text-right' : 'text-left'} mt-1 font-CairoRegular`}>
+                      {language === 'ar' 
+                        ? `عدد مقاعد سيارتك: ${carInfo.seats || 25} مقعد` 
+                        : `Your car seats: ${carInfo.seats || 25} seats`
+                      }
                     </Text>
                   )}
                 </View>
                 <View className="mb-3">
-                  <Text className="text-lg font-CairoBold text-right mb-2 text-gray-800">الجنس المطلوب</Text>
+                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                    {language === 'ar' ? "الجنس المطلوب" : "Required Gender"}
+                  </Text>
                   <View className="flex-row flex-wrap justify-between">
                     {genders.map((gender) => (
                       <TouchableOpacity
@@ -1289,11 +1067,12 @@ const RideCreationScreen = () => {
                         }`}
                         style={{
                           width: "30%",
-                          elevation: Platform.OS === "android" ? 4 : 0,
+                          elevation: Platform.OS === "android" ? 6 : 0,
                           shadowColor: "#000",
                           shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.1,
+                          shadowOpacity: 0.15,
                           shadowRadius: 3,
+                          overflow: "visible",
                         }}
                         onPress={() => {
                           setSelectedGender(gender);
@@ -1313,7 +1092,9 @@ const RideCreationScreen = () => {
                   </View>
                 </View>
                 <View className="mb-3">
-                  <Text className="text-lg font-CairoBold text-right mb-2 text-gray-800">هل الرحلة متكررة؟</Text>
+                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                    {language === 'ar' ? "هل الرحلة متكررة؟" : "Is this a recurring trip?"}
+                  </Text>
                   <View className="flex-row">
                     <TouchableOpacity
                       className={`p-3 mb-2 mr-2 rounded-xl border ${
@@ -1321,11 +1102,12 @@ const RideCreationScreen = () => {
                       }`}
                       style={{
                         width: "49%",
-                        elevation: Platform.OS === "android" ? 4 : 0,
+                        elevation: Platform.OS === "android" ? 6 : 0,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
+                        shadowOpacity: 0.15,
                         shadowRadius: 3,
+                        overflow: "visible",
                       }}
                       onPress={() => toggleRecurring(true)}
                       activeOpacity={0.7}
@@ -1335,7 +1117,7 @@ const RideCreationScreen = () => {
                           isRecurring ? "text-white" : "text-gray-700"
                         }`}
                       >
-                        نعم
+                        {language === 'ar' ? "نعم" : "Yes"}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1344,11 +1126,12 @@ const RideCreationScreen = () => {
                       }`}
                       style={{
                         width: "49%",
-                        elevation: Platform.OS === "android" ? 4 : 0,
+                        elevation: Platform.OS === "android" ? 6 : 0,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
+                        shadowOpacity: 0.15,
                         shadowRadius: 3,
+                        overflow: "visible",
                       }}
                       onPress={() => toggleRecurring(false)}
                       activeOpacity={0.7}
@@ -1358,7 +1141,7 @@ const RideCreationScreen = () => {
                           !isRecurring ? "text-white" : "text-gray-700"
                         }`}
                       >
-                        لا
+                        {language === 'ar' ? "لا" : "No"}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1435,15 +1218,19 @@ const RideCreationScreen = () => {
           >
             <View className="px-4">
               <View className="mb-6">
-                <Text className="text-2xl font-CairoBold text-right mt-4 mb-2 text-gray-800">قوانين السيارة</Text>
-                <Text className="text-sm font-CairoRegular text-right text-gray-500 leading-5">
-                  حدد القوانين التي تريد تطبيقها في رحلتك لضمان رحلة مريحة وآمنة
+                <Text className={`text-2xl font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mt-4 mb-2 text-gray-800`}>
+                  {language === 'ar' ? "قوانين السيارة" : "Car Rules"}
+                </Text>
+                <Text className={`text-sm font-CairoRegular ${isRTL ? 'text-right' : 'text-left'} text-gray-500 leading-5`}>
+                  {language === 'ar' 
+                    ? "حدد القوانين التي تريد تطبيقها في رحلتك لضمان رحلة مريحة وآمنة"
+                    : "Select the rules you want to apply in your trip to ensure a comfortable and safe journey"}
                 </Text>
               </View>
 
               <View className="space-y-3">
                 <TouchableOpacity
-                  className={`flex-row justify-between items-center p-4 rounded-2xl border-2 ${
+                  className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center p-4 rounded-2xl border-2 ${
                     rules.noSmoking ? "bg-orange-50 border-orange-500" : "bg-white border-gray-100"
                   }`}
                   style={{
@@ -1460,9 +1247,9 @@ const RideCreationScreen = () => {
                   }}
                   activeOpacity={0.7}
                 >
-                  <View className="flex-row items-center flex-1">
+                  <View className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-center flex-1`}>
                     <View 
-                      className={`w-10 h-10 rounded-xl mr-4 justify-center items-center ${
+                      className={`w-10 h-10 rounded-xl ${isRTL ? 'ml-4' : 'mr-4'} justify-center items-center ${
                         rules.noSmoking ? "bg-orange-100" : "bg-gray-50"
                       }`}
                       style={{
@@ -1480,18 +1267,20 @@ const RideCreationScreen = () => {
                     </View>
                     <View className="flex-1">
                       <Text
-                        className={`text-base font-CairoBold ${
+                        className={`text-base font-CairoBold ${isRTL ? 'text-right' : 'text-left'} ${
                           rules.noSmoking ? "text-orange-500" : "text-gray-800"
                         }`}
                       >
-                        بدون تدخين
+                        {language === 'ar' ? "بدون تدخين" : "No Smoking"}
                       </Text>
                       <Text
-                        className={`text-xs font-CairoRegular mt-0.5 ${
+                        className={`text-xs font-CairoRegular mt-0.5 ${isRTL ? 'text-right' : 'text-left'} ${
                           rules.noSmoking ? "text-orange-400" : "text-gray-500"
                         }`}
                       >
-                        ممنوع التدخين في السيارة لضمان رحلة صحية
+                        {language === 'ar' 
+                          ? "ممنوع التدخين في السيارة لضمان رحلة صحية"
+                          : "Smoking is not allowed in the car for a healthy trip"}
                       </Text>
                     </View>
                   </View>
@@ -1517,7 +1306,7 @@ const RideCreationScreen = () => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  className={`flex-row justify-between items-center p-4 rounded-2xl border-2 ${
+                  className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center p-4 rounded-2xl border-2 ${
                     rules.noChildren ? "bg-orange-50 border-orange-500" : "bg-white border-gray-100"
                   }`}
                   style={{
@@ -1534,9 +1323,9 @@ const RideCreationScreen = () => {
                   }}
                   activeOpacity={0.7}
                 >
-                  <View className="flex-row items-center flex-1">
+                  <View className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-center flex-1`}>
                     <View 
-                      className={`w-10 h-10 rounded-xl justify-center items-center mr-4 ${
+                      className={`w-10 h-10 rounded-xl justify-center items-center ${isRTL ? 'ml-4' : 'mr-4'} ${
                         rules.noChildren ? "bg-orange-100" : "bg-gray-50"
                       }`}
                       style={{
@@ -1554,18 +1343,20 @@ const RideCreationScreen = () => {
                     </View>
                     <View className="flex-1">
                       <Text
-                        className={`text-base font-CairoBold ${
+                        className={`text-base font-CairoBold ${isRTL ? 'text-right' : 'text-left'} ${
                           rules.noChildren ? "text-orange-500" : "text-gray-800"
                         }`}
                       >
-                        بدون أطفال
+                        {language === 'ar' ? "بدون أطفال" : "No Children"}
                       </Text>
                       <Text
-                        className={`text-xs font-CairoRegular mt-0.5 ${
+                        className={`text-xs font-CairoRegular mt-0.5 ${isRTL ? 'text-right' : 'text-left'} ${
                           rules.noChildren ? "text-orange-400" : "text-gray-500"
                         }`}
                       >
-                        ممنوع اصطحاب الأطفال لضمان رحلة هادئة
+                        {language === 'ar' 
+                          ? "ممنوع اصطحاب الأطفال لضمان رحلة هادئة"
+                          : "Children are not allowed to ensure a quiet trip"}
                       </Text>
                     </View>
                   </View>
@@ -1591,7 +1382,7 @@ const RideCreationScreen = () => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  className={`flex-row justify-between items-center p-4 rounded-2xl border-2 ${
+                  className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center p-4 rounded-2xl border-2 ${
                     rules.noMusic ? "bg-orange-50 border-orange-500" : "bg-white border-gray-100"
                   }`}
                   style={{
@@ -1608,9 +1399,9 @@ const RideCreationScreen = () => {
                   }}
                   activeOpacity={0.7}
                 >
-                  <View className="flex-row items-center flex-1">
+                  <View className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-center flex-1`}>
                     <View 
-                      className={`w-10 h-10 rounded-xl justify-center items-center mr-4 ${
+                      className={`w-10 h-10 rounded-xl justify-center items-center ${isRTL ? 'ml-4' : 'mr-4'} ${
                         rules.noMusic ? "bg-orange-100" : "bg-gray-50"
                       }`}
                       style={{
@@ -1628,18 +1419,20 @@ const RideCreationScreen = () => {
                     </View>
                     <View className="flex-1">
                       <Text
-                        className={`text-base font-CairoBold ${
+                        className={`text-base font-CairoBold ${isRTL ? 'text-right' : 'text-left'} ${
                           rules.noMusic ? "text-orange-500" : "text-gray-800"
                         }`}
                       >
-                        بدون أغاني
+                        {language === 'ar' ? "بدون أغاني" : "No Music"}
                       </Text>
                       <Text
-                        className={`text-xs font-CairoRegular mt-0.5 ${
+                        className={`text-xs font-CairoRegular mt-0.5 ${isRTL ? 'text-right' : 'text-left'} ${
                           rules.noMusic ? "text-orange-400" : "text-gray-500"
                         }`}
                       >
-                        ممنوع تشغيل الموسيقى لضمان رحلة هادئة
+                        {language === 'ar' 
+                          ? "ممنوع تشغيل الموسيقى لضمان رحلة هادئة"
+                          : "Music is not allowed to ensure a quiet trip"}
                       </Text>
                     </View>
                   </View>
@@ -1736,14 +1529,14 @@ const RideCreationScreen = () => {
     const nextDate = selectedDateRange.startDate ? getNextOccurrence(day, selectedDateRange.startDate) : null;
     
     return (
-                <TouchableOpacity
+      <TouchableOpacity
         key={day}
         className={`p-3 mb-2 rounded-xl border ${
           isSelected
             ? "bg-orange-500 border-orange-500"
             : "bg-white border-gray-100"
-                  }`}
-                  style={{
+        }`}
+        style={{
           width: "30%",
           elevation: Platform.OS === "android" ? 4 : 0,
           shadowColor: "#000",
@@ -1767,6 +1560,305 @@ const RideCreationScreen = () => {
           </Text>
         )}
       </TouchableOpacity>
+    );
+  };
+
+  const renderStep0Item = ({ item }: { item: Step0Item }) => {
+    switch (item.type) {
+      case 'start':
+        return (
+          <View className="my-4">
+            <View className={`flex-row items-center mb-3 ${isRTL ? 'justify-end' : 'justify-start'}`}>
+            
+              <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} text-gray-800`}>
+                {language === 'ar' ? "نقطة البداية" : "Starting Point"}
+              </Text>
+            </View>
+            <View
+              className="shadow-sm mb-3"
+              style={{
+                elevation: Platform.OS === "android" ? 8 : 0,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                overflow: "visible",
+              }}
+            >
+              <GoogleTextInput
+                icon={icons.target}
+                initialLocation={userAddress || ""}
+                containerStyle="bg-white rounded-xl border border-gray-100"
+                textInputBackgroundColor="#fff"
+                handlePress={handleFromLocation}
+                placeholder={language === 'ar' ? "أدخل موقع البداية" : "Enter starting point"}
+              />
+            </View>
+            <View className="mt-2">
+              <Text className={`text-base font-CairoBold mb-2 ${isRTL ? 'text-right' : 'text-left'} text-gray-800`}>
+                {language === 'ar' ? "الشارع" : "Street"}
+              </Text>
+              <View
+                className="flex-row items-center rounded-xl p-3 bg-white border border-gray-100 shadow-sm"
+                style={{
+                  elevation: Platform.OS === "android" ? 8 : 0,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                }}
+              >
+                <Image source={icons.street} className={`w-7 h-7 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                <TextInput
+                  value={startStreet}
+                  onChangeText={setStartStreet}
+                  placeholder={language === 'ar' ? "أدخل اسم الشارع" : "Enter street name"}
+                  className={`flex-1 ${isRTL ? 'text-right mr-5 ml-2.5' : 'text-left ml-5 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
+                  placeholderTextColor="#9CA3AF"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  textAlign={isRTL ? 'right' : 'left'}
+                />
+              </View>
+            </View>
+          </View>
+        );
+      case 'waypoint':
+        const isCollapsed = collapsedWaypoints.includes(item.index!);
+        return (
+          <View className="my-4">
+            <View className="flex-row justify-between items-center mb-3">
+              <View className="flex-row items-center">
+                <TouchableOpacity
+                  onPress={() => handleRemoveWaypoint(item.index!)}
+                  className="p-2 bg-red-50 rounded-lg mr-2"
+                  activeOpacity={0.7}
+                >
+                  <Image 
+                    source={icons.close} 
+                    className="w-5 h-5 tint-red-500"
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleToggleWaypointCollapse(item.index!)}
+                  className="p-2 bg-gray-50 rounded-lg"
+                  activeOpacity={0.7}
+                >
+                  <Image 
+                    source={icons.arrowDown} 
+                    className={`w-5 h-5 tint-gray-500 ${isCollapsed ? 'rotate-180' : ''}`}
+                    style={{ transform: [{ rotate: isCollapsed ? '180deg' : '0deg' }] }}
+                  />
+                </TouchableOpacity>
+              </View>
+              <View className={`flex-row items-center ${isRTL ? 'justify-end' : 'justify-start'}`}>
+                <View className={`w-8 h-8 bg-orange-100 rounded-full justify-center items-center ${isRTL ? 'ml-2' : 'mr-2'}`}>
+                  <Text className="text-orange-500 font-CairoBold">{item.index! + 1}</Text>
+                </View>
+                <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} text-gray-800`}>
+                  {language === 'ar' ? "نقطة مرور" : "Waypoint"}
+                </Text>
+              </View>
+            </View>
+            {!isCollapsed && (
+              <Animated.View>
+                <View
+                  className="shadow-sm mb-3"
+                  style={{
+                    elevation: Platform.OS === "android" ? 8 : 0,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    overflow: "visible",
+                  }}
+                >
+                  <GoogleTextInput
+                    icon={icons.map}
+                    initialLocation={item.waypoint?.address || ""}
+                    containerStyle="bg-white rounded-xl border border-gray-100"
+                    textInputBackgroundColor="#fff"
+                    handlePress={(location) => {
+                      if (item.waypoint) {
+                        const updatedWaypoint: Waypoint = {
+                          ...item.waypoint,
+                          address: location.address,
+                          latitude: location.latitude,
+                          longitude: location.longitude
+                        };
+                        setWaypoints(prev => prev.map((wp, i) => 
+                          i === item.index ? updatedWaypoint : wp
+                        ));
+                      }
+                    }}
+                    placeholder={language === 'ar' ? "أدخل نقطة المرور" : "Enter waypoint"}
+                  />
+                </View>
+                <View className="mt-2">
+                  <Text className={`text-base font-CairoBold mb-2 ${isRTL ? 'text-right' : 'text-left'} text-gray-800`}>
+                    {language === 'ar' ? "الشارع" : "Street"}
+                  </Text>
+                  <View
+                    className="flex-row items-center rounded-xl p-3 bg-white border border-gray-100 shadow-sm"
+                    style={{
+                      elevation: Platform.OS === "android" ? 8 : 0,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 3 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 4,
+                    }}
+                  >
+                    <Image source={icons.street} className={`w-7 h-7 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                    <TextInput
+                      value={item.waypoint?.street}
+                      onChangeText={(text) => {
+                        if (item.waypoint) {
+                          const updatedWaypoint: Waypoint = {
+                            ...item.waypoint,
+                            street: text
+                          };
+                          setWaypoints(prev => prev.map((wp, i) => 
+                            i === item.index ? updatedWaypoint : wp
+                          ));
+                        }
+                      }}
+                      placeholder={language === 'ar' ? "أدخل اسم الشارع" : "Enter street name"}
+                      className={`flex-1 ${isRTL ? 'text-right mr-5 ml-2.5' : 'text-left ml-5 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
+                      placeholderTextColor="#9CA3AF"
+                      autoCorrect={false}
+                      autoCapitalize="none"
+                      textAlign={isRTL ? 'right' : 'left'}
+                    />
+                  </View>
+                </View>
+              </Animated.View>
+            )}
+          </View>
+        );
+      case 'addButton':
+        return (
+          <TouchableOpacity
+            onPress={handleAddWaypointPress}
+            className="flex-row items-center justify-center bg-orange-50 p-4 rounded-xl mt-4 mb-6 border-2 border-orange-100"
+            activeOpacity={0.7}
+            style={{
+              elevation: Platform.OS === "android" ? 2 : 0,
+              shadowColor: "#f97316",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 3,
+            }}
+          >
+            <View className={`w-8 h-8 bg-orange-100 rounded-full justify-center items-center ${isRTL ? 'ml-2' : 'mr-2'}`}>
+              <Image source={icons.add} className="w-4 h-4 tint-orange-500" />
+            </View>
+            <Text className="text-orange-500 pl-4 font-CairoBold text-base">
+              {language === 'ar' ? "إضافة نقطة مرور" : "Add Waypoint"}
+            </Text>
+          </TouchableOpacity>
+        );
+      case 'destination':
+        return (
+          <View className="my-4">
+            <View className={`flex-row items-center mb-3 ${isRTL ? 'justify-end' : 'justify-start'}`}>
+              
+              <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} text-gray-800`}>
+                {language === 'ar' ? "الوجهة" : "Destination"}
+              </Text>
+            </View>
+            <View
+              className="shadow-sm mb-3"
+              style={{
+                elevation: Platform.OS === "android" ? 8 : 0,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                overflow: "visible",
+              }}
+            >
+              <GoogleTextInput
+                icon={icons.map}
+                initialLocation={destinationAddress || ""}
+                containerStyle="bg-white rounded-xl border border-gray-100"
+                textInputBackgroundColor="#fff"
+                handlePress={handleToLocation}
+                placeholder={language === 'ar' ? "أدخل الوجهة" : "Enter destination"}
+              />
+            </View>
+            <View className="mt-2">
+              <Text className={`text-base font-CairoBold mb-2 ${isRTL ? 'text-right' : 'text-left'} text-gray-800`}>
+                {language === 'ar' ? "الشارع" : "Street"}
+              </Text>
+              <View
+                className="flex-row items-center rounded-xl p-3 bg-white border border-gray-100 shadow-sm"
+                style={{
+                  elevation: Platform.OS === "android" ? 8 : 0,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                }}
+              >
+                <Image source={icons.street} className={`w-7 h-7 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                <TextInput
+                  value={destinationStreet}
+                  onChangeText={setDestinationStreet}
+                  placeholder={language === 'ar' ? "أدخل اسم الشارع" : "Enter street name"}
+                  className={`flex-1 ${isRTL ? 'text-right mr-5 ml-2.5' : 'text-left ml-5 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
+                  placeholderTextColor="#9CA3AF"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  textAlign={isRTL ? 'right' : 'left'}
+                />
+              </View>
+            </View>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const WaypointLocationPicker = ({ onLocationSelect }: { onLocationSelect: (location: Location) => void }) => {
+    const router = useRouter();
+    const { language } = useLanguage();
+
+    return (
+      <View className="flex-1 bg-white">
+        <View className="p-4 border-b border-gray-200">
+          <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right mr-7' : 'text-left ml-7'} text-gray-800`}>
+            {language === 'ar' ? "اختر نقطة المرور" : "Choose Waypoint"}
+          </Text>
+        </View>
+        <View className="p-4">
+          <Text className={`text-sm font-CairoRegular ${isRTL ? 'text-right' : 'text-left'} text-gray-500 mb-4`}>
+            {language === 'ar' 
+              ? "اختر موقع نقطة المرور من الخريطة أو ابحث عن العنوان"
+              : "Choose a waypoint location from the map or search for an address"}
+          </Text>
+          <View 
+            className="shadow-sm"
+            style={{
+              elevation: Platform.OS === "android" ? 8 : 0,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              overflow: "visible",
+            }}
+          >
+            <GoogleTextInput
+              icon={icons.map}
+              initialLocation=""
+              containerStyle="bg-white rounded-xl border border-gray-100"
+              textInputBackgroundColor="#fff"
+              handlePress={onLocationSelect}
+              placeholder={language === 'ar' ? "ابحث عن موقع" : "Search for a location"}
+            />
+          </View>
+        </View>
+      </View>
     );
   };
 
@@ -1795,210 +1887,88 @@ const RideCreationScreen = () => {
   }, [user?.id]);
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#fff" }}>
-      <View style={{ flex: 1 }}>
-        {/* Header with step indicator */}
-        <View style={{ 
-          paddingHorizontal: 16, 
-          paddingTop: 16,
-          paddingBottom: 4,
-          backgroundColor: "#fff",
-          borderBottomWidth: 1,
-          borderBottomColor: "#f3f4f6",
-          elevation: 4,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 3,
-        }}>
-          <View className="flex-row justify-between items-center mb-2">
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                if (currentStep === 0) {
-                  router.back();
-                } else {
-                  handleBack();
-                }
-              }}
-              className="p-2"
-              activeOpacity={0.7}
-            >
-              <Image 
-                source={icons.backArrow} 
-                className="w-6 h-6 tint-gray-800"
-              />
-            </TouchableOpacity>
-            <Text className="text-xl font-CairoBold text-right text-gray-800">إنشاء رحلة جديدة</Text>
-          </View>
-          <View className="mb-2">
-            <StepIndicator
-              customStyles={{
-                ...stepIndicatorStyles,
-                labelAlign: "center" as "center" | "flex-start" | "flex-end" | "stretch" | "baseline",
-              }}
-              currentPosition={currentStep}
-              labels={steps}
-              stepCount={steps.length}
-            />
-          </View>
-        </View>
-
-        {/* Content area */}
-        <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
-          {renderStepContent()}
-          {isLoading && (
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                left: 0,
-                right: 0,
-                justifyContent: "center",
-                alignItems: "center",
-                backgroundColor: "rgba(255, 255, 255, 0.9)",
-                zIndex: 1000,
-              }}
-            >
-              <View style={{
-                backgroundColor: "#fff",
-                padding: 20,
-                borderRadius: 15,
-                elevation: 5,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.25,
-                shadowRadius: 3.84,
-              }}>
-                <ActivityIndicator size="large" color="#f97316" />
-                <Text style={{ 
-                  marginTop: 10, 
-                  color: "#1f2937",
-                  fontFamily: "CairoBold",
-                  textAlign: "center"
-                }}>
-                  جاري إنشاء الرحلة...
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
+    <SafeAreaView className="flex-1 bg-white">
+      <View className="py-4 px-4">
+        <StepIndicator
+          customStyles={{
+            ...stepIndicatorStyles,
+            labelAlign: "center" as const,
+          }}
+          currentPosition={currentStep}
+          labels={steps}
+          direction="horizontal"
+          stepCount={steps.length}
+        />
       </View>
+      {renderStepContent()}
 
       {/* Success Modal */}
       <ReactNativeModal
         isVisible={success}
-        onBackdropPress={handleSuccessModalClose}
-        backdropOpacity={0.7}
         animationIn="fadeIn"
         animationOut="fadeOut"
+        backdropOpacity={0.5}
       >
-        <View
-          className="flex flex-col items-center justify-center bg-white p-8 rounded-3xl mx-4"
-          style={{
-            elevation: Platform.OS === "android" ? 10 : 0,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 5 },
-            shadowOpacity: 0.34,
-            shadowRadius: 6.27,
-          }}
-        >
-          <View style={{
-            width: 100,
-            height: 100,
-            borderRadius: 50,
-            backgroundColor: "#fef3c7",
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: 20,
-          }}>
-            <Image source={images.check} className="w-16 h-16" resizeMode="contain" />
-          </View>
-          <Text className="text-2xl text-center font-CairoBold text-gray-800">
-            تم إنشاء الرحلة بنجاح
+        <View className="bg-white rounded-2xl p-6 items-center">
+          <Image source={images.check} className="w-16 h-16 mb-4" />
+          <Text className="text-xl font-CairoBold text-gray-900 mb-2">
+            {language === 'ar' ? "تم إنشاء الرحلة بنجاح!" : "Ride created successfully!"}
           </Text>
-          <Text className="text-md text-gray-600 font-CairoRegular text-center mt-3 mb-6">
-            شكرًا لإنشاء الرحلة. يرجى المتابعة مع رحلتك.
+          <Text className="text-center text-gray-600 font-CairoRegular mb-6">
+            {language === 'ar' 
+              ? "يمكنك الآن رؤية رحلتك في صفحة الرحلات." 
+              : "You can now see your ride in the rides page."}
           </Text>
-          <LinearGradient
-            colors={["#f97316", "#ea580c"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            className="rounded-xl w-full"
+          <TouchableOpacity
+            onPress={() => {
+              router.replace("/(root)/(tabs)/rides");
+            }}
+            className="w-full bg-orange-500 py-3 rounded-xl"
           >
-            <TouchableOpacity
-              className="py-4 px-5 items-center"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                handleSuccessModalClose();
-              }}
-              activeOpacity={0.8}
-            >
-              <Text className="text-white font-CairoBold text-lg">العودة للرئيسية</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+            <Text className="text-white text-center font-CairoBold">
+              {language === 'ar' ? "رؤية الرحلات" : "View Rides"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ReactNativeModal>
 
-      {/* Date and Time Pickers */}
+      {/* Date Picker */}
       <DateTimePickerModal
         isVisible={isDatePickerVisible}
         mode="date"
-        date={new Date()}
-        minimumDate={new Date()}
         onConfirm={handleDateConfirm}
         onCancel={() => setDatePickerVisible(false)}
-        buttonTextColorIOS="#f97316"
-        confirmTextIOS="تأكيد"
-        cancelTextIOS="إلغاء"
+        minimumDate={new Date()}
       />
+
+      {/* Time Picker */}
       <DateTimePickerModal
         isVisible={isTimePickerVisible}
         mode="time"
-        date={new Date()}
         onConfirm={handleTimeConfirm}
         onCancel={() => setTimePickerVisible(false)}
-        buttonTextColorIOS="#f97316"
-        confirmTextIOS="تأكيد"
-        cancelTextIOS="إلغاء"
       />
-    </SafeAreaView>
-  );
-};
 
-const WaypointLocationPicker = ({ onLocationSelect }: { onLocationSelect: (location: Location) => void }) => {
-  const router = useRouter();
-
-  return (
-    <View className="flex-1 bg-white">
-      <View className="p-4 border-b border-gray-200 flex-row justify-between items-center">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="p-2 bg-gray-50 rounded-lg"
-          activeOpacity={0.7}
-        >
-          <Image 
-            source={icons.close} 
-            className="w-5 h-5 tint-gray-500"
-          />
-        </TouchableOpacity>
-        <Text className="text-lg font-CairoBold text-right text-gray-800">اختر نقطة المرور</Text>
-      </View>
-      <View className="p-4">
-        <Text className="text-sm font-CairoRegular text-right text-gray-500 mb-4">
-          اختر موقع نقطة المرور من الخريطة أو ابحث عن العنوان
-        </Text>
-        <GoogleTextInput
-          icon={icons.map}
-          initialLocation=""
-          containerStyle="bg-white rounded-xl border border-gray-100"
-          textInputBackgroundColor="#fff"
-          handlePress={onLocationSelect}
-          placeholder="ابحث عن موقع"
+      {/* Waypoint Modal */}
+      <ReactNativeModal
+        isVisible={isAddingWaypoint}
+        style={{ margin: 0 }}
+        backdropOpacity={0.5}
+        animationIn="slideInUp"
+        animationOut="slideOutDown"
+      >
+        <WaypointLocationPicker
+          onLocationSelect={handleAddWaypoint}
         />
-      </View>
-    </View>
+
+        <TouchableOpacity 
+          className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} bg-white rounded-full p-2`}
+          onPress={() => setIsAddingWaypoint(false)}
+        >
+          <Image source={icons.close} className="w-6 h-6" />
+        </TouchableOpacity>
+      </ReactNativeModal>
+    </SafeAreaView>
   );
 };
 
