@@ -53,6 +53,7 @@ import repeat from "@/assets/icons/repeat.png";
 import smoking from "@/assets/icons/smoking.png";
 import music from "@/assets/icons/music.png";
 import children from "@/assets/icons/children.png";
+import barrier1 from "@/assets/images/barrier.json"
 
 
 export const images = {
@@ -65,7 +66,9 @@ export const images = {
     noResult,
     message,
     lang,
-    loadingCar
+    loadingCar,
+    barrier1
+
 };
 
 export const icons = {

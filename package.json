@@ -21,7 +21,7 @@
     "@clerk/types": "^4.47.0",
     "@expo/metro-runtime": "~4.0.1",
     "@expo/vector-icons": "^14.0.2",
-    "@gorhom/bottom-sheet": "^5.1.2",
+    "@gorhom/bottom-sheet": "^3.4.1",
     "@neondatabase/serverless": "^0.10.4",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/checkbox": "^0.5.17",

@@ -25,19 +25,10 @@ const Onboarding = () => {
           onPress={async () => {
             await setLanguage(language === 'ar' ? 'en' : 'ar');
           }}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            borderWidth: 2,
-            borderColor: '#f97316',
-            backgroundColor: '#fff',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          className="w-10 h-10 rounded-full bg-white items-center justify-center"
         >
-          <Text style={{ color: '#f97316', fontSize: 20, fontWeight: 'bold' }}>
-            {language === 'ar' ? 'En' : 'ع'}
+          <Text className="text-2xl">
+            {language === 'ar' ? '🇺🇸' : '🇵🇸'}
           </Text>
         </TouchableOpacity>
         {/* Skip button */}
@@ -82,11 +73,12 @@ const Onboarding = () => {
                 style={{ width: '100%', height: 300 }}
               />
             ) : (
-              <Image
-                source={item.image}
-                className="w-full h-[300px]"
-                resizeMode="contain"
-              />
+              <LottieView
+              source={require('@/assets/images/barrier.json')}
+              autoPlay
+              loop
+              style={{ width: '95%', height: 260 }}
+            />
             )}
             <View className="flex flex-row items-center justify-center w-full mt-20">
             <Text className={`text-black pt-3 text-3xl mx-6 text-center ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
