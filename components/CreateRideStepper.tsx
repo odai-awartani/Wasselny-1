@@ -19,7 +19,7 @@ import {
 import StepIndicator from "react-native-step-indicator";
 import GoogleTextInput from "@/components/GoogleTextInput";
 import { icons, images } from "@/constants";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import ReactNativeModal from "react-native-modal";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
@@ -932,10 +932,7 @@ const strokeDashoffset = circumference - progress * circumference;
                         : (language === 'ar' ? "تاريخ الرحلة" : "Trip Date")}
                     </Text>
                     <TouchableOpacity
-                      onPress={() => {
-                        setDatePickerVisible(true);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
+                      onPress={() => setShowDatePicker(true)}
                       activeOpacity={0.7}
                     >
                       <View 
@@ -958,15 +955,24 @@ const strokeDashoffset = circumference - progress * circumference;
                       </View>
                     </TouchableOpacity>
                   </View>
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={selectedDateRange.startDate || new Date()}
+                      mode="date"
+                      display="spinner"
+                      minimumDate={new Date()}
+                      onChange={(event, date) => {
+                        setShowDatePicker(false);
+                        if (date) handleDateConfirm(date);
+                      }}
+                    />
+                  )}
                   <View className="mb-3">
                     <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
                       {language === 'ar' ? "وقت الرحلة" : "Trip Time"}
                     </Text>
                     <TouchableOpacity
-                      onPress={() => {
-                        setTimePickerVisible(true);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
+                      onPress={() => setShowTimePicker(true)}
                       activeOpacity={0.7}
                     >
                       <View 
@@ -987,6 +993,17 @@ const strokeDashoffset = circumference - progress * circumference;
                       </View>
                     </TouchableOpacity>
                   </View>
+                  {showTimePicker && (
+                    <DateTimePicker
+                      value={selectedDateRange.startDate || new Date()}
+                      mode="time"
+                      display="spinner"
+                      onChange={(event, date) => {
+                        setShowTimePicker(false);
+                        if (date) handleTimeConfirm(date);
+                      }}
+                    />
+                  )}
                   <View className="mb-3">
                     <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
                       {language === 'ar' ? "حدد أيام الرحلة" : "Select Trip Days"}
@@ -1128,69 +1145,6 @@ const strokeDashoffset = circumference - progress * circumference;
                       </TouchableOpacity>
                     </View>
                   </View>
-                  {/* Floating Action Buttons
-                  <View className="flex-row justify-between px-4 mt-6">
-                    <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => animateButton(backButtonScale, handleBack)}
-                        disabled={isLoading}
-                      >
-                        <LinearGradient
-                          colors={["#333333", "#333333"]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={{
-                            width: 160,
-                            height: 60,
-                            borderRadius: 30,
-                            justifyContent: "center",
-                            alignItems: "center",
-                            elevation: Platform.OS === "android" ? 6 : 0,
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 3 },
-                            shadowOpacity: 0.2,
-                            shadowRadius: 3,
-                          }}
-                        >
-                          <View className="flex-row items-center justify-center">
-                      <Text className="text-white font-CairoBold text-lg">{language === 'ar' ? "السابق" : "Back"}</Text>
-                      
-                      </View>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </Animated.View>
-                    <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => animateButton(nextButtonScale, handleNext)}
-                        disabled={isLoading}
-                      >
-                        <LinearGradient
-                          colors={["#f97316", "#ea580c"]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={{
-                            width: 160,
-                            height: 60,
-                            borderRadius: 35,
-                            justifyContent: "center",
-                            alignItems: "center",
-                            elevation: Platform.OS === "android" ? 8 : 0,
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 4.65,
-                          }}
-                        >
-                          <View className="flex-row items-center justify-center">
-                      <Text className="text-white  font-CairoBold text-lg">{language === 'ar' ? "التالي" : "Next"}</Text>
-                      
-                      </View>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  </View> */}
                 </View>
               </View>
             </TouchableWithoutFeedback>
@@ -1448,68 +1402,6 @@ const strokeDashoffset = circumference - progress * circumference;
                     </View>
                   </TouchableOpacity>
                 </View>
-
-                {/* Floating Action Buttons
-                <View className="flex-row justify-between px-4 mt-6">
-                  <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => animateButton(backButtonScale, handleBack)}
-                      disabled={isLoading}
-                    >
-                      <LinearGradient
-                        colors={["#333333", "#333333"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={{
-                          width: 160,
-                          height: 60,
-                          borderRadius: 30,
-                          justifyContent: "center",
-                          alignItems: "center",
-                          elevation: Platform.OS === "android" ? 6 : 0,
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 3 },
-                          shadowOpacity: 0.2,
-                          shadowRadius: 3,
-                        }}
-                      >
-                        <View className="flex-row items-center justify-center"> 
-                          <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "السابق" : "Back"}</Text>
-                        </View>                    
-                        </LinearGradient>
-                    </TouchableOpacity>
-                  </Animated.View>
-                  <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => animateButton(nextButtonScale, handleNext)}
-                      disabled={isLoading}
-                    >
-                      <LinearGradient
-                        colors={["#38A169", "#38A169"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={{
-                          width: 160,
-                          height: 60,
-                          borderRadius: 30,
-                          justifyContent: "center",
-                          alignItems: "center",
-                          elevation: Platform.OS === "android" ? 8 : 0,
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 4.65,
-                        }}
-                      >
-                        <View className="flex-row items-center justify-center"> 
-                          <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "انشاء الرحلة" : "Create Ride"}</Text>
-                        </View>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </Animated.View>
-                </View> */}
               </View>
             </View>
           </ScrollView>
@@ -1842,6 +1734,10 @@ const strokeDashoffset = circumference - progress * circumference;
     fetchCarInfo();
   }, [user?.id]);
 
+  // Add state for new pickers
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <Header 
@@ -2005,23 +1901,6 @@ const strokeDashoffset = circumference - progress * circumference;
           </TouchableOpacity>
         </View>
       </ReactNativeModal>
-
-      {/* Date Picker */}
-      <DateTimePickerModal
-        isVisible={isDatePickerVisible}
-        mode="date"
-        onConfirm={handleDateConfirm}
-        onCancel={() => setDatePickerVisible(false)}
-        minimumDate={new Date()}
-      />
-
-      {/* Time Picker */}
-      <DateTimePickerModal
-        isVisible={isTimePickerVisible}
-        mode="time"
-        onConfirm={handleTimeConfirm}
-        onCancel={() => setTimePickerVisible(false)}
-      />
 
       {/* Waypoint Modal */}
       <ReactNativeModal
