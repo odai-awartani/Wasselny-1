@@ -72,20 +72,23 @@ function parseCustomDate(dateStr: string) {
   return new Date(year, month - 1, day, hour, minute);
 }
 
-// Helper to fetch driver image
-async function fetchDriverImage(driverId: string): Promise<string | null> {
+// Helper to fetch driver image and name
+async function fetchDriverInfo(driverId: string): Promise<{ profile_image_url: string | null, name: string | null }> {
   try {
     const userDoc = await getDoc(doc(db, 'users', driverId));
     if (userDoc.exists()) {
       const userData = userDoc.data();
-
-      return userData.driver?.profile_image_url || null;
-
+      return {
+        profile_image_url: userData.driver?.profile_image_url || null,
+        name: userData.first_name
+          ? `${userData.first_name} ${userData.last_name || ''}`.trim()
+          : userData.name || null
+      };
     }
   } catch (err) {
     // Ignore
   }
-  return null;
+  return { profile_image_url: null, name: null };
 }
 
 // Add type guard for toDate
@@ -194,11 +197,11 @@ const Search = () => {
           const ride = docSnap.data()
           if (!isValidRide(ride)) continue
           let profile_image_url: string | undefined = undefined
+          let driver_name: string | undefined = undefined
           if (ride.driver_id) {
-            const imageUrl = await fetchDriverImage(ride.driver_id)
-            if (imageUrl) {
-              profile_image_url = imageUrl
-            }
+            const driverInfo = await fetchDriverInfo(ride.driver_id)
+            profile_image_url = driverInfo.profile_image_url || undefined
+            driver_name = driverInfo.name || undefined
           }
           rides.push({
             id: docSnap.id,
@@ -231,6 +234,7 @@ const Search = () => {
             available_seats: ride.available_seats,
             gender_preference: ride.required_gender,
             profile_image_url,
+            name: driver_name,
             waypoints: ride.waypoints
           })
         }
@@ -731,7 +735,7 @@ const Search = () => {
             />
             <View className={language === 'ar' ? 'items-end' : 'items-start'}>
               <Text className={`text-base mt-5 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'} ${language === 'ar' ? 'text-right' : 'text-left'}`}>
-                {language === 'ar' ? 'السائق' : 'Driver'}
+                {item.name || (language === 'ar' ? 'السائق' : 'Driver')}
               </Text>
               <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'text-right' : 'text-left'}`}>
                 {item.car_type}

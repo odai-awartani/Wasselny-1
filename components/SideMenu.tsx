@@ -127,7 +127,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
         className="rounded-tr-[2px] rounded-br-[22px]"
       >
         {/* Account Section */}
-        <Text className={`text-gray-400 text-xs mb-2 mt-2 font-semibold tracking-wide ${isRTL ? 'text-right' : 'text-left'}`}>{t.account}</Text>
+        <Text className={`text-gray-400 text-xs mb-2 mt-2 font-CairoBold tracking-wide ${isRTL ? 'text-right' : 'text-left'}`}>{t.account}</Text>
         
         <TouchableOpacity
           onPress={() => router.push('/(root)/profilePageEdit')}
@@ -137,7 +137,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
           <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
             <MaterialIcons name="edit" size={22} color="#fff" />
           </View>
-          <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.editProfile}</Text>
+          <Text className={`text-base font-CairoBold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.editProfile}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -149,8 +149,8 @@ export default function SideMenu(props: DrawerContentComponentProps) {
             <MaterialIcons name="language" size={22} color="#fff" />
           </View>
           <View className="flex-1">
-            <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.language}</Text>
-            <Text className={`text-gray-500 text-sm ${isRTL ? 'text-right' : 'text-left'}`}>
+            <Text className={`text-base font-CairoBold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.language}</Text>
+            <Text className={`text-gray-500 font-CairoRegular text-sm ${isRTL ? 'text-right' : 'text-left'}`}>
               {language === 'ar' ? 'العربية' : 'English'}
             </Text>
           </View>
@@ -165,8 +165,8 @@ export default function SideMenu(props: DrawerContentComponentProps) {
             <MaterialIcons name="location-on" size={22} color="#fff" />
           </View>
           <View className="flex-1">
-            <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.location}</Text>
-            <Text className={`text-gray-500 text-[13px] mt-0.5 ${isRTL ? 'text-right' : 'text-left'}`}>{userAddress || t.currentLocation}</Text>
+            <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.location}</Text>
+            <Text className={`text-gray-500 font-CairoRegular text-[13px] mt-0.5 ${isRTL ? 'text-right' : 'text-left'}`}>{userAddress || t.currentLocation}</Text>
           </View>
         </TouchableOpacity>
 
@@ -175,7 +175,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
         
 
         {/* Tracking Section */}
-        <Text className={`text-gray-400 text-xs mb-2 mt-2 font-semibold tracking-wide ${isRTL ? 'text-right' : 'text-left'}`}>
+        <Text className={`text-gray-400 text-xs mb-2 mt-2 font-CairoBold tracking-wide ${isRTL ? 'text-right' : 'text-left'}`}>
           {language === 'ar' ? 'التتبع' : 'Tracking'}
         </Text>
         
@@ -190,7 +190,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
           <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
             <MaterialIcons name="location-searching" size={22} color="#fff" />
           </View>
-          <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+          <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
             {language === 'ar' ? 'تتبع الرحلات' : 'Track Rides'}
           </Text>
         </TouchableOpacity>
@@ -206,7 +206,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
           <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
             <MaterialIcons name="notifications" size={22} color="#fff" />
           </View>
-          <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+          <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
             {language === 'ar' ? 'طلبات التتبع' : 'Track Requests'}
           </Text>
         </TouchableOpacity>
@@ -221,7 +221,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
           <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
             <MaterialIcons name="share" size={22} color="#fff" />
           </View>
-          <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+          <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
             {language === 'ar' ? 'مشاركاتي' : 'My Shares'}
           </Text>
         </TouchableOpacity>
@@ -229,7 +229,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
         <View style={{ height: 1, backgroundColor: '#f3f4f6', marginVertical: 10 }} />
 
 {/* Rides Section */}
-<Text className={`text-gray-400 text-xs mb-2 mt-2 font-semibold tracking-wide ${isRTL ? 'text-right' : 'text-left'}`}>
+<Text className={`text-gray-400 text-xs mb-2 mt-2 font-CairoBold tracking-wide ${isRTL ? 'text-right' : 'text-left'}`}>
           {language === 'ar' ? 'الرحلات' : 'Rides'}
         </Text>
         
@@ -244,7 +244,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
           <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
             <MaterialIcons name="directions-car" size={22} color="#fff" />
           </View>
-          <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+          <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
             {language === 'ar' ? 'رحلاتي' : 'My Rides'}
           </Text>
         </TouchableOpacity>
@@ -260,13 +260,13 @@ export default function SideMenu(props: DrawerContentComponentProps) {
           <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
             <MaterialIcons name="add-circle" size={22} color="#fff" />
           </View>
-          <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+          <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
             {language === 'ar' ? 'إنشاء رحلة' : 'Create Ride'}
           </Text>
         </TouchableOpacity>
 
         {/* Support Section */}
-        <Text className={`text-gray-400 text-xs mb-2 mt-2 font-semibold tracking-wide ${isRTL ? 'text-right' : 'text-left'}`}>{t.support}</Text>
+        <Text className={`text-gray-400 text-xs mb-2 mt-2 font-CairoBold tracking-wide ${isRTL ? 'text-right' : 'text-left'}`}>{t.support}</Text>
         <View className="mb-2">
           <TouchableOpacity
             onPress={handleShare}
@@ -276,7 +276,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
             <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
               <MaterialIcons name="share" size={22} color="#fff" />
             </View>
-            <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.shareApp}</Text>
+            <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.shareApp}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -287,7 +287,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
             <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
               <MaterialIcons name="star" size={22} color="#fff" />
             </View>
-            <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.rateUs}</Text>
+            <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.rateUs}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -298,7 +298,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
             <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
               <MaterialIcons name="privacy-tip" size={22} color="#fff" />
             </View>
-            <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.privacyPolicy}</Text>
+            <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.privacyPolicy}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -309,7 +309,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
             <View className={`w-9 h-9 rounded-full bg-orange-500 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
               <MaterialIcons name="help-outline" size={22} color="#fff" />
             </View>
-            <Text className={`text-base font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.helpAndSupport}</Text>
+            <Text className={`text-base font-CairoBold mt-2 text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t.helpAndSupport}</Text>
           </TouchableOpacity>
         </View>
 
@@ -326,7 +326,7 @@ export default function SideMenu(props: DrawerContentComponentProps) {
           <View className={`w-9 h-9 rounded-full bg-red-100 items-center justify-center ${isRTL ? 'ml-3.5' : 'mr-3.5'}`}>
             <MaterialIcons name="logout" size={22} color="#ef4444" />
           </View>
-          <Text className={`text-base font-bold text-red-600 ${isRTL ? 'text-right' : 'text-left'}`}>{t.logout}</Text>
+          <Text className={`text-base font-CairoBold mt-2 text-red-600 ${isRTL ? 'text-right' : 'text-left'}`}>{t.logout}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
