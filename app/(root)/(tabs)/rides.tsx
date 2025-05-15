@@ -571,29 +571,59 @@ export default function Rides() {
               </View>
 
               <View className="flex-row justify-between ml-2 items-center mb-3">
-                <View className="flex-row items-center">
-                  <Image source={icons.clock} className="w-4 h-4 mr-2" />
-                  <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'}`}>
-                    {formatTimeWithPeriod(item.ride_datetime)}
-                  </Text>
-                </View>
-                <View className="flex-row items-center">
-                  <Image source={icons.calendar} className="w-4 mb-5 h-4 mr-2" />
-                  <View className={`items-${language === 'ar' ? 'end' : 'start'}`}>
-                    <Text className={`text-sm text-gray-700 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
-                      {formatDateWithMonth(item.ride_datetime)}
-                    </Text>
-                    <View className="flex-row items-center mt-0.5">
-                      <Text className={`text-xs text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'}`}>
-                        {item.is_recurring ? formattedRideDays : (() => {
-                          const date = parseRideDateTime(item.ride_datetime);
-                          if (!date) return '';
-                          return language === 'ar' ? arabicDays[date.getDay()] : englishDays[date.getDay()];
-                        })()}
+                {language === 'ar' ? (
+                  <>
+                    <View className="flex-row items-center">
+                      <Image source={icons.calendar} className="w-4 h-4 mr-2" />
+                      <View className="items-end">
+                        <Text className={`text-sm text-gray-700 font-CairoBold`}>
+                          {formatDateWithMonth(item.ride_datetime)}
+                        </Text>
+                        <Text className={`text-xs text-gray-500 font-CairoMedium`}>
+                          {item.is_recurring ? formattedRideDays : (() => {
+                            const date = parseRideDateTime(item.ride_datetime);
+                            if (!date) return '';
+                            return arabicDays[date.getDay()];
+                          })()}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center">
+                      <Text className={`text-sm text-gray-500 font-CairoMedium ml-3`}>
+                        {formatTimeWithPeriod(item.ride_datetime)}
+                      </Text>
+                      <View className="w-8 h-8 rounded-full items-center justify-center ml-3">
+                        <Image source={icons.clock} className="w-5 h-5" />
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View className="flex-row items-center">
+                      <View className="w-8 h-8 rounded-full items-center justify-center mr-3">
+                        <Image source={icons.clock} className="w-5 h-5" />
+                      </View>
+                      <Text className="text-sm text-gray-500 font-JakartaMedium">
+                        {formatTimeWithPeriod(item.ride_datetime)}
                       </Text>
                     </View>
-                  </View>
-                </View>
+                    <View className="flex-row items-center">
+                      <Image source={icons.calendar} className="w-4 h-4 mr-2" />
+                      <View className="items-start">
+                        <Text className="text-sm text-gray-700 font-JakartaBold">
+                          {formatDateWithMonth(item.ride_datetime)}
+                        </Text>
+                        <Text className="text-xs text-gray-500 font-JakartaMedium">
+                          {item.is_recurring ? formattedRideDays : (() => {
+                            const date = parseRideDateTime(item.ride_datetime);
+                            if (!date) return '';
+                            return englishDays[date.getDay()];
+                          })()}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                )}
               </View>
                
               <View className="flex-row items-center ml-2 justify-between mb-3">
