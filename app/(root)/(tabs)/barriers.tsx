@@ -387,7 +387,7 @@ export default function BarriersScreen() {
                 shadowRadius: 3,
               }}
             >
-              <View className="flex-row-reverse justify-between items-center mb-2">
+              <View className={`flex-row ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'} justify-between items-center mb-2`}>
                 <View className="flex-1">
                   <Text className={`text-lg ${language === 'ar' ? 'font-CairoBold text-right' : 'font-JakartaBold text-left'} text-gray-800`}>
                     {language === 'ar' ? barrierData.ar : barrierData.en}
@@ -398,7 +398,7 @@ export default function BarriersScreen() {
                 </View>
                 {barrier ? (
                   <View 
-                    className="px-3 py-1 rounded-full ml-2"
+                    className={`px-3 py-1 rounded-full ${language === 'ar' ? 'ml-2' : 'mr-2'}`}
                     style={{ backgroundColor: getStatusColor(barrier.status) }}
                   >
                     <Text className="text-white text-sm mt-1 font-CairoBold">
@@ -406,7 +406,7 @@ export default function BarriersScreen() {
                     </Text>
                   </View>
                 ) : (
-                  <View className="px-3 py-1 rounded-full ml-2 bg-gray-200">
+                  <View className={`px-3 py-1 rounded-full ${language === 'ar' ? 'ml-2' : 'mr-2'} bg-gray-200`}>
                     <Text className="text-gray-600 text-sm mt-1 font-CairoBold">
                       {language === 'ar' ? 'لا توجد معلومات' : 'No Info'}
                     </Text>
@@ -431,22 +431,20 @@ export default function BarriersScreen() {
                       {barrier.description}
                     </Text>
                   )}
-                  <View className="flex-row justify-between items-center">
-                    <View className="flex-row justify-start items-center">
+                  <View className={`flex-row ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'} justify-between items-center`}>
+                    <View className={`flex-row ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'} items-center`}>
                       <View className="bg-gray-100 px-2 py-1 rounded-full mx-2">
                         <Text className={`text-orange-600 text-sm ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
                           {formatDate(barrier.updated_at).time}
                         </Text>
-                      
                       </View>
                     </View>
-                      <View className="flex-row items-center">
+                    <View className={`flex-row ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'} items-center`}>
                       <Text className={`text-gray-400 text-sm ${language === 'ar' ? 'font-CairoBold text-right' : 'font-JakartaBold text-left'}`}>
                         {language === 'ar' ? 'آخر تحديث: ' : 'Last Updated: '}
                         {formatDate(barrier.updated_at).date}
                       </Text>
-                      </View>
-                    
+                    </View>
                   </View>
                 </>
               ) : (
