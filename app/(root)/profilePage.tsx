@@ -11,6 +11,7 @@ import { db } from "@/lib/firebase";
 import * as ImagePicker from "expo-image-picker";
 import { uploadImageToCloudinary } from "@/lib/upload";
 import { translations } from '@/constants/languages';
+import Header from "@/components/Header";
 
 interface UserData {
   driver?: {
@@ -354,7 +355,7 @@ const Profile = () => {
         style={Platform.OS === 'android' ? styles.androidShadow : styles.iosShadow}
       >
         <View className={`flex-row justify-between items-center ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
-          <Text className={`text-lg ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+          <Text className={`text-lg ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
             {language === 'ar' ? 'التقييمات التفصيلية' : 'Detailed Ratings'}
           </Text>
           <AntDesign 
@@ -373,7 +374,7 @@ const Profile = () => {
                     {rating.passenger_name}
                   </Text>
                   <View className="flex-row items-center">
-                    <Text className={`text-base ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'} text-gray-900 ${language === 'ar' ? 'mr-1' : 'ml-1'}`}>
+                    <Text className={`text-base ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'} text-gray-900 ${language === 'ar' ? 'mr-1' : 'ml-1'}`}>
                       {rating.overall.toFixed(1)}
                     </Text>
                     <Image source={icons.star} style={{ width: 16, height: 16 }} />
@@ -385,7 +386,7 @@ const Profile = () => {
                     <Text className={`text-sm ${language === 'ar' ? 'font-CairoRegular' : 'font-Jakartab'} text-gray-600`}>
                       {language === 'ar' ? 'قيادة السيارة' : 'Driving'}
                     </Text>
-                    <Text className={`text-sm ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'} text-gray-900`}>
+                    <Text className={`text-sm ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'} text-gray-900`}>
                       {rating.driving}
                     </Text>
                   </View>
@@ -393,7 +394,7 @@ const Profile = () => {
                     <Text className={`text-sm ${language === 'ar' ? 'font-CairoRegular' : 'font-Jakartab'} text-gray-600`}>
                       {language === 'ar' ? 'الأخلاق والسلوك' : 'Behavior'}
                     </Text>
-                    <Text className={`text-sm ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'} text-gray-900`}>
+                    <Text className={`text-sm ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'} text-gray-900`}>
                       {rating.behavior}
                     </Text>
                   </View>
@@ -401,7 +402,7 @@ const Profile = () => {
                     <Text className={`text-sm ${language === 'ar' ? 'font-CairoRegular' : 'font-Jakartab'} text-gray-600`}>
                       {language === 'ar' ? 'الالتزام بالمواعيد' : 'Punctuality'}
                     </Text>
-                    <Text className={`text-sm ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'} text-gray-900`}>
+                    <Text className={`text-sm ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'} text-gray-900`}>
                       {rating.punctuality}
                     </Text>
                   </View>
@@ -409,7 +410,7 @@ const Profile = () => {
                     <Text className={`text-sm ${language === 'ar' ? 'font-CairoRegular' : 'font-Jakartab'} text-gray-600`}>
                       {language === 'ar' ? 'نظافة السيارة' : 'Cleanliness'}
                     </Text>
-                    <Text className={`text-sm ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'} text-gray-900`}>
+                    <Text className={`text-sm ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'} text-gray-900`}>
                       {rating.cleanliness}
                     </Text>
                   </View>
@@ -436,7 +437,11 @@ const Profile = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      
+      <Header
+        title={language === 'ar' ? "الملف الشخصي" : "Profile"}
+        showSideMenu={false}
+        showProfileImage={false}
+      />
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={["#F97316"]}  
@@ -472,7 +477,7 @@ const Profile = () => {
               <MaterialCommunityIcons name="camera" size={16} color="white" />
             </TouchableOpacity>
           </TouchableOpacity>
-          <Text className={`text-xl ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'} mt-2`}>
+          <Text className={`text-xl ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'} mt-2`}>
             {user?.fullName || "John Doe"}
           </Text>
           <Text className="text-gray-500 text-sm mb-4">
@@ -488,7 +493,7 @@ const Profile = () => {
               <View className="bg-gray-100 p-3 rounded-full">
                 <MaterialIcons name="edit" size={20} color="#374151" />
               </View>
-              <Text className={`text-xs text-gray-600 mt-1 ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+              <Text className={`text-xs text-gray-600 mt-2 ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
                 {language === 'ar' ? 'تعديل الملف' : 'Edit Profile'}
               </Text>
             </TouchableOpacity>
@@ -500,7 +505,7 @@ const Profile = () => {
               <View className="bg-gray-100 p-3 rounded-full">
                 <MaterialCommunityIcons name="map-marker-path" size={20} color="#374151" />
               </View>
-              <Text className={`text-xs text-gray-600 mt-1 ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+              <Text className={`text-xs text-gray-600 mt-2 ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
                 {language === 'ar' ? 'التتبع' : 'Track'}
               </Text>
             </TouchableOpacity>
@@ -520,8 +525,8 @@ const Profile = () => {
                     </View>
                   )}
                 </View>
-                <Text className={`text-xs text-gray-600 mt-1 ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
-                  {language === 'ar' ? 'لوحة التحكم' : 'Admin'}
+                <Text className={`text-xs text-gray-600 mt-2 ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
+                  {language === 'ar' ? 'لوحة التحكم' : 'Admin Panel'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -533,7 +538,7 @@ const Profile = () => {
               <View className="bg-red-50 p-3 rounded-full">
                 <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
               </View>
-              <Text className={`text-xs text-gray-600 mt-1 ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+              <Text className={`text-xs text-gray-600 mt-2 ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
                 {language === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}
               </Text>
             </TouchableOpacity>
@@ -542,21 +547,21 @@ const Profile = () => {
 
         <View className={`flex-row justify-between w-full mt-4 ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
           <View className="items-center bg-white rounded-xl p-4 flex-1 mx-2" style={Platform.OS === 'android' ? styles.androidShadow : styles.iosShadow}>
-            <Text className={`text-2xl ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+            <Text className={`text-2xl ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
               {userData.data?.driver?.total_rides || 0}
             </Text>
-            <Text className={`text-gray-500 text-sm ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+            <Text className={`text-gray-500 text-sm ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
               {language === 'ar' ? 'إجمالي الرحلات' : 'Total Rides'}
             </Text>
           </View>
           <View className="items-center bg-white rounded-xl p-4 flex-1 mx-2" style={Platform.OS === 'android' ? styles.androidShadow : styles.iosShadow}>
             <View className="flex-row items-center">
-              <Text className={`text-2xl ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'} ${language === 'ar' ? 'mr-1' : 'ml-1'}`}>
+              <Text className={`text-2xl ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'} ${language === 'ar' ? 'mr-1' : 'ml-1'}`}>
                 {userData.data?.driver?.rating?.toFixed(1) || '0.0'}
               </Text>
               <Image source={icons.star} style={{ width: 20, height: 20 }} />
             </View>
-            <Text className={`text-gray-500 text-sm ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+            <Text className={`text-gray-500 text-sm ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
               {language === 'ar' ? 'التقييم' : 'Rating'}
             </Text>
           </View>
@@ -572,7 +577,7 @@ const Profile = () => {
               style={Platform.OS === 'android' ? styles.androidShadow : styles.iosShadow}
             >
               <View className={`flex-row justify-between items-center ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
-                <Text className={`text-lg ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+                <Text className={`text-lg ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
                   {language === 'ar' ? 'معلومات السائق' : 'Driver Information'}
                 </Text>
                 <AntDesign 
@@ -584,45 +589,45 @@ const Profile = () => {
               {expandedCards.driverInfo && (
                 <View className="space-y-4 mt-4">
                   <View>
-                    <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                    <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                       {language === 'ar' ? 'نوع السيارة' : 'Car Type'}
                     </Text>
                     <View className="bg-gray-100 rounded-lg p-3 border border-gray-300">
-                      <Text className={`${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                      <Text className={`${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                         {userData.data?.driver?.car_type || (language === 'ar' ? 'غير محدد' : 'Not specified')}
                       </Text>
                     </View>
                   </View>
 
                   <View>
-                    <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                    <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                       {language === 'ar' ? 'عدد المقاعد' : 'Number of Seats'}
                     </Text>
                     <View className="bg-gray-100 rounded-lg p-3 border border-gray-300">
-                      <Text className={`${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                      <Text className={`${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                         {userData.data?.driver?.car_seats || 0}
                       </Text>
                     </View>
                   </View>
 
                   <View>
-                    <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                    <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                       {language === 'ar' ? 'تاريخ التسجيل' : 'Registration Date'}
                     </Text>
                     <View className="bg-gray-100 rounded-lg p-3 border border-gray-300">
-                      <Text className={`${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                      <Text className={`${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                         {formatDate(userData.data?.driver?.created_at || '')}
                       </Text>
                     </View>
                   </View>
 
                   <View>
-                    <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                    <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                       {language === 'ar' ? 'حالة السائق' : 'Driver Status'}
                     </Text>
                     <View className={`flex-row ${language === 'ar' ? 'justify-end' : 'justify-start'}`}>
                       <View className={`px-3 py-1 rounded-full ${userData.data?.driver?.is_active ? 'bg-green-100' : 'bg-red-100'}`}>
-                        <Text className={`text-sm ${userData.data?.driver?.is_active ? 'text-green-700' : 'text-red-700'} ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+                        <Text className={`text-sm ${userData.data?.driver?.is_active ? 'text-green-700' : 'text-red-700'} ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
                           {userData.data?.driver?.is_active ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'غير نشط' : 'Inactive')}
                         </Text>
                       </View>
@@ -640,7 +645,7 @@ const Profile = () => {
                 style={Platform.OS === 'android' ? styles.androidShadow : styles.iosShadow}
               >
                 <View className={`flex-row justify-between items-center ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
-                  <Text className={`text-lg ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+                  <Text className={`text-lg ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
                     {language === 'ar' ? 'صورة السيارة' : 'Car Image'}
                   </Text>
                   <AntDesign 
@@ -690,7 +695,7 @@ const Profile = () => {
           style={Platform.OS === 'android' ? styles.androidShadow : styles.iosShadow}
         >
           <View className={`flex-row justify-between items-center ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
-            <Text className={`text-lg ${language === 'ar' ? 'font-Cairobold' : 'font-Jakartab'}`}>
+            <Text className={`text-lg ${language === 'ar' ? 'font-CairoBold' : 'font-Jakartab'}`}>
               {language === 'ar' ? 'معلومات الحساب' : 'Account Information'}
             </Text>
             <AntDesign 
@@ -702,21 +707,21 @@ const Profile = () => {
           {expandedCards.accountInfo && (
             <View className="space-y-4 mt-4">
               <View>
-                <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                   {language === 'ar' ? 'رقم الهاتف' : 'Phone Number'}
                 </Text>
                 <View className="bg-gray-100 rounded-lg p-3 border border-gray-300">
-                  <Text className={`${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                  <Text className={`${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                     {phoneNumber}
                   </Text>
                 </View>
               </View>
               <View>
-                <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                <Text className={`text-gray-500 text-sm mb-1 ${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                   {language === 'ar' ? 'عضو منذ' : 'Member Since'}
                 </Text>
                 <View className="bg-gray-100 rounded-lg p-3 border border-gray-300">
-                  <Text className={`${language === 'ar' ? 'font-Cairobold text-right' : 'font-Jakartab text-left'}`}>
+                  <Text className={`${language === 'ar' ? 'font-CairoBold text-right' : 'font-Jakartab text-left'}`}>
                     {memberSince}
                   </Text>
                 </View>

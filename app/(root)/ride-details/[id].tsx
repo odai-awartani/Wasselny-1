@@ -878,15 +878,25 @@ const RideDetails = () => {
         className="bg-white w-[98%] mx-1 mt-3 p-4 rounded-xl"
         style={Platform.OS === 'android' ? styles.androidShadow : styles.iosShadow}
       >
-        {ride?.status === 'in-progress' && (
+        {/* Only show the in-progress message for non-drivers (passengers) */}
+        {ride?.status === 'in-progress' && !isDriver && (
           <View className="bg-blue-100 p-3 rounded-lg mb-4">
             <Text className="text-blue-800 font-CairoBold text-center text-lg">
               الرحلة جارية حالياً - لا يمكن حجز مقعد
             </Text>
           </View>
         )}
+        
+        {/* Show different message for drivers when ride is in progress */}
+        {ride?.status === 'in-progress' && isDriver && (
+          <View className="bg-green-100 p-3 rounded-lg mb-4">
+            <Text className="text-green-800 font-CairoBold text-center text-lg">
+              الرحلة جارية حالياً
+                </Text>
+              </View>
+            )}
         <View className="flex-row-reverse mb-4">
-          <View className="flex-1">
+              <View className="flex-1">
             <View className="flex-row-reverse items-center mb-3">
               <Image source={icons.point} className="w-6 h-6 ml-3" />
               <View className="flex-1">
@@ -1027,7 +1037,7 @@ const RideDetails = () => {
         </View>
       </View>
     ),
-    [formattedRide, allPassengers]
+    [formattedRide, allPassengers, isDriver] // Added isDriver to dependencies
   );
 
   // Render current passengers
@@ -1360,15 +1370,31 @@ const RideDetails = () => {
 
       switch (ride?.status) {
         case 'available':
-          case 'full':
+        case 'full':
           return (
             <View className="p-4 m-3">
-              {isRideTime && (
+              {/* Always show start button if it's time, but with different styling based on timing */}
+              {isRideTime ? (
                 <CustomButton
                   title="بدء الرحلة"
                   onPress={handleStartRide}
                   className="bg-blue-500 py-3 rounded-xl mb-3"
                 />
+              ) : (
+                <View className="mb-3">
+                  <CustomButton
+                    title="بدء الرحلة"
+                    onPress={handleStartRide}
+                    className="bg-gray-400 py-3 rounded-xl"
+                    disabled={true}
+                  />
+                  <Text className="text-center text-sm text-gray-500 mt-2 font-CairoRegular">
+                    {(() => {
+                      const [datePart, timePart] = ride?.ride_datetime?.split(' ') || ['', ''];
+                      return `يمكن بدء الرحلة في ${timePart} بتاريخ ${datePart}`;
+                    })()}
+                  </Text>
+                </View>
               )}
               <CustomButton
                 title="إلغاء الرحلة"
@@ -1784,11 +1810,14 @@ const RideDetails = () => {
     const [hour, minute] = timePart.split(':').map(Number);
     const rideDate = new Date(year, month - 1, day, hour, minute);
     const currentDate = new Date();
-    const diffInMinutes = Math.abs((rideDate.getTime() - currentDate.getTime()) / (1000 * 60));
+    
     console.log('Ride date:', rideDate);
     console.log('Current date:', currentDate);
-    console.log('Difference in minutes:', diffInMinutes);
-    return diffInMinutes <= 15; // Return true if within 15 minutes of ride time
+    
+    // Allow starting the ride if current time is at or after the scheduled time
+    const canStart = currentDate >= rideDate;
+    console.log('Can start ride:', canStart);
+    return canStart;
   };
 
   // Add useEffect to update isRideTime when ride data changes

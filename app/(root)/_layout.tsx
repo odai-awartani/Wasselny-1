@@ -29,6 +29,10 @@ const RootLayout = () => {
                <Stack.Screen name="barrierDetails" options={{ headerShown: false }} />
                <Stack.Screen name="profilePage" options={{ headerShown: false }} />
                <Stack.Screen name="track" options={{ headerShown: false }} />
+               <Stack.Screen name="track-user/[id]" options={{ headerShown: false }} />
+               <Stack.Screen name="my-shares" options={{ headerShown: false }} />
+               <Stack.Screen name="track-requests" options={{ headerShown: false }} />
+
 
 
               

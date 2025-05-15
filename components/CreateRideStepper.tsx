@@ -29,6 +29,9 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLanguage } from '@/context/LanguageContext';
+import { MaterialIcons } from '@expo/vector-icons';
+import Header from "./Header";
+
 interface Location {
   latitude: number;
   longitude: number;
@@ -900,7 +903,7 @@ const RideCreationScreen = () => {
               keyboardShouldPersistTaps="handled"
             />
             {/* Floating Action Buttons */}
-            <View className="flex-row justify-end px-4 mt-6">
+            <View className="flex-row justify-center px-8 my-6 ">
               <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -912,7 +915,7 @@ const RideCreationScreen = () => {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={{
-                      width: 70,
+                      width: 350,
                       height: 70,
                       borderRadius: 35,
                       justifyContent: "center",
@@ -924,7 +927,11 @@ const RideCreationScreen = () => {
                       shadowRadius: 4.65,
                     }}
                   >
-                    <Image source={icons.goArrow} style={{ width: 24, height: 24, tintColor: "#fff" }} />
+                    <View className="flex-row items-center justify-center">
+                    <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "التالي" : "Next"}</Text>
+                    <Image source={icons.goArrow} style={{ width: 24, height: 24, tintColor: "#fff", marginTop: 0 }} />
+                    
+                    </View>
                   </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
@@ -1159,7 +1166,7 @@ const RideCreationScreen = () => {
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={{
-                          width: 60,
+                          width: 160,
                           height: 60,
                           borderRadius: 30,
                           justifyContent: "center",
@@ -1171,7 +1178,10 @@ const RideCreationScreen = () => {
                           shadowRadius: 3,
                         }}
                       >
-                        <Image source={icons.backArrow} style={{ width: 24, height: 24, tintColor: "#fff" }} />
+                        <View className="flex-row items-center justify-center">
+                    <Text className="text-white font-CairoBold text-lg">{language === 'ar' ? "السابق" : "Back"}</Text>
+                    
+                    </View>
                       </LinearGradient>
                     </TouchableOpacity>
                   </Animated.View>
@@ -1186,8 +1196,8 @@ const RideCreationScreen = () => {
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={{
-                          width: 70,
-                          height: 70,
+                          width: 160,
+                          height: 60,
                           borderRadius: 35,
                           justifyContent: "center",
                           alignItems: "center",
@@ -1198,7 +1208,10 @@ const RideCreationScreen = () => {
                           shadowRadius: 4.65,
                         }}
                       >
-                        <Image source={icons.goArrow} style={{ width: 24, height: 24, tintColor: "#fff" }} />
+                        <View className="flex-row items-center justify-center">
+                    <Text className="text-white  font-CairoBold text-lg">{language === 'ar' ? "التالي" : "Next"}</Text>
+                    
+                    </View>
                       </LinearGradient>
                     </TouchableOpacity>
                   </Animated.View>
@@ -1471,7 +1484,7 @@ const RideCreationScreen = () => {
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={{
-                        width: 60,
+                        width: 160,
                         height: 60,
                         borderRadius: 30,
                         justifyContent: "center",
@@ -1483,8 +1496,10 @@ const RideCreationScreen = () => {
                         shadowRadius: 3,
                       }}
                     >
-                      <Image source={icons.backArrow} style={{ width: 24, height: 24, tintColor: "#fff" }} />
-                    </LinearGradient>
+                      <View className="flex-row items-center justify-center"> 
+                        <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "السابق" : "Back"}</Text>
+                      </View>                    
+                      </LinearGradient>
                   </TouchableOpacity>
                 </Animated.View>
                 <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
@@ -1498,7 +1513,7 @@ const RideCreationScreen = () => {
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={{
-                        width: 60,
+                        width: 160,
                         height: 60,
                         borderRadius: 30,
                         justifyContent: "center",
@@ -1510,7 +1525,9 @@ const RideCreationScreen = () => {
                         shadowRadius: 4.65,
                       }}
                     >
-                      <Image source={icons.checkmark} style={{ width: 24, height: 24, tintColor: "#fff" }} />
+                      <View className="flex-row items-center justify-center"> 
+                        <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "انشاء الرحلة" : "Create Ride"}</Text>
+                      </View>
                     </LinearGradient>
                   </TouchableOpacity>
                 </Animated.View>
@@ -1588,32 +1605,28 @@ const RideCreationScreen = () => {
               <GoogleTextInput
                 icon={icons.target}
                 initialLocation={userAddress || ""}
-                containerStyle="bg-white rounded-xl border border-gray-100"
+                // containerStyle="bg-white rounded-xl border border-gray-100"
+                containerStyle="bg-white rounded-xl border-2 shadow-lg border-gray-100"
                 textInputBackgroundColor="#fff"
                 handlePress={handleFromLocation}
                 placeholder={language === 'ar' ? "أدخل موقع البداية" : "Enter starting point"}
               />
+             
             </View>
             <View className="mt-2">
               <Text className={`text-base font-CairoBold mb-2 ${isRTL ? 'text-right' : 'text-left'} text-gray-800`}>
                 {language === 'ar' ? "الشارع" : "Street"}
               </Text>
               <View
-                className="flex-row items-center rounded-xl p-3 bg-white border border-gray-100 shadow-sm"
-                style={{
-                  elevation: Platform.OS === "android" ? 8 : 0,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                }}
+                className="flex-row items-center rounded-xl p-3 bg-white border-2 border-gray-100 shadow-sm"
+               
               >
                 <Image source={icons.street} className={`w-7 h-7 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                 <TextInput
                   value={startStreet}
                   onChangeText={setStartStreet}
                   placeholder={language === 'ar' ? "أدخل اسم الشارع" : "Enter street name"}
-                  className={`flex-1 ${isRTL ? 'text-right mr-5 ml-2.5' : 'text-left ml-5 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
+                  className={`flex-1  ${isRTL ? 'text-right mr-1 ml-2.5' : 'text-left ml-1 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
                   placeholderTextColor="#9CA3AF"
                   autoCorrect={false}
                   autoCapitalize="none"
@@ -1664,19 +1677,12 @@ const RideCreationScreen = () => {
               <Animated.View>
                 <View
                   className="shadow-sm mb-3"
-                  style={{
-                    elevation: Platform.OS === "android" ? 8 : 0,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 3 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    overflow: "visible",
-                  }}
+                 
                 >
                   <GoogleTextInput
                     icon={icons.map}
                     initialLocation={item.waypoint?.address || ""}
-                    containerStyle="bg-white rounded-xl border border-gray-100"
+                    containerStyle="bg-white rounded-xl border-2 shadow-lg border-gray-100"
                     textInputBackgroundColor="#fff"
                     handlePress={(location) => {
                       if (item.waypoint) {
@@ -1699,14 +1705,8 @@ const RideCreationScreen = () => {
                     {language === 'ar' ? "الشارع" : "Street"}
                   </Text>
                   <View
-                    className="flex-row items-center rounded-xl p-3 bg-white border border-gray-100 shadow-sm"
-                    style={{
-                      elevation: Platform.OS === "android" ? 8 : 0,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 3 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 4,
-                    }}
+                    className="flex-row items-center rounded-xl p-3 bg-white border-2 border-gray-100 shadow-sm"
+                    
                   >
                     <Image source={icons.street} className={`w-7 h-7 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                     <TextInput
@@ -1723,7 +1723,7 @@ const RideCreationScreen = () => {
                         }
                       }}
                       placeholder={language === 'ar' ? "أدخل اسم الشارع" : "Enter street name"}
-                      className={`flex-1 ${isRTL ? 'text-right mr-5 ml-2.5' : 'text-left ml-5 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
+                      className={`flex-1  ${isRTL ? 'text-right mr-1 ml-2.5' : 'text-left ml-1 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
                       placeholderTextColor="#9CA3AF"
                       autoCorrect={false}
                       autoCapitalize="none"
@@ -1741,18 +1741,12 @@ const RideCreationScreen = () => {
             onPress={handleAddWaypointPress}
             className="flex-row items-center justify-center bg-orange-50 p-4 rounded-xl mt-4 mb-6 border-2 border-orange-100"
             activeOpacity={0.7}
-            style={{
-              elevation: Platform.OS === "android" ? 2 : 0,
-              shadowColor: "#f97316",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 3,
-            }}
+           
           >
-            <View className={`w-8 h-8 bg-orange-100 rounded-full justify-center items-center ${isRTL ? 'ml-2' : 'mr-2'}`}>
+            <View className={`w-8 h-8 bg-orange-100 rounded-full justify-center items-center ${isRTL ? 'ml-4' : 'mr-4'}`}>
               <Image source={icons.add} className="w-4 h-4 tint-orange-500" />
             </View>
-            <Text className="text-orange-500 pl-4 font-CairoBold text-base">
+            <Text className="text-orange-500 pt-2 font-CairoBold text-base">
               {language === 'ar' ? "إضافة نقطة مرور" : "Add Waypoint"}
             </Text>
           </TouchableOpacity>
@@ -1768,19 +1762,12 @@ const RideCreationScreen = () => {
             </View>
             <View
               className="shadow-sm mb-3"
-              style={{
-                elevation: Platform.OS === "android" ? 8 : 0,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-                overflow: "visible",
-              }}
+              
             >
               <GoogleTextInput
                 icon={icons.map}
                 initialLocation={destinationAddress || ""}
-                containerStyle="bg-white rounded-xl border border-gray-100"
+                containerStyle="bg-white rounded-xl border-2 shadow-lg border-gray-100"
                 textInputBackgroundColor="#fff"
                 handlePress={handleToLocation}
                 placeholder={language === 'ar' ? "أدخل الوجهة" : "Enter destination"}
@@ -1791,21 +1778,15 @@ const RideCreationScreen = () => {
                 {language === 'ar' ? "الشارع" : "Street"}
               </Text>
               <View
-                className="flex-row items-center rounded-xl p-3 bg-white border border-gray-100 shadow-sm"
-                style={{
-                  elevation: Platform.OS === "android" ? 8 : 0,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                }}
+                className="flex-row items-center rounded-xl p-3 bg-white border-2 border-gray-100 shadow-sm"
+                
               >
                 <Image source={icons.street} className={`w-7 h-7 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                 <TextInput
                   value={destinationStreet}
                   onChangeText={setDestinationStreet}
                   placeholder={language === 'ar' ? "أدخل اسم الشارع" : "Enter street name"}
-                  className={`flex-1 ${isRTL ? 'text-right mr-5 ml-2.5' : 'text-left ml-5 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
+                  className={`flex-1  ${isRTL ? 'text-right mr-1 ml-2.5' : 'text-left ml-1 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
                   placeholderTextColor="#9CA3AF"
                   autoCorrect={false}
                   autoCapitalize="none"
@@ -1888,7 +1869,13 @@ const RideCreationScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <View className="py-4 px-4">
+      <Header 
+        title={language === 'ar' ? "إنشاء رحلة" : "Create Ride"} 
+        showSideMenu={false}
+        showProfileImage={false}
+      />
+      
+      <View className="px-4 py-4">
         <StepIndicator
           customStyles={{
             ...stepIndicatorStyles,

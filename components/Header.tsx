@@ -41,12 +41,17 @@ interface HeaderProps {
   profileImageUrl?: string | null;
   title?: string;
   showProfileImage?: boolean;
+  showSideMenu?: boolean;
 }
 
-export default function Header({ profileImageUrl, title, showProfileImage = true }: HeaderProps) {
-  const { t, isRTL } = useLanguage();
+export default function Header({ profileImageUrl, title, showProfileImage = true, showSideMenu = true }: HeaderProps) {
+  const { t, language, isRTL } = useLanguage();
   const { unreadCount } = useNotifications();
   const navigation = useNavigation<DrawerNavigationProp<any>>();
+
+  const handleBackPress = () => {
+    router.back();
+  };
 
   return (
     <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
@@ -84,21 +89,39 @@ export default function Header({ profileImageUrl, title, showProfileImage = true
           <View className="absolute left-0 right-0 items-center">
             <Text className={`text-xl font-CairoBold text-gray-900`}>{title}</Text>
           </View>
-          <TouchableOpacity
-            onPress={() => navigation.openDrawer()}
-            className="w-10 h-10 items-center justify-center"
-          >
-            <CustomMenuIcon isRTL={isRTL} />
-          </TouchableOpacity>
+          {showSideMenu ? (
+            <TouchableOpacity
+              onPress={() => navigation.openDrawer()}
+              className="w-10 h-10 items-center justify-center"
+            >
+              <CustomMenuIcon isRTL={isRTL} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={handleBackPress}
+              className="w-10 h-10 items-center justify-center"
+            >
+              <MaterialIcons name="arrow-forward" size={24} color="#374151" />
+            </TouchableOpacity>
+          )}
         </>
       ) : (
         <>
-          <TouchableOpacity
-            onPress={() => navigation.openDrawer()}
-            className="w-10 h-10 items-center justify-center"
-          >
-            <CustomMenuIcon isRTL={isRTL} />
-          </TouchableOpacity>
+          {showSideMenu ? (
+            <TouchableOpacity
+              onPress={() => navigation.openDrawer()}
+              className="w-10 h-10 items-center justify-center"
+            >
+              <CustomMenuIcon isRTL={isRTL} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={handleBackPress}
+              className="w-10 h-10 items-center justify-center"
+            >
+              <MaterialIcons name="arrow-back" size={24} color="#374151" />
+            </TouchableOpacity>
+          )}
           <View className="absolute left-0 right-0 items-center">
             <Text className="text-xl font-bold text-gray-900">{title || t.Home}</Text>
           </View>

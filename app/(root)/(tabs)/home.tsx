@@ -12,7 +12,7 @@ import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
 import { useDriverStore } from '@/store';
 import { Ride } from "@/types/type";
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text, View } from "react-native";
@@ -80,6 +80,8 @@ export default function Home() {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const navigation = useNavigation<DrawerNavigationProp<any>>();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [inProgressRides, setInProgressRides] = useState<Ride[]>([]);
+
   const openDrawer = () => {
     navigation.dispatch(DrawerActions.openDrawer());
   };
@@ -200,6 +202,47 @@ export default function Home() {
     requestLocation();
   }, [t]);
 
+  const fetchInProgressRides = async () => {
+    if (!user?.id || !isDriver) return;
+    
+    try {
+      const ridesRef = collection(db, 'rides');
+      const q = query(
+        ridesRef,
+        where('driver_id', '==', user.id),
+        where('status', '==', 'in-progress'),
+        orderBy('created_at', 'desc')
+      );
+      
+      const snapshot = await getDocs(q);
+      const rides: Ride[] = [];
+      
+      snapshot.forEach((doc) => {
+        rides.push({ id: doc.id, ...doc.data() } as Ride);
+      });
+      
+      setInProgressRides(rides);
+    } catch (error) {
+      console.error('Error fetching in-progress rides:', error);
+    }
+  };
+
+  // Fetch in-progress rides when driver status changes
+  useEffect(() => {
+    if (isDriver && user?.id) {
+      fetchInProgressRides();
+    }
+  }, [isDriver, user?.id]);
+
+  // Refresh in-progress rides when screen focuses
+  useFocusEffect(
+    useCallback(() => {
+      if (isDriver && user?.id) {
+        fetchInProgressRides();
+      }
+    }, [isDriver, user?.id])
+  );
+
   const onRefresh = async () => {
     setRefreshing(true);
     try {
@@ -215,6 +258,11 @@ export default function Home() {
       
       setUserLocation(newLocation);
       await AsyncStorage.setItem('userLocation', JSON.stringify(newLocation));
+      
+      // Also refresh in-progress rides for drivers
+      if (isDriver && user?.id) {
+        await fetchInProgressRides();
+      }
     } catch (err) {
       console.error("Refresh failed:", err);
     } finally {
@@ -316,6 +364,77 @@ export default function Home() {
                   </Text>
                 </View>
               </TouchableOpacity>
+            )}
+
+            {/* In-Progress Rides Section for Drivers */}
+            {isDriver && inProgressRides.length > 0 && (
+              <>
+                <View className={`flex-row items-center mt-5 mb-3 w-full px-3 ${language === 'ar' ? 'flex-row-reverse justify-between' : 'flex-row justify-between'}`}>
+                  <Text className={`text-xl ${language === 'ar' ? 'font-CairoBold text-right' : 'font-JakartaBold text-left'}`}>
+                    {language === 'ar' ? 'الرحلات الحالية' : 'Current Rides'}
+                  </Text>
+                  <View className="bg-orange-500 w-7 h-7 items-center justify-center rounded-full">
+                    <Text className={`text-white text-sm ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
+                      {inProgressRides.length}
+                    </Text>
+                  </View>
+                </View>
+                
+                <FlatList
+                  data={inProgressRides}
+                  renderItem={({ item: ride }) => (
+                    <TouchableOpacity
+                      key={ride.id}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        router.push(`/(root)/ride-details/${ride.id}`);
+                      }}
+                      className="bg-white mx-3 mb-3 p-4 rounded-2xl shadow-lg"
+                      style={{
+                        elevation: 3,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 3.84,
+                      }}
+                    >
+                      <View className={`flex-row items-center justify-between ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <View className="flex-1">
+                          <View className={`flex-row items-center mb-2 ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
+                            <View className="bg-green-100 px-2 py-1 rounded-full">
+                              <Text className={`text-green-600 text-xs ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
+                                {language === 'ar' ? 'قيد التقدم' : 'In Progress'}
+                              </Text>
+                            </View>
+                            <Text className={`text-gray-500 text-sm ${language === 'ar' ? 'font-CairoBold mr-2' : 'font-JakartaBold ml-2'}`}>
+                              {ride.ride_datetime}
+                            </Text>
+                          </View>
+                          <Text className={`text-gray-900 text-lg mb-1 ${language === 'ar' ? 'font-CairoBold text-right' : 'font-CairoBold text-left'}`}>
+                            {ride.destination_address}
+                          </Text>
+                          <Text className={`text-gray-600 text-sm ${language === 'ar' ? 'font-CairoBold text-right' : 'font-CairoRegular text-left'}`}>
+                            {ride.origin_address}
+                          </Text>
+                          <Text className={`text-orange-500 text-sm mt-1 ${language === 'ar' ? 'font-CairoBold text-right' : 'font-JakartaBold text-left'}`}>
+                            {language === 'ar' ? `المقاعد المتاحة: ${ride.available_seats}` : `Available seats: ${ride.available_seats}`}
+                          </Text>
+                        </View>
+                        <View className={`items-center ${language === 'ar' ? 'ml-3' : 'mr-3'}`}>
+                          <MaterialIcons name="navigation" size={24} color="#f97316" />
+                          <Text className={`text-orange-500 text-xs mt-1 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'}`}>
+                            {language === 'ar' ? 'انتقل' : 'Navigate'}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  keyExtractor={(item) => item.id}
+                  showsVerticalScrollIndicator={false}
+                  horizontal={false}
+                  contentContainerStyle={{ paddingHorizontal: 0 }}
+                />
+              </>
             )}
 
             {/* Suggested Rides and Available Rides Side by Side */}

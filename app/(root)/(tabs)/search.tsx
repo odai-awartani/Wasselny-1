@@ -19,7 +19,7 @@ import debounce from 'lodash/debounce'
 const MAX_DISTANCE_KM = 500
 const MIN_DISTANCE_KM = 1
 const RIDES_PER_PAGE = 10
-const STATUS_OPTIONS = ['all', 'available', 'pending', 'ended']
+const STATUS_OPTIONS = ['all', 'available', 'pending', 'ended', 'cancelled', 'in-progress', 'completed']
 const GENDER_OPTIONS = ['any', 'male', 'female']
 const RECURRING_OPTIONS = ['all', 'recurring', 'nonrecurring']
 
@@ -78,7 +78,9 @@ async function fetchDriverImage(driverId: string): Promise<string | null> {
     const userDoc = await getDoc(doc(db, 'users', driverId));
     if (userDoc.exists()) {
       const userData = userDoc.data();
+
       return userData.driver?.profile_image_url || null;
+
     }
   } catch (err) {
     // Ignore
@@ -419,7 +421,7 @@ const Search = () => {
       onBackdropPress={() => setShowFilters(false)}
       style={{ justifyContent: 'flex-end', margin: 0 }}
     >
-      <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+      <View className="bg-white rounded-t-3xl p-6 max-h-[92%]">
         <View className="flex-row justify-between items-center mb-6">
           <Text className={`text-xl font-CairoBold ${language === 'ar' ? 'text-right' : 'text-left'}`}>
             {language === 'ar' ? 'تصفية النتائج' : 'Filter Results'}
@@ -518,7 +520,11 @@ const Search = () => {
                       ? 'متاح'
                       : status === 'pending'
                       ? 'قيد الانتظار'
-                      : 'منتهي'
+                      : status === 'in-progress'
+                      ? 'قيد الانتظار'
+                      : status === 'completed'
+                      ? 'منتهي'
+                      : 'ملغي'
                     : status.charAt(0).toUpperCase() + status.slice(1)}
                 </Text>
               </TouchableOpacity>
@@ -691,6 +697,9 @@ const Search = () => {
       const statusColor = item.status === 'available' ? 'bg-green-50 text-green-600' : 
                          item.status === 'pending' ? 'bg-yellow-50 text-yellow-600' : 
                          item.status === 'ended' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-700'
+                         item.status === 'cancelled' ? 'bg-red-50 text-red-600' :
+                         item.status === 'in-progress' ? 'bg-blue-50 text-blue-600' :
+                         item.status === 'completed' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-700'
 
       return (
         <TouchableOpacity
@@ -705,8 +714,12 @@ const Search = () => {
             <View className={`px-2 py-1 rounded-full ${statusColor}`}>
               <Text className={`text-xs ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'}`}>
                 {item.status === 'ended' ? (language === 'ar' ? 'منتهي' : 'Ended') :
+                 item.status === 'cancelled' ? (language === 'ar' ? 'ملغي' : 'Cancelled') :
+                 item.status === 'in-progress' ? (language === 'ar' ? 'قيد الانتظار' : 'Pending') :
+                 item.status === 'completed' ? (language === 'ar' ? 'منتهي' : 'Ended') :
+                 item.status === 'available' ? (language === 'ar' ? 'متاح' : 'Available') :
                  item.status === 'pending' ? (language === 'ar' ? 'قيد الانتظار' : 'Pending') :
-                 (language === 'ar' ? 'متاح' : 'Available')}
+                 (language === 'ar' ? 'متاح' : 'Available')  }
               </Text>
             </View>
           </View>
@@ -717,7 +730,7 @@ const Search = () => {
               className={`w-10 h-10 rounded-full ${language === 'ar' ? 'ml-3' : 'mr-3'}`}
             />
             <View className={language === 'ar' ? 'items-end' : 'items-start'}>
-              <Text className={`text-base ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'} ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+              <Text className={`text-base mt-5 ${language === 'ar' ? 'font-CairoBold' : 'font-JakartaBold'} ${language === 'ar' ? 'text-right' : 'text-left'}`}>
                 {language === 'ar' ? 'السائق' : 'Driver'}
               </Text>
               <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'text-right' : 'text-left'}`}>
@@ -733,7 +746,7 @@ const Search = () => {
                 <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'ml-2' : 'mr-2'}`}>
                   {language === 'ar' ? 'من' : 'From'}:
                 </Text>
-                <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-CairoMedium'} flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
                   {item.origin}
                 </Text>
               </View>
@@ -741,9 +754,9 @@ const Search = () => {
                 <View key={index} className={`flex-row items-center mb-1 ${language === 'ar' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <Image source={icons.map} resizeMode="contain" tintColor="#F79824" className={`w-5 h-5 ${language === 'ar' ? 'ml-1' : 'mr-1'}`} />
                   <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'ml-2' : 'mr-2'}`}>
-                    {language === 'ar' ? 'محطة' : 'Stop'} {index + 1}:
+                    {language === 'ar' ? 'محطة' : 'Point'} {index + 1}:
                   </Text>
-                  <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                  <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-CairoMedium'} flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
                     {waypoint.address}
                   </Text>
                 </View>
@@ -753,7 +766,7 @@ const Search = () => {
                 <Text className={`text-sm text-gray-500 ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} ${language === 'ar' ? 'ml-2' : 'mr-2'}`}>
                   {language === 'ar' ? 'إلى' : 'To'}:
                 </Text>
-                <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-JakartaMedium'} flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
+                <Text className={`text-base ${language === 'ar' ? 'font-CairoMedium' : 'font-CairoMedium'} flex-1 ${language === 'ar' ? 'text-right' : 'text-left'}`} numberOfLines={1}>
                   {item.destination}
                 </Text>
               </View>
@@ -862,7 +875,7 @@ const Search = () => {
           <View className="flex-1 flex-row items-center bg-gray-50 rounded-full px-4 py-2 mr-2">
             <Image source={icons.search} className="w-5 h-5" tintColor="#6B7280" />
             <TextInput
-              placeholder={language === 'ar' ? 'ابحث عن رحلات أو سائقين' : 'Search rides or drivers'}
+              placeholder={language === 'ar' ? 'ابحث عن رحلات  ' : 'Search for rides'}
               value={searchQuery}
               onChangeText={handleSearchInput}
               className={`flex-1 ${language === 'ar' ? 'text-right' : 'text-left'} font-CairoBold text-gray-700`}

@@ -126,9 +126,9 @@ export default function Notifications() {
         <View className="flex-row w-full justify-between items-center">
           <TouchableOpacity 
             onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+            className="w-10 h-10 items-center  pl-2 justify-center rounded-full bg-gray-100"
           >
-            <MaterialIcons name="arrow-back-ios" size={20} color="#374151" />
+            <MaterialIcons name="arrow-back-ios"  size={20} color="#374151" />
           </TouchableOpacity>
           <View className="flex-row items-center">
             <Text className="text-2xl font-CairoBold text-gray-900">الإشعارات</Text>
