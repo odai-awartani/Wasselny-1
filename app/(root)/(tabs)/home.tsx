@@ -445,6 +445,7 @@ export default function Home() {
                 </Text>
               </View>
               <View className={`${language === 'ar' ? 'items-start' : 'items-end'}`}>
+                {isDriver && 
                 <TouchableOpacity
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -472,11 +473,11 @@ export default function Home() {
                     }}
                 >
                     <MaterialIcons name="add" size={20} color="#666666" />
-                    <Text className={`text-secondary-700 text-sm ${language === 'ar' ? 'mr-1 font-CairoBold' : 'ml-1 font-JakartaBold'} mt-1`}>
+                    <Text className={`text-secondary-700 text-sm ${language === 'ar' ? 'mr-1 font-CairoBold' : 'ml-1 font-JakartaBold'}`}>
                       {t.newRide}
                     </Text>
                   </LinearGradient>
-                </TouchableOpacity>
+                </TouchableOpacity>}
               </View>
             </View>
             <SuggestedRides key={refreshKey} refreshKey={refreshKey} />

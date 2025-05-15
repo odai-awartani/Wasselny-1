@@ -85,9 +85,9 @@ export default function SideMenu(props: DrawerContentComponentProps) {
   };
 
   return (
-    <DrawerContentScrollView  {...props}>
-     
-        {/* User Info Section */}
+    <View className="flex-1 mt-10 bg-white">
+      {/* Fixed Profile Section */}
+      <View className="bg-white">
         <View className="mt-2 mb-6 items-center w-full">
           <TouchableOpacity 
             onPress={() => router.push('/(root)/profilePage')}
@@ -112,16 +112,19 @@ export default function SideMenu(props: DrawerContentComponentProps) {
         </View>
 
         {/* Decorative Orange Line */}
-        <View className="h-[6px] w-full rounded bg-orange-100 mb-4" />
- <ScrollView
+        <View className="h-[6px] w-full bg-orange-100 mb-4" />
+      </View>
+
+      {/* Scrollable Content */}
+      <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
           backgroundColor: '#fff',
           paddingHorizontal: 18,
-          paddingTop: 5,
+          paddingTop: 2,
           paddingBottom: 5,
         }}
-        className="rounded-tr-[22px] rounded-br-[22px]"
+        className="rounded-tr-[2px] rounded-br-[22px]"
       >
         {/* Account Section */}
         <Text className={`text-gray-400 text-xs mb-2 mt-2 font-semibold tracking-wide ${isRTL ? 'text-right' : 'text-left'}`}>{t.account}</Text>
@@ -326,6 +329,6 @@ export default function SideMenu(props: DrawerContentComponentProps) {
           <Text className={`text-base font-bold text-red-600 ${isRTL ? 'text-right' : 'text-left'}`}>{t.logout}</Text>
         </TouchableOpacity>
       </ScrollView>
-    </DrawerContentScrollView>
+    </View>
   );
 }

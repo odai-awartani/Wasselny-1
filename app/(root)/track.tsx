@@ -641,6 +641,7 @@ export default function Track() {
                 {isRTL ? 'إلغاء' : 'Cancel'}
               </Text>
             </TouchableOpacity>
+            
             <TouchableOpacity 
               style={[
                 styles.actionButton,
@@ -649,8 +650,11 @@ export default function Track() {
               onPress={() => {
                 if (selectedUser) {
                   startLocationSharing();
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  
                 }
               }}
+              
               disabled={!selectedUser}
             >
               <Text style={[
@@ -658,6 +662,7 @@ export default function Track() {
                 !selectedUser && styles.disabledButtonText
               ]}>
                 {isRTL ? 'بدء المشاركة' : 'Start Sharing'}
+                
               </Text>
             </TouchableOpacity>
           </View>

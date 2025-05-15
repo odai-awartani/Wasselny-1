@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
+  KeyboardAvoidingView,
 } from "react-native";
 import StepIndicator from "react-native-step-indicator";
 import GoogleTextInput from "@/components/GoogleTextInput";
@@ -31,6 +32,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLanguage } from '@/context/LanguageContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import Header from "./Header";
+import { Circle, Svg } from 'react-native-svg';
+
 
 interface Location {
   latitude: number;
@@ -98,14 +101,13 @@ const stepIndicatorStyles = {
   stepIndicatorFinishedColor: "#f97316",
   stepIndicatorUnFinishedColor: "#d1d5db",
   stepIndicatorCurrentColor: "#ffffff",
-  stepIndicatorLabelFontSize: 14,
-  currentStepIndicatorLabelFontSize: 14,
+  stepIndicatorLabelFontSize: 16,
+  currentStepIndicatorLabelFontSize: 16,
   stepIndicatorLabelCurrentColor: "#f97316",
   stepIndicatorLabelFinishedColor: "#ffffff",
   stepIndicatorLabelUnFinishedColor: "#6b7280",
   labelColor: "#6b7280",
-  
-  labelSize: 14,
+  labelSize: 16,
   currentStepLabelColor: "#f97316",
   labelAlign: "center",
 };
@@ -349,6 +351,14 @@ const RideCreationScreen = () => {
     
     return dates;
   }, [days]);
+
+  const radius = 30;
+const strokeWidth = 5;
+const normalizedRadius = radius - strokeWidth / 2;
+const circumference = 2 * Math.PI * normalizedRadius;
+
+const progress = (currentStep + 1) / steps.length;
+const strokeDashoffset = circumference - progress * circumference;
 
   const handleDateConfirm = useCallback(
     (date: Date) => {
@@ -891,189 +901,46 @@ const RideCreationScreen = () => {
         ];
 
         return (
-          <View style={{ flex: 1 }}>
-            <FlatList
-              data={step0Data}
-              renderItem={renderStep0Item}
-              keyExtractor={(item, index) => `${item.type}-${index}`}
-              contentContainerStyle={{
-                paddingHorizontal: 16,
-                paddingBottom: insets.bottom + 100,
-              }}
-              keyboardShouldPersistTaps="handled"
-            />
-            {/* Floating Action Buttons */}
-            <View className="flex-row justify-center px-8 my-6 ">
-              <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => animateButton(nextButtonScale, handleNext)}
-                  disabled={isLoading}
-                >
-                  <LinearGradient
-                    colors={["#f97316", "#ea580c"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{
-                      width: 350,
-                      height: 70,
-                      borderRadius: 35,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      elevation: Platform.OS === "android" ? 8 : 0,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 4.65,
-                    }}
-                  >
-                    <View className="flex-row items-center justify-center">
-                    <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "التالي" : "Next"}</Text>
-                    <Image source={icons.goArrow} style={{ width: 24, height: 24, tintColor: "#fff", marginTop: 0 }} />
-                    
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </Animated.View>
-            </View>
-          </View>
+          <FlatList
+            data={step0Data}
+            renderItem={renderStep0Item}
+            keyExtractor={(item, index) => `${item.type}-${index}`}
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              paddingBottom: 100, // Add padding for bottom buttons
+            }}
+            keyboardShouldPersistTaps="handled"
+          />
         );
       case 1:
         return (
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              paddingBottom: insets.bottom + 100,
+              paddingHorizontal: 16,
+              paddingBottom: 100, // Add padding for bottom buttons
             }}
             keyboardShouldPersistTaps="handled"
-            className="h-[72%]"
           >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View className="px-4 w-full">
-                <View className="mb-3">
-                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} pt-5 mb-2 text-gray-800`}>
-                    {isRecurring 
-                      ? (language === 'ar' ? "تاريخ بداية الرحلة" : "Trip Start Date") 
-                      : (language === 'ar' ? "تاريخ الرحلة" : "Trip Date")}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setDatePickerVisible(true);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View 
-                      className="bg-white rounded-xl border border-gray-100 p-3 flex-row items-center justify-between shadow-sm"
-                      style={{
-                        elevation: Platform.OS === "android" ? 6 : 0,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.15,
-                        shadowRadius: 3,
-                        overflow: "visible",
-                      }}
-                    >
-                      <Text className={`flex-1 ${isRTL ? 'text-right' : 'text-left'} text-gray-700 font-CairoRegular`}>
-                        {selectedDateRange.startDate 
-                          ? formatDate(selectedDateRange.startDate) 
-                          : (language === 'ar' ? "اختر التاريخ" : "Choose date")}
-                      </Text>
-                      <Image source={icons.calendar} className="w-5 h-5" />
-                    </View>
-                  </TouchableOpacity>
-                </View>
-                <View className="mb-3">
-                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
-                    {language === 'ar' ? "وقت الرحلة" : "Trip Time"}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setTimePickerVisible(true);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View 
-                      className="bg-white rounded-xl border border-gray-100 p-3 flex-row items-center justify-between shadow-sm"
-                      style={{
-                        elevation: Platform.OS === "android" ? 6 : 0,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.15,
-                        shadowRadius: 3,
-                        overflow: "visible",
-                      }}
-                    >
-                      <Text className={`flex-1 ${isRTL ? 'text-right' : 'text-left'} text-gray-700 font-CairoRegular`}>
-                        {tripTime || (language === 'ar' ? "اختر الوقت" : "Choose time")}
-                      </Text>
-                      <Image source={icons.clock} className="w-5 h-5" />
-                    </View>
-                  </TouchableOpacity>
-                </View>
-                <View className="mb-3">
-                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
-                    {language === 'ar' ? "حدد أيام الرحلة" : "Select Trip Days"}
-                  </Text>
-                  <View className="flex-row flex-wrap justify-between">
-                    {days.map(renderDayButton)}
-                  </View>
-                </View>
-                <View className="mb-3">
-                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
-                    {language === 'ar' ? "عدد المقاعد المتاحة" : "Available Seats"}
-                  </Text>
-                  <View className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm"
-                    style={{
-                      elevation: Platform.OS === "android" ? 6 : 0,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 3,
-                      overflow: "visible",
-                    }}
-                  >
-                    <TextInput
-                      className={`${isRTL ? 'text-right' : 'text-left'} font-CairoRegular text-gray-700`}
-                      value={availableSeats}
-                      onChangeText={handleSeatsChange}
-                      placeholder={language === 'ar' 
-                        ? `حدد عدد المقاعد (1-${carInfo?.seats || 25})` 
-                        : `Specify number of seats (1-${carInfo?.seats || 25})`
-                      }
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                      autoCorrect={false}
-                      autoCapitalize="none"
-                      maxLength={2}
-                      textAlign={isRTL ? 'right' : 'left'}
-                    />
-                  </View>
-                  {carInfo && (
-                    <Text className={`text-sm text-gray-500 ${isRTL ? 'text-right' : 'text-left'} mt-1 font-CairoRegular`}>
-                      {language === 'ar' 
-                        ? `عدد مقاعد سيارتك: ${carInfo.seats || 25} مقعد` 
-                        : `Your car seats: ${carInfo.seats || 25} seats`
-                      }
+              <View>
+                <View className="w-full">
+                  <View className="mb-3">
+                    <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} pt-5 mb-2 text-gray-800`}>
+                      {isRecurring 
+                        ? (language === 'ar' ? "تاريخ بداية الرحلة" : "Trip Start Date") 
+                        : (language === 'ar' ? "تاريخ الرحلة" : "Trip Date")}
                     </Text>
-                  )}
-                </View>
-                <View className="mb-3">
-                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
-                    {language === 'ar' ? "الجنس المطلوب" : "Required Gender"}
-                  </Text>
-                  <View className="flex-row flex-wrap justify-between">
-                    {genders.map((gender) => (
-                      <TouchableOpacity
-                        key={gender}
-                        className={`p-3 mb-2 rounded-xl border ${
-                          selectedGender === gender
-                            ? "bg-orange-500 border-orange-500"
-                            : "bg-white border-gray-100"
-                        }`}
+                    <TouchableOpacity
+                      onPress={() => {
+                        setDatePickerVisible(true);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View 
+                        className="bg-white rounded-xl border border-gray-100 p-3 flex-row items-center justify-between shadow-sm"
                         style={{
-                          width: "30%",
                           elevation: Platform.OS === "android" ? 6 : 0,
                           shadowColor: "#000",
                           shadowOffset: { width: 0, height: 2 },
@@ -1081,79 +948,508 @@ const RideCreationScreen = () => {
                           shadowRadius: 3,
                           overflow: "visible",
                         }}
-                        onPress={() => {
-                          setSelectedGender(gender);
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      >
+                        <Text className={`flex-1 ${isRTL ? 'text-right' : 'text-left'} text-gray-700 font-CairoRegular`}>
+                          {selectedDateRange.startDate 
+                            ? formatDate(selectedDateRange.startDate) 
+                            : (language === 'ar' ? "اختر التاريخ" : "Choose date")}
+                        </Text>
+                        <Image source={icons.calendar} className="w-5 h-5" />
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                  <View className="mb-3">
+                    <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                      {language === 'ar' ? "وقت الرحلة" : "Trip Time"}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setTimePickerVisible(true);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View 
+                        className="bg-white rounded-xl border border-gray-100 p-3 flex-row items-center justify-between shadow-sm"
+                        style={{
+                          elevation: Platform.OS === "android" ? 6 : 0,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.15,
+                          shadowRadius: 3,
+                          overflow: "visible",
                         }}
+                      >
+                        <Text className={`flex-1 ${isRTL ? 'text-right' : 'text-left'} text-gray-700 font-CairoRegular`}>
+                          {tripTime || (language === 'ar' ? "اختر الوقت" : "Choose time")}
+                        </Text>
+                        <Image source={icons.clock} className="w-5 h-5" />
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                  <View className="mb-3">
+                    <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                      {language === 'ar' ? "حدد أيام الرحلة" : "Select Trip Days"}
+                    </Text>
+                    <View className="flex-row flex-wrap justify-between">
+                      {days.map(renderDayButton)}
+                    </View>
+                  </View>
+                  <View className="mb-3">
+                    <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                      {language === 'ar' ? "عدد المقاعد المتاحة" : "Available Seats"}
+                    </Text>
+                    <View className="bg-white rounded-xl border border-gray-100 p-1 shadow-sm"
+                      style={{
+                        elevation: Platform.OS === "android" ? 6 : 0,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 3,
+                        overflow: "visible",
+                      }}
+                    >
+                      <TextInput
+                        className={`${isRTL ? 'text-right' : 'text-left'} font-CairoRegular text-gray-700`}
+                        value={availableSeats}
+                        onChangeText={handleSeatsChange}
+                        placeholder={language === 'ar' 
+                          ? `حدد عدد المقاعد (1-${carInfo?.seats || 25})` 
+                          : `Specify number of seats (1-${carInfo?.seats || 25})`
+                        }
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                        autoCorrect={false}
+                        autoCapitalize="none"
+                        maxLength={2}
+                        textAlign={isRTL ? 'right' : 'left'}
+                      />
+                    </View>
+                    {carInfo && (
+                      <Text className={`text-sm text-gray-500 ${isRTL ? 'text-right' : 'text-left'} mt-1 font-CairoRegular`}>
+                        {language === 'ar' 
+                          ? `عدد مقاعد سيارتك: ${carInfo.seats || 25} مقعد` 
+                          : `Your car seats: ${carInfo.seats || 25} seats`
+                        }
+                      </Text>
+                    )}
+                  </View>
+                  <View className="mb-3">
+                    <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                      {language === 'ar' ? "الجنس المطلوب" : "Required Gender"}
+                    </Text>
+                    <View className="flex-row flex-wrap justify-between">
+                      {genders.map((gender) => (
+                        <TouchableOpacity
+                          key={gender}
+                          className={`p-3 mb-2 rounded-xl border ${
+                            selectedGender === gender
+                              ? "bg-orange-500 border-orange-500"
+                              : "bg-white border-gray-100"
+                          }`}
+                          style={{
+                            width: "30%",
+                            elevation: Platform.OS === "android" ? 6 : 0,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.15,
+                            shadowRadius: 3,
+                            overflow: "visible",
+                          }}
+                          onPress={() => {
+                            setSelectedGender(gender);
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            className={`text-center font-CairoRegular ${
+                              selectedGender === gender ? "text-white" : "text-gray-700"
+                            }`}
+                          >
+                            {gender}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                  <View className="mb-3">
+                    <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
+                      {language === 'ar' ? "هل الرحلة متكررة؟" : "Is this a recurring trip?"}
+                    </Text>
+                    <View className="flex-row">
+                      <TouchableOpacity
+                        className={`p-3 mb-2 mr-2 rounded-xl border ${
+                          isRecurring ? "bg-orange-500 border-orange-500" : "bg-white border-gray-100"
+                        }`}
+                        style={{
+                          width: "49%",
+                          elevation: Platform.OS === "android" ? 6 : 0,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.15,
+                          shadowRadius: 3,
+                          overflow: "visible",
+                        }}
+                        onPress={() => toggleRecurring(true)}
                         activeOpacity={0.7}
                       >
                         <Text
                           className={`text-center font-CairoRegular ${
-                            selectedGender === gender ? "text-white" : "text-gray-700"
+                            isRecurring ? "text-white" : "text-gray-700"
                           }`}
                         >
-                          {gender}
+                          {language === 'ar' ? "نعم" : "Yes"}
                         </Text>
                       </TouchableOpacity>
-                    ))}
+                      <TouchableOpacity
+                        className={`p-3 mb-2 ml-2 rounded-xl border ${
+                          !isRecurring ? "bg-orange-500 border-orange-500" : "bg-white border-gray-100"
+                        }`}
+                        style={{
+                          width: "49%",
+                          elevation: Platform.OS === "android" ? 6 : 0,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.15,
+                          shadowRadius: 3,
+                          overflow: "visible",
+                        }}
+                        onPress={() => toggleRecurring(false)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          className={`text-center font-CairoRegular ${
+                            !isRecurring ? "text-white" : "text-gray-700"
+                          }`}
+                        >
+                          {language === 'ar' ? "لا" : "No"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
+                  {/* Floating Action Buttons
+                  <View className="flex-row justify-between px-4 mt-6">
+                    <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => animateButton(backButtonScale, handleBack)}
+                        disabled={isLoading}
+                      >
+                        <LinearGradient
+                          colors={["#333333", "#333333"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={{
+                            width: 160,
+                            height: 60,
+                            borderRadius: 30,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            elevation: Platform.OS === "android" ? 6 : 0,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 3 },
+                            shadowOpacity: 0.2,
+                            shadowRadius: 3,
+                          }}
+                        >
+                          <View className="flex-row items-center justify-center">
+                      <Text className="text-white font-CairoBold text-lg">{language === 'ar' ? "السابق" : "Back"}</Text>
+                      
+                      </View>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </Animated.View>
+                    <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => animateButton(nextButtonScale, handleNext)}
+                        disabled={isLoading}
+                      >
+                        <LinearGradient
+                          colors={["#f97316", "#ea580c"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={{
+                            width: 160,
+                            height: 60,
+                            borderRadius: 35,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            elevation: Platform.OS === "android" ? 8 : 0,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 4.65,
+                          }}
+                        >
+                          <View className="flex-row items-center justify-center">
+                      <Text className="text-white  font-CairoBold text-lg">{language === 'ar' ? "التالي" : "Next"}</Text>
+                      
+                      </View>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  </View> */}
                 </View>
-                <View className="mb-3">
-                  <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mb-2 text-gray-800`}>
-                    {language === 'ar' ? "هل الرحلة متكررة؟" : "Is this a recurring trip?"}
+              </View>
+            </TouchableWithoutFeedback>
+          </ScrollView>
+        );
+      case 2:
+        return (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              paddingBottom: 100, // Add padding for bottom buttons
+            }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View>
+              <View className="w-full">
+                <View className="mb-6">
+                  <Text className={`text-2xl font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mt-4 mb-2 text-gray-800`}>
+                    {language === 'ar' ? "قوانين السيارة" : "Car Rules"}
                   </Text>
-                  <View className="flex-row">
-                    <TouchableOpacity
-                      className={`p-3 mb-2 mr-2 rounded-xl border ${
-                        isRecurring ? "bg-orange-500 border-orange-500" : "bg-white border-gray-100"
-                      }`}
-                      style={{
-                        width: "49%",
-                        elevation: Platform.OS === "android" ? 6 : 0,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.15,
-                        shadowRadius: 3,
-                        overflow: "visible",
-                      }}
-                      onPress={() => toggleRecurring(true)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        className={`text-center font-CairoRegular ${
-                          isRecurring ? "text-white" : "text-gray-700"
-                        }`}
-                      >
-                        {language === 'ar' ? "نعم" : "Yes"}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      className={`p-3 mb-2 ml-2 rounded-xl border ${
-                        !isRecurring ? "bg-orange-500 border-orange-500" : "bg-white border-gray-100"
-                      }`}
-                      style={{
-                        width: "49%",
-                        elevation: Platform.OS === "android" ? 6 : 0,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.15,
-                        shadowRadius: 3,
-                        overflow: "visible",
-                      }}
-                      onPress={() => toggleRecurring(false)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        className={`text-center font-CairoRegular ${
-                          !isRecurring ? "text-white" : "text-gray-700"
-                        }`}
-                      >
-                        {language === 'ar' ? "لا" : "No"}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  <Text className={`text-sm font-CairoRegular ${isRTL ? 'text-right' : 'text-left'} text-gray-500 leading-5`}>
+                    {language === 'ar' 
+                      ? "حدد القوانين التي تريد تطبيقها في رحلتك لضمان رحلة مريحة وآمنة"
+                      : "Select the rules you want to apply in your trip to ensure a comfortable and safe journey"}
+                  </Text>
                 </View>
-                {/* Floating Action Buttons */}
+
+                <View className="space-y-3">
+                  <TouchableOpacity
+                    className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center p-4 rounded-2xl border-2 ${
+                      rules.noSmoking ? "bg-orange-50 border-orange-500" : "bg-white border-gray-100"
+                    }`}
+                    style={{
+                      elevation: Platform.OS === "android" ? (rules.noSmoking ? 5 : 2) : 0,
+                      shadowColor: rules.noSmoking ? "#f97316" : "#000",
+                      shadowOffset: { width: 0, height: rules.noSmoking ? 3 : 1 },
+                      shadowOpacity: rules.noSmoking ? 0.3 : 0.1,
+                      shadowRadius: rules.noSmoking ? 4.65 : 1.0,
+                      transform: [{ scale: rules.noSmoking ? 1.02 : 1 }],
+                    }}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      toggleRule("noSmoking");
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-center flex-1`}>
+                      <View 
+                        className={`w-10 h-10 rounded-xl ${isRTL ? 'ml-4' : 'mr-4'} justify-center items-center ${
+                          rules.noSmoking ? "bg-orange-100" : "bg-gray-50"
+                        }`}
+                        style={{
+                          elevation: Platform.OS === "android" ? 2 : 0,
+                          shadowColor: rules.noSmoking ? "#f97316" : "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.1,
+                          shadowRadius: 3,
+                        }}
+                      >
+                        <Image 
+                          source={icons.smoking} 
+                          className={`w-5 h-5 ${rules.noSmoking ? "tint-orange-500" : "tint-gray-400"}`}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text
+                          className={`text-base font-CairoBold ${isRTL ? 'text-right' : 'text-left'} ${
+                            rules.noSmoking ? "text-orange-500" : "text-gray-800"
+                          }`}
+                        >
+                          {language === 'ar' ? "بدون تدخين" : "No Smoking"}
+                        </Text>
+                        <Text
+                          className={`text-xs font-CairoRegular mt-0.5 ${isRTL ? 'text-right' : 'text-left'} ${
+                            rules.noSmoking ? "text-orange-400" : "text-gray-500"
+                          }`}
+                        >
+                          {language === 'ar' 
+                            ? "ممنوع التدخين في السيارة لضمان رحلة صحية"
+                            : "Smoking is not allowed in the car for a healthy trip"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View
+                      className={`w-6 h-6 rounded-full border-2 justify-center items-center ${
+                        rules.noSmoking ? "bg-orange-500 border-orange-500" : "border-gray-300"
+                      }`}
+                      style={{
+                        elevation: Platform.OS === "android" ? 2 : 0,
+                        shadowColor: rules.noSmoking ? "#f97316" : "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 3,
+                      }}
+                    >
+                      {rules.noSmoking && (
+                        <Image 
+                          source={icons.checkmark} 
+                          className="w-3.5 h-3.5 tint-white"
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center p-4 rounded-2xl border-2 ${
+                      rules.noChildren ? "bg-orange-50 border-orange-500" : "bg-white border-gray-100"
+                    }`}
+                    style={{
+                      elevation: Platform.OS === "android" ? (rules.noChildren ? 5 : 2) : 0,
+                      shadowColor: rules.noChildren ? "#f97316" : "#000",
+                      shadowOffset: { width: 0, height: rules.noChildren ? 3 : 1 },
+                      shadowOpacity: rules.noChildren ? 0.3 : 0.1,
+                      shadowRadius: rules.noChildren ? 4.65 : 1.0,
+                      transform: [{ scale: rules.noChildren ? 1.02 : 1 }],
+                    }}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      toggleRule("noChildren");
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-center flex-1`}>
+                      <View 
+                        className={`w-10 h-10 rounded-xl justify-center items-center ${isRTL ? 'ml-4' : 'mr-4'} ${
+                          rules.noChildren ? "bg-orange-100" : "bg-gray-50"
+                        }`}
+                        style={{
+                          elevation: Platform.OS === "android" ? 2 : 0,
+                          shadowColor: rules.noChildren ? "#f97316" : "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.1,
+                          shadowRadius: 3,
+                        }}
+                      >
+                        <Image 
+                          source={icons.children} 
+                          className={`w-5 h-5 ${rules.noChildren ? "tint-orange-500" : "tint-gray-400"}`}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text
+                          className={`text-base font-CairoBold ${isRTL ? 'text-right' : 'text-left'} ${
+                            rules.noChildren ? "text-orange-500" : "text-gray-800"
+                          }`}
+                        >
+                          {language === 'ar' ? "بدون أطفال" : "No Children"}
+                        </Text>
+                        <Text
+                          className={`text-xs font-CairoRegular mt-0.5 ${isRTL ? 'text-right' : 'text-left'} ${
+                            rules.noChildren ? "text-orange-400" : "text-gray-500"
+                          }`}
+                        >
+                          {language === 'ar' 
+                            ? "ممنوع اصطحاب الأطفال لضمان رحلة هادئة"
+                            : "Children are not allowed to ensure a quiet trip"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View
+                      className={`w-6 h-6 rounded-full border-2 justify-center items-center ${
+                        rules.noChildren ? "bg-orange-500 border-orange-500" : "border-gray-300"
+                      }`}
+                      style={{
+                        elevation: Platform.OS === "android" ? 2 : 0,
+                        shadowColor: rules.noChildren ? "#f97316" : "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 3,
+                      }}
+                    >
+                      {rules.noChildren && (
+                        <Image 
+                          source={icons.checkmark} 
+                          className="w-3.5 h-3.5 tint-white"
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center p-4 rounded-2xl border-2 ${
+                      rules.noMusic ? "bg-orange-50 border-orange-500" : "bg-white border-gray-100"
+                    }`}
+                    style={{
+                      elevation: Platform.OS === "android" ? (rules.noMusic ? 5 : 2) : 0,
+                      shadowColor: rules.noMusic ? "#f97316" : "#000",
+                      shadowOffset: { width: 0, height: rules.noMusic ? 3 : 1 },
+                      shadowOpacity: rules.noMusic ? 0.3 : 0.1,
+                      shadowRadius: rules.noMusic ? 4.65 : 1.0,
+                      transform: [{ scale: rules.noMusic ? 1.02 : 1 }],
+                    }}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      toggleRule("noMusic");
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-center flex-1`}>
+                      <View 
+                        className={`w-10 h-10 rounded-xl justify-center items-center ${isRTL ? 'ml-4' : 'mr-4'} ${
+                          rules.noMusic ? "bg-orange-100" : "bg-gray-50"
+                        }`}
+                        style={{
+                          elevation: Platform.OS === "android" ? 2 : 0,
+                          shadowColor: rules.noMusic ? "#f97316" : "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.1,
+                          shadowRadius: 3,
+                        }}
+                      >
+                        <Image 
+                          source={icons.music} 
+                          className={`w-5 h-5 ${rules.noMusic ? "tint-orange-500" : "tint-gray-400"}`}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text
+                          className={`text-base font-CairoBold ${isRTL ? 'text-right' : 'text-left'} ${
+                            rules.noMusic ? "text-orange-500" : "text-gray-800"
+                          }`}
+                        >
+                          {language === 'ar' ? "بدون أغاني" : "No Music"}
+                        </Text>
+                        <Text
+                          className={`text-xs font-CairoRegular mt-0.5 ${isRTL ? 'text-right' : 'text-left'} ${
+                            rules.noMusic ? "text-orange-400" : "text-gray-500"
+                          }`}
+                        >
+                          {language === 'ar' 
+                            ? "ممنوع تشغيل الموسيقى لضمان رحلة هادئة"
+                            : "Music is not allowed to ensure a quiet trip"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View
+                      className={`w-6 h-6 rounded-full border-2 justify-center items-center ${
+                        rules.noMusic ? "bg-orange-500 border-orange-500" : "border-gray-300"
+                      }`}
+                      style={{
+                        elevation: Platform.OS === "android" ? 2 : 0,
+                        shadowColor: rules.noMusic ? "#f97316" : "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 3,
+                      }}
+                    >
+                      {rules.noMusic && (
+                        <Image 
+                          source={icons.checkmark} 
+                          className="w-3.5 h-3.5 tint-white"
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Floating Action Buttons
                 <View className="flex-row justify-between px-4 mt-6">
                   <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
                     <TouchableOpacity
@@ -1178,11 +1474,10 @@ const RideCreationScreen = () => {
                           shadowRadius: 3,
                         }}
                       >
-                        <View className="flex-row items-center justify-center">
-                    <Text className="text-white font-CairoBold text-lg">{language === 'ar' ? "السابق" : "Back"}</Text>
-                    
-                    </View>
-                      </LinearGradient>
+                        <View className="flex-row items-center justify-center"> 
+                          <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "السابق" : "Back"}</Text>
+                        </View>                    
+                        </LinearGradient>
                     </TouchableOpacity>
                   </Animated.View>
                   <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
@@ -1192,13 +1487,13 @@ const RideCreationScreen = () => {
                       disabled={isLoading}
                     >
                       <LinearGradient
-                        colors={["#f97316", "#ea580c"]}
+                        colors={["#38A169", "#38A169"]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={{
                           width: 160,
                           height: 60,
-                          borderRadius: 35,
+                          borderRadius: 30,
                           justifyContent: "center",
                           alignItems: "center",
                           elevation: Platform.OS === "android" ? 8 : 0,
@@ -1208,329 +1503,13 @@ const RideCreationScreen = () => {
                           shadowRadius: 4.65,
                         }}
                       >
-                        <View className="flex-row items-center justify-center">
-                    <Text className="text-white  font-CairoBold text-lg">{language === 'ar' ? "التالي" : "Next"}</Text>
-                    
-                    </View>
+                        <View className="flex-row items-center justify-center"> 
+                          <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "انشاء الرحلة" : "Create Ride"}</Text>
+                        </View>
                       </LinearGradient>
                     </TouchableOpacity>
                   </Animated.View>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </ScrollView>
-        );
-      case 2:
-        return (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingBottom: insets.bottom + 100,
-            }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View className="px-4">
-              <View className="mb-6">
-                <Text className={`text-2xl font-CairoBold ${isRTL ? 'text-right' : 'text-left'} mt-4 mb-2 text-gray-800`}>
-                  {language === 'ar' ? "قوانين السيارة" : "Car Rules"}
-                </Text>
-                <Text className={`text-sm font-CairoRegular ${isRTL ? 'text-right' : 'text-left'} text-gray-500 leading-5`}>
-                  {language === 'ar' 
-                    ? "حدد القوانين التي تريد تطبيقها في رحلتك لضمان رحلة مريحة وآمنة"
-                    : "Select the rules you want to apply in your trip to ensure a comfortable and safe journey"}
-                </Text>
-              </View>
-
-              <View className="space-y-3">
-                <TouchableOpacity
-                  className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center p-4 rounded-2xl border-2 ${
-                    rules.noSmoking ? "bg-orange-50 border-orange-500" : "bg-white border-gray-100"
-                  }`}
-                  style={{
-                    elevation: Platform.OS === "android" ? (rules.noSmoking ? 5 : 2) : 0,
-                    shadowColor: rules.noSmoking ? "#f97316" : "#000",
-                    shadowOffset: { width: 0, height: rules.noSmoking ? 3 : 1 },
-                    shadowOpacity: rules.noSmoking ? 0.3 : 0.1,
-                    shadowRadius: rules.noSmoking ? 4.65 : 1.0,
-                    transform: [{ scale: rules.noSmoking ? 1.02 : 1 }],
-                  }}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    toggleRule("noSmoking");
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-center flex-1`}>
-                    <View 
-                      className={`w-10 h-10 rounded-xl ${isRTL ? 'ml-4' : 'mr-4'} justify-center items-center ${
-                        rules.noSmoking ? "bg-orange-100" : "bg-gray-50"
-                      }`}
-                      style={{
-                        elevation: Platform.OS === "android" ? 2 : 0,
-                        shadowColor: rules.noSmoking ? "#f97316" : "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 3,
-                      }}
-                    >
-                      <Image 
-                        source={icons.smoking} 
-                        className={`w-5 h-5 ${rules.noSmoking ? "tint-orange-500" : "tint-gray-400"}`}
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text
-                        className={`text-base font-CairoBold ${isRTL ? 'text-right' : 'text-left'} ${
-                          rules.noSmoking ? "text-orange-500" : "text-gray-800"
-                        }`}
-                      >
-                        {language === 'ar' ? "بدون تدخين" : "No Smoking"}
-                      </Text>
-                      <Text
-                        className={`text-xs font-CairoRegular mt-0.5 ${isRTL ? 'text-right' : 'text-left'} ${
-                          rules.noSmoking ? "text-orange-400" : "text-gray-500"
-                        }`}
-                      >
-                        {language === 'ar' 
-                          ? "ممنوع التدخين في السيارة لضمان رحلة صحية"
-                          : "Smoking is not allowed in the car for a healthy trip"}
-                      </Text>
-                    </View>
-                  </View>
-                  <View
-                    className={`w-6 h-6 rounded-full border-2 justify-center items-center ${
-                      rules.noSmoking ? "bg-orange-500 border-orange-500" : "border-gray-300"
-                    }`}
-                    style={{
-                      elevation: Platform.OS === "android" ? 2 : 0,
-                      shadowColor: rules.noSmoking ? "#f97316" : "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 3,
-                    }}
-                  >
-                    {rules.noSmoking && (
-                      <Image 
-                        source={icons.checkmark} 
-                        className="w-3.5 h-3.5 tint-white"
-                      />
-                    )}
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center p-4 rounded-2xl border-2 ${
-                    rules.noChildren ? "bg-orange-50 border-orange-500" : "bg-white border-gray-100"
-                  }`}
-                  style={{
-                    elevation: Platform.OS === "android" ? (rules.noChildren ? 5 : 2) : 0,
-                    shadowColor: rules.noChildren ? "#f97316" : "#000",
-                    shadowOffset: { width: 0, height: rules.noChildren ? 3 : 1 },
-                    shadowOpacity: rules.noChildren ? 0.3 : 0.1,
-                    shadowRadius: rules.noChildren ? 4.65 : 1.0,
-                    transform: [{ scale: rules.noChildren ? 1.02 : 1 }],
-                  }}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    toggleRule("noChildren");
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-center flex-1`}>
-                    <View 
-                      className={`w-10 h-10 rounded-xl justify-center items-center ${isRTL ? 'ml-4' : 'mr-4'} ${
-                        rules.noChildren ? "bg-orange-100" : "bg-gray-50"
-                      }`}
-                      style={{
-                        elevation: Platform.OS === "android" ? 2 : 0,
-                        shadowColor: rules.noChildren ? "#f97316" : "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 3,
-                      }}
-                    >
-                      <Image 
-                        source={icons.children} 
-                        className={`w-5 h-5 ${rules.noChildren ? "tint-orange-500" : "tint-gray-400"}`}
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text
-                        className={`text-base font-CairoBold ${isRTL ? 'text-right' : 'text-left'} ${
-                          rules.noChildren ? "text-orange-500" : "text-gray-800"
-                        }`}
-                      >
-                        {language === 'ar' ? "بدون أطفال" : "No Children"}
-                      </Text>
-                      <Text
-                        className={`text-xs font-CairoRegular mt-0.5 ${isRTL ? 'text-right' : 'text-left'} ${
-                          rules.noChildren ? "text-orange-400" : "text-gray-500"
-                        }`}
-                      >
-                        {language === 'ar' 
-                          ? "ممنوع اصطحاب الأطفال لضمان رحلة هادئة"
-                          : "Children are not allowed to ensure a quiet trip"}
-                      </Text>
-                    </View>
-                  </View>
-                  <View
-                    className={`w-6 h-6 rounded-full border-2 justify-center items-center ${
-                      rules.noChildren ? "bg-orange-500 border-orange-500" : "border-gray-300"
-                    }`}
-                    style={{
-                      elevation: Platform.OS === "android" ? 2 : 0,
-                      shadowColor: rules.noChildren ? "#f97316" : "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 3,
-                    }}
-                  >
-                    {rules.noChildren && (
-                      <Image 
-                        source={icons.checkmark} 
-                        className="w-3.5 h-3.5 tint-white"
-                      />
-                    )}
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} justify-between items-center p-4 rounded-2xl border-2 ${
-                    rules.noMusic ? "bg-orange-50 border-orange-500" : "bg-white border-gray-100"
-                  }`}
-                  style={{
-                    elevation: Platform.OS === "android" ? (rules.noMusic ? 5 : 2) : 0,
-                    shadowColor: rules.noMusic ? "#f97316" : "#000",
-                    shadowOffset: { width: 0, height: rules.noMusic ? 3 : 1 },
-                    shadowOpacity: rules.noMusic ? 0.3 : 0.1,
-                    shadowRadius: rules.noMusic ? 4.65 : 1.0,
-                    transform: [{ scale: rules.noMusic ? 1.02 : 1 }],
-                  }}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    toggleRule("noMusic");
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View className={`flex-row ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-center flex-1`}>
-                    <View 
-                      className={`w-10 h-10 rounded-xl justify-center items-center ${isRTL ? 'ml-4' : 'mr-4'} ${
-                        rules.noMusic ? "bg-orange-100" : "bg-gray-50"
-                      }`}
-                      style={{
-                        elevation: Platform.OS === "android" ? 2 : 0,
-                        shadowColor: rules.noMusic ? "#f97316" : "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 3,
-                      }}
-                    >
-                      <Image 
-                        source={icons.music} 
-                        className={`w-5 h-5 ${rules.noMusic ? "tint-orange-500" : "tint-gray-400"}`}
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text
-                        className={`text-base font-CairoBold ${isRTL ? 'text-right' : 'text-left'} ${
-                          rules.noMusic ? "text-orange-500" : "text-gray-800"
-                        }`}
-                      >
-                        {language === 'ar' ? "بدون أغاني" : "No Music"}
-                      </Text>
-                      <Text
-                        className={`text-xs font-CairoRegular mt-0.5 ${isRTL ? 'text-right' : 'text-left'} ${
-                          rules.noMusic ? "text-orange-400" : "text-gray-500"
-                        }`}
-                      >
-                        {language === 'ar' 
-                          ? "ممنوع تشغيل الموسيقى لضمان رحلة هادئة"
-                          : "Music is not allowed to ensure a quiet trip"}
-                      </Text>
-                    </View>
-                  </View>
-                  <View
-                    className={`w-6 h-6 rounded-full border-2 justify-center items-center ${
-                      rules.noMusic ? "bg-orange-500 border-orange-500" : "border-gray-300"
-                    }`}
-                    style={{
-                      elevation: Platform.OS === "android" ? 2 : 0,
-                      shadowColor: rules.noMusic ? "#f97316" : "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 3,
-                    }}
-                  >
-                    {rules.noMusic && (
-                      <Image 
-                        source={icons.checkmark} 
-                        className="w-3.5 h-3.5 tint-white"
-                      />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              </View>
-
-              {/* Floating Action Buttons */}
-              <View className="flex-row justify-between px-4 mt-6">
-                <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => animateButton(backButtonScale, handleBack)}
-                    disabled={isLoading}
-                  >
-                    <LinearGradient
-                      colors={["#333333", "#333333"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{
-                        width: 160,
-                        height: 60,
-                        borderRadius: 30,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        elevation: Platform.OS === "android" ? 6 : 0,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 3 },
-                        shadowOpacity: 0.2,
-                        shadowRadius: 3,
-                      }}
-                    >
-                      <View className="flex-row items-center justify-center"> 
-                        <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "السابق" : "Back"}</Text>
-                      </View>                    
-                      </LinearGradient>
-                  </TouchableOpacity>
-                </Animated.View>
-                <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => animateButton(nextButtonScale, handleNext)}
-                    disabled={isLoading}
-                  >
-                    <LinearGradient
-                      colors={["#38A169", "#38A169"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{
-                        width: 160,
-                        height: 60,
-                        borderRadius: 30,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        elevation: Platform.OS === "android" ? 8 : 0,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 4.65,
-                      }}
-                    >
-                      <View className="flex-row items-center justify-center"> 
-                        <Text className="text-white mr-2 font-CairoBold text-lg">{language === 'ar' ? "انشاء الرحلة" : "Create Ride"}</Text>
-                      </View>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </Animated.View>
+                </View> */}
               </View>
             </View>
           </ScrollView>
@@ -1586,7 +1565,6 @@ const RideCreationScreen = () => {
         return (
           <View className="my-4">
             <View className={`flex-row items-center mb-3 ${isRTL ? 'justify-end' : 'justify-start'}`}>
-            
               <Text className={`text-lg font-CairoBold ${isRTL ? 'text-right' : 'text-left'} text-gray-800`}>
                 {language === 'ar' ? "نقطة البداية" : "Starting Point"}
               </Text>
@@ -1605,13 +1583,11 @@ const RideCreationScreen = () => {
               <GoogleTextInput
                 icon={icons.target}
                 initialLocation={userAddress || ""}
-                // containerStyle="bg-white rounded-xl border border-gray-100"
                 containerStyle="bg-white rounded-xl border-2 shadow-lg border-gray-100"
                 textInputBackgroundColor="#fff"
                 handlePress={handleFromLocation}
                 placeholder={language === 'ar' ? "أدخل موقع البداية" : "Enter starting point"}
               />
-             
             </View>
             <View className="mt-2">
               <Text className={`text-base font-CairoBold mb-2 ${isRTL ? 'text-right' : 'text-left'} text-gray-800`}>
@@ -1619,14 +1595,13 @@ const RideCreationScreen = () => {
               </Text>
               <View
                 className="flex-row items-center rounded-xl p-3 bg-white border-2 border-gray-100 shadow-sm"
-               
               >
                 <Image source={icons.street} className={`w-7 h-7 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                 <TextInput
                   value={startStreet}
                   onChangeText={setStartStreet}
                   placeholder={language === 'ar' ? "أدخل اسم الشارع" : "Enter street name"}
-                  className={`flex-1  ${isRTL ? 'text-right mr-1 ml-2.5' : 'text-left ml-1 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
+                  className={`flex-1 ${isRTL ? 'text-right mr-1 ml-2.5' : 'text-left ml-1 mr-2.5'} bg-transparent pt-1 pb-2 font-CairoBold placeholder:font-CairoBold`}
                   placeholderTextColor="#9CA3AF"
                   autoCorrect={false}
                   autoCapitalize="none"
@@ -1876,18 +1851,130 @@ const RideCreationScreen = () => {
       />
       
       <View className="px-4 py-4">
-        <StepIndicator
-          customStyles={{
-            ...stepIndicatorStyles,
-            labelAlign: "center" as const,
-          }}
-          currentPosition={currentStep}
-          labels={steps}
-          direction="horizontal"
-          stepCount={steps.length}
-        />
+      <View className="flex-row items-center">
+        <View className="w-16 h-16 mr-3 relative justify-center items-center">
+          <Svg height="100%" width="100%" viewBox="0 0 64 64" className="absolute">
+            <Circle
+              stroke="#E5E7EB" // light gray background
+              fill="none"
+              cx="32"
+              cy="32"
+              r={normalizedRadius}
+              strokeWidth={strokeWidth}
+            />
+            <Circle
+              stroke="#F97316" // orange progress
+              fill="none"
+              cx="32"
+              cy="32"
+              r={normalizedRadius}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              rotation="-90"
+              origin="32,32"
+            />
+          </Svg>
+          <View className="absolute inset-0 justify-center items-center">
+            <Text className="text-orange-500 pt-1 text-lg font-CairoBold">
+              {currentStep + 1}/{steps.length}
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex pt-2">
+          <Text className="text-2xl font-CairoBold text-gray-800">
+            {steps[currentStep]}
+          </Text>
+          <Text className="text-base text-gray-500 font-CairoRegular">
+            {currentStep < steps.length - 1
+              ? `${language === 'ar' ? 'التالي' : 'Next'}: ${steps[currentStep + 1]}`
+              : language === 'ar' ? 'الخطوة الأخيرة' : 'Final Step'}
+          </Text>
+        </View>
       </View>
-      {renderStepContent()}
+    </View>
+
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1"
+      >
+        <View className="flex-1">
+          {renderStepContent()}
+        </View>
+
+        {/* Fixed Bottom Buttons */}
+        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4">
+          <View className="flex-row justify-between">
+            <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => animateButton(backButtonScale, handleBack)}
+                disabled={isLoading || currentStep === 0}
+              >
+                <LinearGradient
+                  colors={["#333333", "#333333"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    width: 160,
+                    height: 60,
+                    borderRadius: 30,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    elevation: Platform.OS === "android" ? 6 : 0,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 3,
+                    opacity: currentStep === 0 ? 0.5 : 1,
+                  }}
+                >
+                  <View className="flex-row items-center justify-center">
+                    <Text className="text-white font-CairoBold text-lg">
+                      {language === 'ar' ? "السابق" : "Back"}
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+            <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => animateButton(nextButtonScale, handleNext)}
+                disabled={isLoading}
+              >
+                <LinearGradient
+                  colors={currentStep === steps.length - 1 ? ["#38A169", "#38A169"] : ["#f97316", "#ea580c"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    width: 160,
+                    height: 60,
+                    borderRadius: 30,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    elevation: Platform.OS === "android" ? 8 : 0,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4.65,
+                  }}
+                >
+                  <View className="flex-row items-center justify-center">
+                    <Text className="text-white font-CairoBold text-lg">
+                      {currentStep === steps.length - 1
+                        ? (language === 'ar' ? "انشاء الرحلة" : "Create Ride")
+                        : (language === 'ar' ? "التالي" : "Next")}
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
 
       {/* Success Modal */}
       <ReactNativeModal
