@@ -11,6 +11,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { PALESTINIAN_CITIES, CityData, BarrierData } from '@/constants/cities';
 import { useUser } from '@clerk/clerk-expo';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface BarrierUpdate {
   status: 'open' | 'closed' | 'delayed' | 'heavy_traffic' | 'military_presence' | 'random_check' | 'smooth_traffic';
