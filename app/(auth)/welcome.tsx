@@ -77,7 +77,7 @@ const Onboarding = () => {
               source={require('@/assets/images/barrier.json')}
               autoPlay
               loop
-              style={{ width: '95%', height: 260 }}
+              style={{ width: '95%', height: 300 }}
             />
             )}
             <View className="flex flex-row items-center justify-center w-full mt-20">

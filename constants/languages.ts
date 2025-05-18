@@ -13,12 +13,12 @@ export const translations = {
         description: "ابحث عن اشخاص يشاركون نفس وجهتك واستمتع برحلات مريحة بتكاليف أقل."
       },
       {
-        title: "كن سائقًا وساعد الآخرين!",
-        description: "إذا كان لديك مقعد فارغ، لا تذهب وحدك! شارك رحلتك وساعد الناس مع إمكانية تقليل تكاليف التنقل."
+        title: "سافر بثقة!",
+        description: "دع أصدقاءك أو عائلتك يتابعون رحلتك لضمان سلامتك."
       },
       {
-        title: "جاهز للانطلاق؟",
-        description: 'ابدأ الآن وانضم إلى مجتمع التنقل الذكي! اضغط على "انطلق" وسجل حسابك لتجد رحلتك الأولى!'
+        title: "خليك دايمًا بالصورة!",
+        description: "ما توصل متأخر! اعرف إذا الطريق سالك أو فيه عرقلة قبل ما تطلع من بيتك."
       }
     ],
     signUp: "انشاء حساب جديد",
@@ -281,12 +281,12 @@ export const translations = {
         description: "Find people sharing your destination and enjoy comfortable trips at lower costs."
       },
       {
-        title: "Be a Driver and Help Others!",
-        description: "If you have an empty seat, don't ride alone! Share your trip and help people while reducing travel costs."
+        title: "Travel with confidence!",
+        description: "Let your friends or family track your journey to ensure your safety."
       },
       {
-        title: "Ready to Go?",
-        description: 'Join the smart mobility community now! Tap "Get Started" and create your account to find your first ride!'
+        title: "Stay in the Know",
+        description: 'Don’t be late! Check if the road is clear or blocked before you leave home.'
       }
     ],
     signUp: "Create Your Account",
