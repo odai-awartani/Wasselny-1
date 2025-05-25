@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Image, Text } from "react-native";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 
@@ -16,8 +16,13 @@ const GoogleTextInput = ({
   containerStyle,
   textInputBackgroundColor,
   handlePress,
+  onTextChange,
+  autoFocus = false,
+  returnKeyType = "search",
+  onSubmitEditing,
 }: GoogleInputProps) => {
   const { language } = useLanguage();
+  const [searchText, setSearchText] = useState('');
 
   return (
     <View
@@ -89,7 +94,17 @@ const GoogleTextInput = ({
           placeholderTextColor: "gray",
           placeholder: initialLocation ?? (language === 'ar' ? 'إلى أين تريد الذهاب؟' : 'Where do you want to go?'),
           underlineColorAndroid: "transparent",
-          returnKeyType: "search",
+          returnKeyType: returnKeyType,
+          autoFocus: autoFocus,
+          onChangeText: (text) => {
+            setSearchText(text);
+            onTextChange?.(text);
+          },
+          onSubmitEditing: (event) => {
+            if (event.nativeEvent.text) {
+              onSubmitEditing?.(event);
+            }
+          },
         }}
         renderRow={(data) => (
           <Text

@@ -136,7 +136,7 @@ const clearCache = async (userId: string) => {
   }
 };
 
-const SuggestedRides = () => {
+const SuggestedRides = ({ refreshKey }: { refreshKey?: number }) => {
   const { language, t } = useLanguage();
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -487,10 +487,11 @@ const SuggestedRides = () => {
 
   useEffect(() => {
     console.log('useEffect running, hasFetched:', hasFetchedRef.current);
-    if (!hasFetchedRef.current && isMountedRef.current) {
+    if ((!hasFetchedRef.current || refreshKey !== undefined) && isMountedRef.current) {
+      hasFetchedRef.current = false;
       fetchRides();
     }
-  }, [fetchRides]);
+  }, [fetchRides, refreshKey]);
 
   const renderRideCard = useMemo(() => {
     return ({ item }: { item: Ride }) => {

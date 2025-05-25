@@ -34,23 +34,38 @@ declare interface MapProps {
 }
 
 declare interface Ride {
+  id: string;
   origin_address: string;
   destination_address: string;
+  created_at: string;
+  ride_time: string;
+  ride_datetime: string;
+  destination_longitude: number;
+  destination_latitude: number;
   origin_latitude: number;
   origin_longitude: number;
-  destination_latitude: number;
-  destination_longitude: number;
-  ride_time: number;
-  fare_price: number;
-  payment_status: string;
-  driver_id: number;
-  user_id: string;
-  created_at: string;
+  available_seats: number;
   driver: {
     first_name: string;
     last_name: string;
+    profile_picture: string;
     car_seats: number;
   };
+  payment_status: string;
+  driver_rating: number;
+  status: string;
+  driver_id: string;
+  recurring: boolean;
+  ride_days: string[];
+  waypoints: Array<{
+    address: string;
+    street: string;
+    latitude: number;
+    longitude: number;
+  }>;
+  car_type: string;
+  priority: number;
+  distance: number;
 }
 
 declare interface ButtonProps extends TouchableOpacityProps {
@@ -78,6 +93,10 @@ declare interface GoogleInputProps {
     longitude: number;
     address: string;
   }) => void;
+  onTextChange?: (text: string) => void;
+  autoFocus?: boolean;
+  returnKeyType?: "search" | "done" | "go" | "next" | "send";
+  onSubmitEditing?: (event: { nativeEvent: { text: string } }) => void;
 }
 
 declare interface InputFieldProps extends TextInputProps {
